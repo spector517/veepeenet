@@ -1,7 +1,7 @@
 .venv
 *config.json
 venv
-.freedomnet
+.veepeenet
 .idea
 *.DS_Store
 *__pycache__

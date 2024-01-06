@@ -8,8 +8,8 @@ import textwrap
 
 WIREGUARD_PACKAGE_VERSION = '1.0.20210914-1ubuntu2'
 WIREGUARD_CONF_DIR = '/etc/wireguard'
-CONFIG_PATH = os.path.expanduser('~/.freedomnet/wg/config.json')
-RESULT_LOG_PATH = os.path.expanduser('~/.freedomnet/wg/result.json')
+CONFIG_PATH = os.path.expanduser('~/.veepeenet/wg/config.json')
+RESULT_LOG_PATH = os.path.expanduser('~/.veepeenet/wg/result.json')
 ROUTE_FILE_PATH = '/proc/net/route'
 UFW_BEFORE_RULES_PATH = '/etc/ufw/before.rules'
 SYSCTL_FILE_PATH = '/etc/sysctl.conf'
@@ -19,7 +19,7 @@ DEFAULT_SSH_PORT = 22
 ENCODING = 'UTF-8'
 RUN_COMMAND_TIMEOUT = 20_000
 
-DEFAULT_CLIENTS_DIR = os.path.expanduser('~/.freedomnet/wg/clients')
+DEFAULT_CLIENTS_DIR = os.path.expanduser('~/.veepeenet/wg/clients')
 DEFAULT_PORT = 51820
 DEFAULT_INTERFACE = 'wg0'
 DEFAULT_SUBNET = '10.9.0.1/24'
@@ -110,7 +110,7 @@ def main():
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description='Configure the Wireguard VPN.',
-        epilog='Freedomnet. Make the Internet free =)'
+        epilog='VeePeeNet. Make the Internet free =)'
     )
     parser.add_argument(
         '--host',
@@ -376,8 +376,8 @@ def get_server_subnet(subnet: str) -> str:
 
 @handle_result
 def edit_ufw_rule_before(rules_file_path: str, interface: str, subnet: str) -> None:
-    rule_header = '# BEGIN FREEDOMNET WG VPN UFW RULES #\n'
-    rule_footer = '# END FREEDOMNET WG VPN UFW RULES #\n'
+    rule_header = '# BEGIN VEEPEENET WG VPN UFW RULES #\n'
+    rule_footer = '# END VEEPEENET WG VPN UFW RULES #\n'
     rule_lines = [
         rule_header,
         '*nat\n',

@@ -1,6 +1,6 @@
-# FreedomNET Installers
+# VeePeeNet Install
 
-Набор скриптов для установки и настройки Wireguard VPN и прокси-сервера 3Proxy.
+Набор скриптов для установки и настройки компонентов VeePeeNet.
 
 ## Требования
 
@@ -8,7 +8,7 @@
 2. Python 3.8+
 3. Интернет соединение
 
-## Wireguard VPN
+## Wireguard
 
 ### Возможности
 
@@ -36,7 +36,7 @@ sudo python3 wireguard.py --remove-clients my_client2
 #### Реконфигурация с удалением предыдущей конфигурации
 
 ```commandline
-sudo python3 wireguard.py --host my.domain2.com --add-clients client1 client2 client3 --output ./my_clients
+sudo python3 wireguard.py --clean --host my.domain2.com --add-clients client1 client2 client3 --output ./my_clients
 ```
 Скрипт удалит текущую конфигурацию и создаст новую
 
@@ -61,10 +61,6 @@ python3 wireguard.py --help
 - ```--clean``` Перезаписать текущую конфигурацию.
 - ```--check``` Запуск в режиме dry-run. Отобразить все изменения в консоле.
 - ```--no-ufw``` Не использовать UFW. В этом случае Вам нужно будет настроить Netfilter самостоятельно.
-
-## 3Proxy
-
-В работе
 
 ## Лиценция
 MIT
