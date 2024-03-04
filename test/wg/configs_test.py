@@ -4,6 +4,7 @@ import os
 import shutil
 import unittest
 
+import common
 import wireguard
 
 
@@ -13,24 +14,24 @@ class ConfigTest(unittest.TestCase):
     config_path = os.path.join(temp_dir, 'config.json')
     clients_dir_path = os.path.join(temp_dir, 'test_clients')
     no_ufw = False
-    original_result = wireguard.RESULT.copy()
-    original_check_mode = wireguard.CHECK_MODE
-    original_config_path = wireguard.CONFIG_PATH
-    original_clients_dir = wireguard.DEFAULT_CLIENTS_DIR
+    original_result = common.RESULT.copy()
+    original_check_mode = common.CHECK_MODE
+    original_config_path = common.CONFIG_PATH
+    original_clients_dir = common.DEFAULT_CLIENTS_DIR
 
     @classmethod
     def setUpClass(cls) -> None:
-        wireguard.CHECK_MODE = True
-        wireguard.CONFIG_PATH = cls.config_path
-        wireguard.DEFAULT_CLIENTS_DIR = cls.clients_dir_path
+        common.CHECK_MODE = True
+        common.CONFIG_PATH = cls.config_path
+        common.DEFAULT_CLIENTS_DIR = cls.clients_dir_path
 
     @classmethod
     def tearDownClass(cls) -> None:
         # FIXME Why cls.original_result is not empty?
-        wireguard.RESULT = cls.original_result
-        wireguard.CHECK_MODE = cls.original_check_mode
-        wireguard.CONFIG_PATH = cls.original_config_path
-        wireguard.DEFAULT_CLIENTS_DIR = cls.original_clients_dir
+        common.RESULT = cls.original_result
+        common.CHECK_MODE = cls.original_check_mode
+        common.CONFIG_PATH = cls.original_config_path
+        common.DEFAULT_CLIENTS_DIR = cls.original_clients_dir
 
     def setUp(self) -> None:
         if os.path.exists(self.temp_dir):
@@ -45,18 +46,18 @@ class ConfigTest(unittest.TestCase):
         namespace = argparse.Namespace(host=None, port=0, subnet=None, interface=None, dns=None,
                                        output=None, no_ufw=False)
         expected_config = {
-            'clients_dir': wireguard.DEFAULT_CLIENTS_DIR,
+            'clients_dir': common.DEFAULT_CLIENTS_DIR,
             'no_ufw': False,
             'server': {
                 'host': 'hostname -i',
-                'port': wireguard.DEFAULT_PORT,
-                'subnet': wireguard.DEFAULT_SUBNET,
-                'interface': wireguard.DEFAULT_INTERFACE,
-                'dns': wireguard.DEFAULT_DNS,
+                'port': wireguard.DEFAULT_WIREGUARD_PORT,
+                'subnet': wireguard.DEFAULT_WIREGUARD_SUBNET,
+                'interface': wireguard.DEFAULT_WIREGUARD_INTERFACE,
+                'dns': common.DEFAULT_DNS,
                 'private_key': 'wg genkey',
                 'public_key': 'wg pubkey'
             },
-            'clients': wireguard.DEFAULT_CLIENTS
+            'clients': common.DEFAULT_CLIENTS
         }
         self.assertEqual(expected_config, wireguard.load_config(config_path, namespace))
 
@@ -84,7 +85,7 @@ class ConfigTest(unittest.TestCase):
                 'private_key': 'wg genkey',
                 'public_key': 'wg pubkey'
             },
-            'clients': wireguard.DEFAULT_CLIENTS
+            'clients': common.DEFAULT_CLIENTS
         }
         actual_cofig = wireguard.load_config(config_path, namespace)
         self.assertEqual(expected_config, actual_cofig)
@@ -143,14 +144,14 @@ class ConfigTest(unittest.TestCase):
             'no_ufw': True
         })
         expected_config['server'].update({
-            'port': wireguard.DEFAULT_PORT,
+            'port': wireguard.DEFAULT_WIREGUARD_PORT,
             'subnet': namespace.subnet,
             'interface': namespace.interface
         })
         self.assertEqual(expected_config, wireguard.load_config(self.config_path, namespace))
 
     def test_clean_configuration__config_and_clients_dir_not_exists(self) -> None:
-        wireguard.clean_configuration(self.config_path, self.clients_dir_path)
+        common.clean_configuration(self.config_path, self.clients_dir_path)
 
         self.assertFalse(os.path.exists(self.config_path))
         self.assertFalse(os.path.exists(self.clients_dir_path))
@@ -165,7 +166,7 @@ class ConfigTest(unittest.TestCase):
                       'wt', encoding=self.encoding) as fd:
                 fd.write(f"{client_name} test data")
 
-        wireguard.clean_configuration(self.config_path, self.clients_dir_path)
+        common.clean_configuration(self.config_path, self.clients_dir_path)
 
         self.assertFalse(os.path.exists(self.config_path))
         self.assertFalse(os.path.exists(self.clients_dir_path))

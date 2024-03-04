@@ -2,6 +2,7 @@ import os
 import shutil
 import unittest
 
+import common
 import wireguard
 
 
@@ -10,21 +11,21 @@ class LinuxUtilsTest(unittest.TestCase):
     encoding = 'UTF-8'
     network_interface = 'eth0'
     subnet = '10.9.0.0/8'
-    ufw_rules_before_non_modified_path = 'res/etc/ufw/before.rules'
-    ufw_rules_before_path_modified_path = 'res/etc/ufw/before.rules.modified'
+    ufw_rules_before_non_modified_path = 'wg/res/etc/ufw/before.rules'
+    ufw_rules_before_path_modified_path = 'wg/res/etc/ufw/before.rules.modified'
     ip_version = 4
-    sysctl_non_modified_path = 'res/etc/sysctl.conf'
-    sysctl_modified_path = 'res/etc/sysctl.conf.modified'
-    ufw_forward_policy_non_modified_path = 'res/etc/default/ufw'
-    ufw_forward_policy_modified_path = 'res/etc/default/ufw.modified'
-    sshd_config_path = 'res/etc/ssh/sshd_config'
-    sshd_config_path_22_port = 'res/etc/ssh/sshd_config.22_port'
-    sshd_config_custom_port = 'res/etc/ssh/sshd_config.custom_port'
-    original_result = wireguard.RESULT.copy()
+    sysctl_non_modified_path = 'wg/res/etc/sysctl.conf'
+    sysctl_modified_path = 'wg/res/etc/sysctl.conf.modified'
+    ufw_forward_policy_non_modified_path = 'wg/res/etc/default/ufw'
+    ufw_forward_policy_modified_path = 'wg/res/etc/default/ufw.modified'
+    sshd_config_path = 'wg/res/etc/ssh/sshd_config'
+    sshd_config_path_22_port = 'wg/res/etc/ssh/sshd_config.22_port'
+    sshd_config_custom_port = 'wg/res/etc/ssh/sshd_config.custom_port'
+    original_result = common.RESULT.copy()
 
     @classmethod
     def tearDownClass(cls):
-        wireguard.RESULT = cls.original_result
+        common.RESULT = cls.original_result
 
     def setUp(self) -> None:
         if os.path.exists(self.temp_dir):

@@ -2,6 +2,7 @@ import os
 import shutil
 import unittest
 
+import common
 import wireguard
 
 
@@ -13,23 +14,23 @@ class ProcessClientsTest(unittest.TestCase):
         {'name': 'client2', 'ip': '10.9.0.3'},
         {'name': 'client3', 'ip': '10.9.0.4'}
     ]
-    original_check_mode = wireguard.CHECK_MODE
-    original_result = wireguard.RESULT.copy()
+    original_check_mode = common.CHECK_MODE
+    original_result = common.RESULT.copy()
 
     @classmethod
     def setUpClass(cls) -> None:
-        wireguard.CHECK_MODE = True
+        common.CHECK_MODE = True
 
     @classmethod
     def tearDownClass(cls) -> None:
-        wireguard.RESULT = cls.original_result
-        wireguard.CHECK_MODE = cls.original_check_mode
+        common.RESULT = cls.original_result
+        common.CHECK_MODE = cls.original_check_mode
 
     def setUp(self) -> None:
         if os.path.exists(self.temp_dir):
             shutil.rmtree(self.temp_dir)
         os.mkdir(self.temp_dir)
-        shutil.copytree('res/clients', self.clients_dir)
+        shutil.copytree('wg/res/clients', self.clients_dir)
 
     def tearDown(self) -> None:
         shutil.rmtree(self.temp_dir)

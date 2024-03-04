@@ -1,16 +1,17 @@
 import sys
 
+import common
 import wireguard
 
-wireguard.WIREGUARD_CONF_DIR = 'res/etc/wireguard'
-wireguard.ROUTE_FILE_PATH = 'res/proc/net/route'
-wireguard.UFW_BEFORE_RULES_PATH = 'res/etc/ufw/before.rules.modified'
-wireguard.SYSCTL_FILE_PATH = 'res/etc/sysctl.conf'
-wireguard.FORWARD_POLICY_FILE = 'res/etc/default/ufw'
+common.WIREGUARD_CONF_DIR = 'res/etc/wireguard'
+common.ROUTE_FILE_PATH = 'res/proc/net/route'
+common.UFW_BEFORE_RULES_PATH = 'res/etc/ufw/before.rules.modified'
+common.SYSCTL_FILE_PATH = 'res/etc/sysctl.conf'
+common.FORWARD_POLICY_FILE = 'res/etc/default/ufw'
 
-wireguard.CONFIG_PATH = 'output/config.json'
-wireguard.DEFAULT_CLIENTS_DIR = 'output/clients'
-wireguard.RESULT_LOG_PATH = 'output/result.json'
+common.CONFIG_PATH = 'output/config.json'
+common.DEFAULT_CLIENTS_DIR = 'output/clients'
+common.RESULT_LOG_PATH = 'output/result.json'
 sys.argv.append('--check')
 
 wireguard.main()

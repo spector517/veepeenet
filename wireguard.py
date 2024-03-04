@@ -1,77 +1,30 @@
 import argparse
 import json
 import os
-import shutil
-import subprocess
-import sys
 import textwrap
+
+import common
 
 WIREGUARD_PACKAGE_VERSION = '1.0.20210914-1ubuntu2'
 WIREGUARD_CONF_DIR = '/etc/wireguard'
-CONFIG_PATH = os.path.expanduser('~/.veepeenet/wg/config.json')
-RESULT_LOG_PATH = os.path.expanduser('~/.veepeenet/wg/result.json')
-ROUTE_FILE_PATH = '/proc/net/route'
-UFW_BEFORE_RULES_PATH = '/etc/ufw/before.rules'
-SYSCTL_FILE_PATH = '/etc/sysctl.conf'
-FORWARD_POLICY_FILE = '/etc/default/ufw'
-SSHD_CONFIG_PATH = '/etc/ssh/sshd_config'
-DEFAULT_SSH_PORT = 22
-ENCODING = 'UTF-8'
-RUN_COMMAND_TIMEOUT = 20_000
 
-DEFAULT_CLIENTS_DIR = os.path.expanduser('~/.veepeenet/wg/clients')
-DEFAULT_PORT = 51820
-DEFAULT_INTERFACE = 'wg0'
-DEFAULT_SUBNET = '10.9.0.1/24'
-DEFAULT_CLIENTS = []
-DEFAULT_DNS = ['1.1.1.1', '1.0.0.1']
-DEFAULT_NO_UFW = False
+DEFAULT_WIREGUARD_PORT = 51820
+DEFAULT_WIREGUARD_INTERFACE = 'wg0'
+DEFAULT_WIREGUARD_SUBNET = '10.9.0.1/24'
 
-CHECK_MODE = False
-
-RESULT = {
-    'has_error': False,
-    'meta': {
-        'interpreter': sys.executable,
-        'interpreter_version':
-            f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}',
-        'run_args': sys.argv
-    },
-    'actions': []
-}
-
-
-def handle_result(func: callable) -> callable:
-    def wrapper(*args, **kwargs) -> any:
-        action = {}
-        try:
-            res = func(*args, **kwargs)
-            action.update({'result': str(res)})
-        except Exception as ex:
-            RESULT['has_error'] = True
-            action.update({'error': str(ex)})
-            write_text_file(RESULT_LOG_PATH, json.dumps(RESULT, indent=2))
-            raise ex
-        finally:
-            action.update({
-                'name': func.__name__,
-                'args': str(args),
-                'kwargs': str(kwargs)
-            })
-            RESULT['actions'].append(action)
-        return res
-    return wrapper
+common.RESULT_LOG_PATH = os.path.expanduser('~/.veepeenet/wg/result.json')
+common.CONFIG_PATH = os.path.expanduser('~/.veepeenet/wg/config.json')
+common.DEFAULT_CLIENTS_DIR = os.path.expanduser('~/.veepeenet/wg/clients')
 
 
 def main():
-    global CHECK_MODE
     arguments = parse_arguments()
-    CHECK_MODE = arguments.check
+    common.CHECK_MODE = arguments.check
     if arguments.clean:
-        clean_configuration(CONFIG_PATH, DEFAULT_CLIENTS_DIR)
+        common.clean_configuration(common.CONFIG_PATH, common.DEFAULT_CLIENTS_DIR)
     if not is_wireguard_package_installed(WIREGUARD_PACKAGE_VERSION):
         install_wireguard_apt_package(WIREGUARD_PACKAGE_VERSION)
-    config = load_config(CONFIG_PATH, arguments)
+    config = load_config(common.CONFIG_PATH, arguments)
 
     existing_clients = get_existing_clients(config)
     new_clients_names = get_new_clients_names(arguments.add_clients, existing_clients)
@@ -81,32 +34,32 @@ def main():
         existing_clients.append(new_client)
     config['clients'] = get_clients_after_removing(config['clients'], arguments.remove_clients)
 
-    write_text_file(CONFIG_PATH, dump_config(config), 0o600)
+    common.write_text_file(common.CONFIG_PATH, dump_config(config), 0o600)
     server_dump = dump_server(config)
-    write_text_file(
+    common.write_text_file(
         os.path.join(WIREGUARD_CONF_DIR, f"{config['server']['interface']}.conf"),
         server_dump
     )
     for client_name, client_conf in dump_clients(config).items():
-        write_text_file(os.path.join(config['clients_dir'], f'{client_name}.conf'),
-                        client_conf, 0o600)
+        common.write_text_file(os.path.join(config['clients_dir'], f'{client_name}.conf'),
+                               client_conf, 0o600)
     remove_clients_configs(arguments.remove_clients, config['clients_dir'])
 
-    edit_sysctl(SYSCTL_FILE_PATH)
+    edit_sysctl(common.SYSCTL_FILE_PATH)
     apply_sysctl_conf()
     if not arguments.no_ufw:
-        default_interface = get_default_interface(ROUTE_FILE_PATH)
+        default_interface = get_default_interface(common.ROUTE_FILE_PATH)
         subnet = get_server_subnet(subnet)
-        edit_ufw_rule_before(UFW_BEFORE_RULES_PATH, default_interface, subnet)
-        edit_ufw_forward_policy(FORWARD_POLICY_FILE)
-        ssh_port = get_ssh_port_number(SSHD_CONFIG_PATH)
+        edit_ufw_rule_before(common.UFW_BEFORE_RULES_PATH, default_interface, subnet)
+        edit_ufw_forward_policy(common.FORWARD_POLICY_FILE)
+        ssh_port = get_ssh_port_number(common.SSHD_CONFIG_PATH)
         configure_ufw(config['server']['port'], ssh_port)
 
     restart_wireguard_service(config['server']['interface'])
-    write_text_file(RESULT_LOG_PATH, json.dumps(RESULT, indent=2))
+    common.write_text_file(common.RESULT_LOG_PATH, json.dumps(common.RESULT, indent=2))
 
 
-@handle_result
+@common.handle_result
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description='Configure the Wireguard VPN.',
@@ -120,20 +73,21 @@ def parse_arguments() -> argparse.Namespace:
         '--port',
         type=int,
         default=0,
-        help=f'The VPN service port. Default is {DEFAULT_PORT}'
+        help=f'The VPN service port. Default is {DEFAULT_WIREGUARD_PORT}'
     )
     parser.add_argument(
         '--subnet',
-        help=f'Wireguard server subnet address. Default is {DEFAULT_SUBNET}.'
+        help=f'Wireguard server subnet address. Default is {DEFAULT_WIREGUARD_SUBNET}.'
     )
     parser.add_argument(
         '--interface',
-        help=f'Name of Wireguard virtual network interface. Default is {DEFAULT_INTERFACE}.'
+        help=(f'Name of Wireguard virtual network interface. '
+              f'Default is {DEFAULT_WIREGUARD_INTERFACE}.')
     )
     parser.add_argument(
         '--dns',
         nargs='+',
-        help=f'Domain names servers. Default is {" ".join(DEFAULT_DNS)}.'
+        help=f'Domain names servers. Default is {" ".join(common.DEFAULT_DNS)}.'
     )
     parser.add_argument(
         '--add-clients',
@@ -153,7 +107,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         '--output',
         metavar='CLIENTS_CONF_DIR',
-        help=f'Path to output clients configs directory. Default is {DEFAULT_CLIENTS_DIR}'
+        help=f'Path to output clients configs directory. Default is {common.DEFAULT_CLIENTS_DIR}'
     )
     parser.add_argument(
         '--no-ufw',
@@ -174,24 +128,24 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
-@handle_result
+@common.handle_result
 def is_wireguard_package_installed(version: str) -> bool:
-    wg_package_info = run_command('apt list --installed wireguard')[1]
+    wg_package_info = common.run_command('apt list --installed wireguard')[1]
     return bool(list(filter(lambda x: x.startswith('wireguard') and version in x,
                             wg_package_info.split('\n'))))
 
 
-@handle_result
+@common.handle_result
 def install_wireguard_apt_package(version: str) -> None:
-    run_command(f'apt update && apt install -y wireguard={version}')
+    common.run_command(f'apt update && apt install -y wireguard={version}')
 
 
-@handle_result
+@common.handle_result
 def load_config(
         config_path: str, arguments: argparse.Namespace) -> dict:
     config = {}
     if os.path.exists(config_path):
-        with open(config_path, 'rt', encoding=ENCODING) as fd:
+        with open(config_path, 'rt', encoding=common.ENCODING) as fd:
             config.update(json.loads(fd.read()))
     server_private_key = (get_config_value(config, 'private_key', 'server')
                           or generate_private_key())
@@ -201,11 +155,11 @@ def load_config(
         'clients_dir':
             arguments.output
             or get_config_value(config, 'clients_dir')
-            or DEFAULT_CLIENTS_DIR,
+            or common.DEFAULT_CLIENTS_DIR,
         'no_ufw':
             arguments.no_ufw
             or get_config_value(config, 'no_ufw')
-            or DEFAULT_NO_UFW,
+            or common.DEFAULT_NO_UFW,
         'server': {
             'host':
                 arguments.host
@@ -214,29 +168,30 @@ def load_config(
             'port':
                 int(arguments.port)
                 or get_config_value(config, 'port', 'server')
-                or DEFAULT_PORT,
+                or DEFAULT_WIREGUARD_PORT,
             'subnet':
                 arguments.subnet
                 or get_config_value(config, 'subnet', 'server')
-                or DEFAULT_SUBNET,
+                or DEFAULT_WIREGUARD_SUBNET,
             'interface':
                 arguments.interface
                 or get_config_value(config, 'interface', 'server')
-                or DEFAULT_INTERFACE,
+                or DEFAULT_WIREGUARD_INTERFACE,
             'dns':
                 arguments.dns
                 or get_config_value(config, 'dns', 'server')
-                or DEFAULT_DNS,
+                or common.DEFAULT_DNS,
             'private_key': server_private_key,
             'public_key': server_public_key
-            },
+        },
         'clients':
-            config['clients'] if 'clients' in config and config['clients'] else DEFAULT_CLIENTS
+            (config['clients'] if 'clients' in config and config['clients']
+             else common.DEFAULT_CLIENTS)
     })
     return config
 
 
-@handle_result
+@common.handle_result
 def get_config_value(config: dict, key: str, prefix: str = '') -> any:
     if not prefix and key in config:
         return config[key]
@@ -245,33 +200,25 @@ def get_config_value(config: dict, key: str, prefix: str = '') -> any:
     return None
 
 
-@handle_result
-def clean_configuration(config_path: str, clients_dir: str) -> None:
-    if os.path.exists(config_path):
-        os.remove(config_path)
-    if os.path.exists(clients_dir):
-        shutil.rmtree(clients_dir)
-
-
-@handle_result
+@common.handle_result
 def get_current_host_ip() -> str:
-    return run_command('hostname -i')[1]
+    return common.run_command('hostname -i')[1]
 
 
-@handle_result
+@common.handle_result
 def get_existing_clients(config: dict) -> list:
     if 'clients' not in config:
         return []
     return config['clients']
 
 
-@handle_result
+@common.handle_result
 def get_new_clients_names(passed_clients_names: list, existing_clients: list) -> list:
     existing_clients_names = [existing_client['name'] for existing_client in existing_clients]
     return list(set(passed_clients_names) - set(existing_clients_names))
 
 
-@handle_result
+@common.handle_result
 def generate_new_client(client_name: str, existing_clients: list, subnet: str) -> dict:
     existing_clients_ips = [existing_client['ip'] for existing_client in existing_clients]
     sub_ip = [int(ip.split('.')[-1]) for ip in existing_clients_ips]
@@ -287,34 +234,34 @@ def generate_new_client(client_name: str, existing_clients: list, subnet: str) -
     }
 
 
-@handle_result
+@common.handle_result
 def get_clients_after_removing(clients: list, clients_names_to_remove: list) -> list:
     if not clients_names_to_remove:
         return clients
     return [client for client in clients if client['name'] not in clients_names_to_remove]
 
 
-@handle_result
+@common.handle_result
 def edit_sysctl(sysctl_file_path: str, ip_version: int = 4) -> None:
-    with open(sysctl_file_path, 'rt+', encoding=ENCODING) as fd:
+    with open(sysctl_file_path, 'rt+', encoding=common.ENCODING) as fd:
         target_line = f'net.ipv{ip_version}.ip_forward = 1\n'
         lines = fd.readlines()
         if target_line in lines:
             return
         lines.append(target_line)
         fd.seek(0)
-        if CHECK_MODE:
+        if common.CHECK_MODE:
             print(f'{sysctl_file_path}:\n{"".join(lines)}\n')
             return
         fd.writelines(lines)
 
 
-@handle_result
+@common.handle_result
 def dump_config(config: dict) -> str:
     return json.dumps(config, indent=2)
 
 
-@handle_result
+@common.handle_result
 def dump_server(config: dict) -> str:
     dump = textwrap.dedent(f'''
         [Interface]
@@ -331,7 +278,7 @@ def dump_server(config: dict) -> str:
     return dump.lstrip()
 
 
-@handle_result
+@common.handle_result
 def dump_clients(config: dict) -> dict:
     clients_dumps = {}
     for client in config['clients']:
@@ -349,7 +296,7 @@ def dump_clients(config: dict) -> dict:
     return clients_dumps
 
 
-@handle_result
+@common.handle_result
 def remove_clients_configs(clients_names: list, clients_dir_path: str) -> None:
     if not os.path.exists(clients_dir_path):
         return
@@ -359,9 +306,9 @@ def remove_clients_configs(clients_names: list, clients_dir_path: str) -> None:
             os.remove(client_conf_path)
 
 
-@handle_result
+@common.handle_result
 def get_default_interface(route_file_path: str) -> str:
-    with open(route_file_path, 'rt', encoding=ENCODING) as fd:
+    with open(route_file_path, 'rt', encoding=common.ENCODING) as fd:
         for line in fd.readlines():
             iface, dest, _, flags, _, _, _, _, _, _, _, = line.strip().split()
             if dest != '00000000' or not int(flags, 16) & 2:
@@ -369,12 +316,12 @@ def get_default_interface(route_file_path: str) -> str:
             return iface
 
 
-@handle_result
+@common.handle_result
 def get_server_subnet(subnet: str) -> str:
     return f"{'.'.join(subnet.split('.')[0:2])}.0.0/8"
 
 
-@handle_result
+@common.handle_result
 def edit_ufw_rule_before(rules_file_path: str, interface: str, subnet: str) -> None:
     rule_header = '# BEGIN VEEPEENET WG VPN UFW RULES #\n'
     rule_footer = '# END VEEPEENET WG VPN UFW RULES #\n'
@@ -386,7 +333,7 @@ def edit_ufw_rule_before(rules_file_path: str, interface: str, subnet: str) -> N
         'COMMIT\n',
         rule_footer
     ]
-    with open(rules_file_path, 'rt+', encoding=ENCODING) as fd:
+    with open(rules_file_path, 'rt+', encoding=common.ENCODING) as fd:
         rules_lines = fd.readlines()
         try:
             del rules_lines[rules_lines.index(rule_header):rules_lines.index(rule_footer) + 1]
@@ -394,15 +341,15 @@ def edit_ufw_rule_before(rules_file_path: str, interface: str, subnet: str) -> N
             pass
         fd.seek(0)
         result_lines = rule_lines + rules_lines
-        if CHECK_MODE:
+        if common.CHECK_MODE:
             print(f'{rules_file_path}:\n{"".join(result_lines)}\n')
             return
         fd.writelines(result_lines)
 
 
-@handle_result
+@common.handle_result
 def edit_ufw_forward_policy(policy_file_path: str) -> None:
-    with open(policy_file_path, 'rt+', encoding=ENCODING) as fd:
+    with open(policy_file_path, 'rt+', encoding=common.ENCODING) as fd:
         target_line = 'DEFAULT_FORWARD_POLICY="ACCEPT"\n'
         lines = fd.readlines()
         if target_line in lines:
@@ -411,98 +358,59 @@ def edit_ufw_forward_policy(policy_file_path: str) -> None:
             if line.startswith('DEFAULT_FORWARD_POLICY='):
                 lines[index] = target_line
                 fd.seek(0)
-                if CHECK_MODE:
+                if common.CHECK_MODE:
                     print(f'{policy_file_path}:\n{"".join(lines)}\n')
                     return
                 fd.writelines(lines)
                 break
 
 
-@handle_result
+@common.handle_result
 def apply_sysctl_conf() -> None:
-    run_command('sysctl -p')
+    common.run_command('sysctl -p')
 
 
-@handle_result
+@common.handle_result
 def get_ssh_port_number(sshd_config_path: str) -> int:
-    with open(sshd_config_path, 'rt', encoding=ENCODING) as fd:
+    with open(sshd_config_path, 'rt', encoding=common.ENCODING) as fd:
         lines = fd.readlines()
         for line in lines:
             if line.strip().startswith('#'):
                 continue
             if line.strip().startswith('Port'):
                 return int(line.strip().split(' ')[-1])
-        return DEFAULT_SSH_PORT
+        return common.DEFAULT_SSH_PORT
 
 
-@handle_result
+@common.handle_result
 def configure_ufw(wg_port: int, ssh_port: int) -> None:
-    run_command((f'ufw allow {wg_port}/udp'
-                 f' && ufw allow {ssh_port}/tcp'
-                 ' && yes | ufw enable'
-                 ' && ufw reload'))
+    common.run_command((f'ufw allow {wg_port}/udp'
+                        f' && ufw allow {ssh_port}/tcp'
+                        ' && yes | ufw enable'
+                        ' && ufw reload'))
 
 
-@handle_result
+@common.handle_result
 def restart_wireguard_service(interface: str) -> None:
-    run_command(f'systemctl restart wg-quick@{interface}.service')
+    common.run_command(f'systemctl restart wg-quick@{interface}.service')
 
 
-@handle_result
+@common.handle_result
 def generate_public_key(private_key: str) -> str:
-    return run_command('wg pubkey', private_key)[1]
+    return common.run_command('wg pubkey', private_key)[1]
 
 
-@handle_result
+@common.handle_result
 def generate_private_key() -> str:
-    return run_command('wg genkey')[1]
+    return common.run_command('wg genkey')[1]
 
 
-@handle_result
+@common.handle_result
 def generate_unique_number(number_range: range, excluded_numbers: list) -> int:
     for i in number_range:
         if i not in excluded_numbers:
             return i
     raise RuntimeError("Generate unique number error")
-
-
-@handle_result
-def run_command(command: str, stdin: str = '') -> tuple:
-    if CHECK_MODE:
-        command = f'echo "{command}"'
-    try:
-        run_result = subprocess.run(
-            command,
-            input=stdin.encode(ENCODING),
-            capture_output=True,
-            check=True,
-            timeout=RUN_COMMAND_TIMEOUT,
-            shell=True
-        )
-
-        return (run_result.returncode,
-                run_result.stdout.decode(ENCODING).strip(),
-                run_result.stderr.decode(ENCODING).strip())
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as ex:
-        raise ex
-
-
-def write_text_file(file_path: str, text: str, mode: int = 0) -> None:
-    if CHECK_MODE:
-        print(f'{file_path}:\n{text}\n')
-        return
-
-    if not os.path.exists(file_path):
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
-    else:
-        if mode:
-            os.chmod(file_path, mode)
-        with open(file_path, 'rt', encoding=ENCODING) as fd:
-            if fd.read() == text:
-                return
-
-    with open(file_path, 'wt', encoding=ENCODING) as fd:
-        fd.write(text)
 
 
 if __name__ == '__main__':
