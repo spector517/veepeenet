@@ -101,3 +101,50 @@ def clean_configuration(config_path: str, clients_dir: str) -> None:
         os.remove(config_path)
     if os.path.exists(clients_dir):
         shutil.rmtree(clients_dir)
+
+
+@handle_result
+def get_config_value(config: dict, key: str, prefix: str = '') -> any:
+    if not prefix and key in config:
+        return config[key]
+    if prefix in config and key in config[prefix]:
+        return config[prefix][key]
+    return None
+
+
+@handle_result
+def get_current_host_ip() -> str:
+    return run_command('hostname -i')[1]
+
+
+@handle_result
+def get_existing_clients(config: dict) -> list:
+    if 'clients' not in config:
+        return []
+    return config['clients']
+
+
+@handle_result
+def get_new_clients_names(passed_clients_names: list, existing_clients: list) -> list:
+    existing_clients_names = [existing_client['name'] for existing_client in existing_clients]
+    return list(set(passed_clients_names) - set(existing_clients_names))
+
+
+@handle_result
+def get_clients_after_removing(clients: list, clients_names_to_remove: list) -> list:
+    if not clients_names_to_remove:
+        return clients
+    return [client for client in clients if client['name'] not in clients_names_to_remove]
+
+
+@handle_result
+def dump_config(config: dict) -> str:
+    return json.dumps(config, indent=2)
+
+
+@handle_result
+def generate_unique_number(number_range: range, excluded_numbers: list) -> int:
+    for i in number_range:
+        if i not in excluded_numbers:
+            return i
+    raise RuntimeError("Generate unique number error")

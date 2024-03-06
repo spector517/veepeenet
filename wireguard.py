@@ -26,15 +26,15 @@ def main():
         install_wireguard_apt_package(WIREGUARD_PACKAGE_VERSION)
     config = load_config(common.CONFIG_PATH, arguments)
 
-    existing_clients = get_existing_clients(config)
-    new_clients_names = get_new_clients_names(arguments.add_clients, existing_clients)
+    existing_clients = common.get_existing_clients(config)
+    new_clients_names = common.get_new_clients_names(arguments.add_clients, existing_clients)
     subnet = config['server']['subnet']
     for new_client_name in new_clients_names:
         new_client = generate_new_client(new_client_name, existing_clients, subnet)
         existing_clients.append(new_client)
-    config['clients'] = get_clients_after_removing(config['clients'], arguments.remove_clients)
+    config['clients'] = common.get_clients_after_removing(config['clients'], arguments.remove_clients)
 
-    common.write_text_file(common.CONFIG_PATH, dump_config(config), 0o600)
+    common.write_text_file(common.CONFIG_PATH, common.dump_config(config), 0o600)
     server_dump = dump_server(config)
     common.write_text_file(
         os.path.join(WIREGUARD_CONF_DIR, f"{config['server']['interface']}.conf"),
@@ -147,39 +147,39 @@ def load_config(
     if os.path.exists(config_path):
         with open(config_path, 'rt', encoding=common.ENCODING) as fd:
             config.update(json.loads(fd.read()))
-    server_private_key = (get_config_value(config, 'private_key', 'server')
+    server_private_key = (common.get_config_value(config, 'private_key', 'server')
                           or generate_private_key())
-    server_public_key = (get_config_value(config, 'public_key', 'server')
+    server_public_key = (common.get_config_value(config, 'public_key', 'server')
                          or generate_public_key(server_private_key))
     config.update({
         'clients_dir':
             arguments.output
-            or get_config_value(config, 'clients_dir')
+            or common.get_config_value(config, 'clients_dir')
             or common.DEFAULT_CLIENTS_DIR,
         'no_ufw':
             arguments.no_ufw
-            or get_config_value(config, 'no_ufw')
+            or common.get_config_value(config, 'no_ufw')
             or common.DEFAULT_NO_UFW,
         'server': {
             'host':
                 arguments.host
-                or get_config_value(config, 'host', 'server')
-                or get_current_host_ip(),
+                or common.get_config_value(config, 'host', 'server')
+                or common.get_current_host_ip(),
             'port':
                 int(arguments.port)
-                or get_config_value(config, 'port', 'server')
+                or common.get_config_value(config, 'port', 'server')
                 or DEFAULT_WIREGUARD_PORT,
             'subnet':
                 arguments.subnet
-                or get_config_value(config, 'subnet', 'server')
+                or common.get_config_value(config, 'subnet', 'server')
                 or DEFAULT_WIREGUARD_SUBNET,
             'interface':
                 arguments.interface
-                or get_config_value(config, 'interface', 'server')
+                or common.get_config_value(config, 'interface', 'server')
                 or DEFAULT_WIREGUARD_INTERFACE,
             'dns':
                 arguments.dns
-                or get_config_value(config, 'dns', 'server')
+                or common.get_config_value(config, 'dns', 'server')
                 or common.DEFAULT_DNS,
             'private_key': server_private_key,
             'public_key': server_public_key
@@ -192,37 +192,10 @@ def load_config(
 
 
 @common.handle_result
-def get_config_value(config: dict, key: str, prefix: str = '') -> any:
-    if not prefix and key in config:
-        return config[key]
-    if prefix in config and key in config[prefix]:
-        return config[prefix][key]
-    return None
-
-
-@common.handle_result
-def get_current_host_ip() -> str:
-    return common.run_command('hostname -i')[1]
-
-
-@common.handle_result
-def get_existing_clients(config: dict) -> list:
-    if 'clients' not in config:
-        return []
-    return config['clients']
-
-
-@common.handle_result
-def get_new_clients_names(passed_clients_names: list, existing_clients: list) -> list:
-    existing_clients_names = [existing_client['name'] for existing_client in existing_clients]
-    return list(set(passed_clients_names) - set(existing_clients_names))
-
-
-@common.handle_result
 def generate_new_client(client_name: str, existing_clients: list, subnet: str) -> dict:
     existing_clients_ips = [existing_client['ip'] for existing_client in existing_clients]
     sub_ip = [int(ip.split('.')[-1]) for ip in existing_clients_ips]
-    unique_number = generate_unique_number(range(2, 255), sub_ip)
+    unique_number = common.generate_unique_number(range(2, 255), sub_ip)
     ip = '.'.join(subnet.split('.')[0:-1]) + f'.{unique_number}'
     private_key = generate_private_key()
     public_key = generate_public_key(private_key)
@@ -232,13 +205,6 @@ def generate_new_client(client_name: str, existing_clients: list, subnet: str) -
         'public_key': public_key,
         'private_key': private_key
     }
-
-
-@common.handle_result
-def get_clients_after_removing(clients: list, clients_names_to_remove: list) -> list:
-    if not clients_names_to_remove:
-        return clients
-    return [client for client in clients if client['name'] not in clients_names_to_remove]
 
 
 @common.handle_result
@@ -254,11 +220,6 @@ def edit_sysctl(sysctl_file_path: str, ip_version: int = 4) -> None:
             print(f'{sysctl_file_path}:\n{"".join(lines)}\n')
             return
         fd.writelines(lines)
-
-
-@common.handle_result
-def dump_config(config: dict) -> str:
-    return json.dumps(config, indent=2)
 
 
 @common.handle_result
@@ -403,14 +364,6 @@ def generate_public_key(private_key: str) -> str:
 @common.handle_result
 def generate_private_key() -> str:
     return common.run_command('wg genkey')[1]
-
-
-@common.handle_result
-def generate_unique_number(number_range: range, excluded_numbers: list) -> int:
-    for i in number_range:
-        if i not in excluded_numbers:
-            return i
-    raise RuntimeError("Generate unique number error")
 
 
 if __name__ == '__main__':
