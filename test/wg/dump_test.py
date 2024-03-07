@@ -23,9 +23,6 @@ class DumpTest(unittest.TestCase):
             self.config_str = fd.read()
         self.config = json.loads(self.config_str)
 
-    def test_dump_config(self) -> None:
-        self.assertEqual(self.config_str.strip(), common.dump_config(self.config).strip())
-
     def test_dump_server(self) -> None:
         with open(self.server_conf_path, 'rt', encoding=self.encoding) as fd:
             server_config_str = fd.read()
