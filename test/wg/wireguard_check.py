@@ -3,7 +3,7 @@ import sys
 import common
 import wireguard
 
-common.WIREGUARD_CONF_DIR = 'res/etc/wireguard'
+wireguard.WIREGUARD_CONF_DIR = 'res/etc/wireguard'
 common.ROUTE_FILE_PATH = 'res/proc/net/route'
 common.UFW_BEFORE_RULES_PATH = 'res/etc/ufw/before.rules.modified'
 common.SYSCTL_FILE_PATH = 'res/etc/sysctl.conf'

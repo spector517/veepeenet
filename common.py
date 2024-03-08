@@ -152,7 +152,7 @@ def generate_unique_number(number_range: range, excluded_numbers: list) -> int:
 
 
 @handle_result
-def get_default_interface(route_file_path: str = ROUTE_FILE_PATH) -> str:
+def get_default_interface(route_file_path: str) -> str:
     with open(route_file_path, 'rt', encoding=ENCODING) as fd:
         for line in fd.readlines():
             iface, dest, _, flags, _, _, _, _, _, _, _, = line.strip().split()
@@ -162,7 +162,7 @@ def get_default_interface(route_file_path: str = ROUTE_FILE_PATH) -> str:
 
 
 @handle_result
-def get_ssh_port_number(sshd_config_path: str = SSHD_CONFIG_PATH) -> int:
+def get_ssh_port_number(sshd_config_path: str) -> int:
     with open(sshd_config_path, 'rt', encoding=ENCODING) as fd:
         lines = fd.readlines()
         for line in lines:

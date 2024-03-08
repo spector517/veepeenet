@@ -50,11 +50,11 @@ def main():
     edit_sysctl(common.SYSCTL_FILE_PATH)
     apply_sysctl_conf()
     if not arguments.no_ufw:
-        default_interface = common.get_default_interface()
+        default_interface = common.get_default_interface(common.ROUTE_FILE_PATH)
         subnet = get_server_subnet(subnet)
         edit_ufw_rule_before(common.UFW_BEFORE_RULES_PATH, default_interface, subnet)
         edit_ufw_forward_policy(common.FORWARD_POLICY_FILE)
-        ssh_port = common.get_ssh_port_number()
+        ssh_port = common.get_ssh_port_number(common.SSHD_CONFIG_PATH)
         common.configure_ufw(config['server']['port'], ssh_port, WIREGUARD_PROTOCOL)
 
     common.restart_service(f"wg-quick@{config['server']['interface']}")
