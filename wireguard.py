@@ -7,6 +7,7 @@ import common
 
 WIREGUARD_PACKAGE_VERSION = '1.0.20210914-1ubuntu2'
 WIREGUARD_CONF_DIR = '/etc/wireguard'
+WIREGUARD_PROTOCOL = 'udp'
 
 DEFAULT_WIREGUARD_PORT = 51820
 DEFAULT_WIREGUARD_INTERFACE = 'wg0'
@@ -32,7 +33,8 @@ def main():
     for new_client_name in new_clients_names:
         new_client = generate_new_client(new_client_name, existing_clients, subnet)
         existing_clients.append(new_client)
-    config['clients'] = common.get_clients_after_removing(config['clients'], arguments.remove_clients)
+    config['clients'] = common.get_clients_after_removing(config['clients'],
+                                                          arguments.remove_clients)
 
     common.write_text_file(common.CONFIG_PATH, common.dump_config(config), 0o600)
     server_dump = dump_server(config)
@@ -48,14 +50,14 @@ def main():
     edit_sysctl(common.SYSCTL_FILE_PATH)
     apply_sysctl_conf()
     if not arguments.no_ufw:
-        default_interface = get_default_interface(common.ROUTE_FILE_PATH)
+        default_interface = common.get_default_interface()
         subnet = get_server_subnet(subnet)
         edit_ufw_rule_before(common.UFW_BEFORE_RULES_PATH, default_interface, subnet)
         edit_ufw_forward_policy(common.FORWARD_POLICY_FILE)
-        ssh_port = get_ssh_port_number(common.SSHD_CONFIG_PATH)
-        configure_ufw(config['server']['port'], ssh_port)
+        ssh_port = common.get_ssh_port_number()
+        common.configure_ufw(config['server']['port'], ssh_port, WIREGUARD_PROTOCOL)
 
-    restart_wireguard_service(config['server']['interface'])
+    common.restart_service(f"wg-quick@{config['server']['interface']}")
     common.write_text_file(common.RESULT_LOG_PATH, json.dumps(common.RESULT, indent=2))
 
 
@@ -268,16 +270,6 @@ def remove_clients_configs(clients_names: list, clients_dir_path: str) -> None:
 
 
 @common.handle_result
-def get_default_interface(route_file_path: str) -> str:
-    with open(route_file_path, 'rt', encoding=common.ENCODING) as fd:
-        for line in fd.readlines():
-            iface, dest, _, flags, _, _, _, _, _, _, _, = line.strip().split()
-            if dest != '00000000' or not int(flags, 16) & 2:
-                continue
-            return iface
-
-
-@common.handle_result
 def get_server_subnet(subnet: str) -> str:
     return f"{'.'.join(subnet.split('.')[0:2])}.0.0/8"
 
@@ -329,31 +321,6 @@ def edit_ufw_forward_policy(policy_file_path: str) -> None:
 @common.handle_result
 def apply_sysctl_conf() -> None:
     common.run_command('sysctl -p')
-
-
-@common.handle_result
-def get_ssh_port_number(sshd_config_path: str) -> int:
-    with open(sshd_config_path, 'rt', encoding=common.ENCODING) as fd:
-        lines = fd.readlines()
-        for line in lines:
-            if line.strip().startswith('#'):
-                continue
-            if line.strip().startswith('Port'):
-                return int(line.strip().split(' ')[-1])
-        return common.DEFAULT_SSH_PORT
-
-
-@common.handle_result
-def configure_ufw(wg_port: int, ssh_port: int) -> None:
-    common.run_command((f'ufw allow {wg_port}/udp'
-                        f' && ufw allow {ssh_port}/tcp'
-                        ' && yes | ufw enable'
-                        ' && ufw reload'))
-
-
-@common.handle_result
-def restart_wireguard_service(interface: str) -> None:
-    common.run_command(f'systemctl restart wg-quick@{interface}.service')
 
 
 @common.handle_result

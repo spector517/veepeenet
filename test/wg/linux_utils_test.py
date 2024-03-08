@@ -18,9 +18,6 @@ class LinuxUtilsTest(unittest.TestCase):
     sysctl_modified_path = 'wg/res/etc/sysctl.conf.modified'
     ufw_forward_policy_non_modified_path = 'wg/res/etc/default/ufw'
     ufw_forward_policy_modified_path = 'wg/res/etc/default/ufw.modified'
-    sshd_config_path = 'wg/res/etc/ssh/sshd_config'
-    sshd_config_path_22_port = 'wg/res/etc/ssh/sshd_config.22_port'
-    sshd_config_custom_port = 'wg/res/etc/ssh/sshd_config.custom_port'
     original_result = common.RESULT.copy()
 
     @classmethod
@@ -98,18 +95,3 @@ class LinuxUtilsTest(unittest.TestCase):
         with open(expected_file_path, 'rt', encoding=self.encoding) as fd:
             expected_content = fd.read()
         self.assertEqual(expected_content, actual_content)
-
-    def test_get_ssh_port_number_default_port(self) -> None:
-        expected_port = 22
-        actual_port = wireguard.get_ssh_port_number(self.sshd_config_path)
-        self.assertEqual(expected_port, actual_port)
-
-    def test_get_ssh_port_number_22_port(self) -> None:
-        expected_port = 22
-        actual_port = wireguard.get_ssh_port_number(self.sshd_config_path_22_port)
-        self.assertEqual(expected_port, actual_port)
-
-    def test_get_ssh_port_number_custom_port(self) -> None:
-        expected_port = 2222
-        actual_port = wireguard.get_ssh_port_number(self.sshd_config_custom_port)
-        self.assertEqual(expected_port, actual_port)

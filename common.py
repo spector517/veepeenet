@@ -1,8 +1,9 @@
-import sys
-import os
-import subprocess
 import json
+import os
 import shutil
+import subprocess
+import sys
+import uuid
 
 ROUTE_FILE_PATH = '/proc/net/route'
 UFW_BEFORE_RULES_PATH = '/etc/ufw/before.rules'
@@ -96,7 +97,7 @@ def run_command(command: str, stdin: str = '') -> tuple:
 
 
 @handle_result
-def clean_configuration(config_path: str, clients_dir: str) -> None:
+def clean_configuration(config_path: str, clients_dir: str = DEFAULT_CLIENTS_DIR) -> None:
     if os.path.exists(config_path):
         os.remove(config_path)
     if os.path.exists(clients_dir):
@@ -148,3 +149,43 @@ def generate_unique_number(number_range: range, excluded_numbers: list) -> int:
         if i not in excluded_numbers:
             return i
     raise RuntimeError("Generate unique number error")
+
+
+@handle_result
+def get_default_interface(route_file_path: str = ROUTE_FILE_PATH) -> str:
+    with open(route_file_path, 'rt', encoding=ENCODING) as fd:
+        for line in fd.readlines():
+            iface, dest, _, flags, _, _, _, _, _, _, _, = line.strip().split()
+            if dest != '00000000' or not int(flags, 16) & 2:
+                continue
+            return iface
+
+
+@handle_result
+def get_ssh_port_number(sshd_config_path: str = SSHD_CONFIG_PATH) -> int:
+    with open(sshd_config_path, 'rt', encoding=ENCODING) as fd:
+        lines = fd.readlines()
+        for line in lines:
+            if line.strip().startswith('#'):
+                continue
+            if line.strip().startswith('Port'):
+                return int(line.strip().split(' ')[-1])
+        return DEFAULT_SSH_PORT
+
+
+@handle_result
+def configure_ufw(open_port: int, ssh_port: int, open_port_protocol: str) -> None:
+    run_command((f'ufw allow {open_port}/{open_port_protocol}'
+                 f' && ufw allow {ssh_port}/tcp'
+                 ' && yes | ufw enable'
+                 ' && ufw reload'))
+
+
+@handle_result
+def restart_service(service_name: str) -> None:
+    run_command(f'systemctl restart {service_name}.service')
+
+
+@handle_result
+def generate_uuid() -> str:
+    return str(uuid.uuid4())
