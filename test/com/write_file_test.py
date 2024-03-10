@@ -74,6 +74,14 @@ class WriteTextFileTest(unittest.TestCase):
         self.assertTrue(os.access(self.file_path, os.W_OK))
         self.assertFalse(os.access(self.file_path, os.X_OK))
 
+    def test_write__file_not_exists_mode_provided(self):
+
+        common.write_text_file(self.file_path, self.content, mode=0o700)
+
+        self.assertTrue(os.access(self.file_path, os.R_OK))
+        self.assertTrue(os.access(self.file_path, os.W_OK))
+        self.assertTrue(os.access(self.file_path, os.X_OK))
+
     def __create_test_file(self) -> None:
         with open(self.file_path, 'wt', encoding=self.encoding) as fd:
             fd.write(self.content)
