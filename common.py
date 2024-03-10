@@ -62,17 +62,19 @@ def write_text_file(file_path: str, text: str, mode: int = 0) -> None:
         print(f'{file_path}:\n{text}\n')
         return
 
+    content_equals = False
     if not os.path.exists(file_path):
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
     else:
-        if mode:
-            os.chmod(file_path, mode)
         with open(file_path, 'rt', encoding=ENCODING) as fd:
             if fd.read() == text:
-                return
+                content_equals = True
 
-    with open(file_path, 'wt', encoding=ENCODING) as fd:
-        fd.write(text)
+    if not content_equals:
+        with open(file_path, 'wt', encoding=ENCODING) as fd:
+            fd.write(text)
+    if mode:
+        os.chmod(file_path, mode)
 
 
 @handle_result
