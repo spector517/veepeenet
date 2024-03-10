@@ -2,7 +2,7 @@ import os
 import shutil
 import unittest
 
-import wireguard
+import common
 
 
 class WriteTextFileTest(unittest.TestCase):
@@ -20,7 +20,7 @@ class WriteTextFileTest(unittest.TestCase):
         shutil.rmtree(self.temp_dir)
 
     def test_write_file_no_exists(self):
-        wireguard.write_text_file(self.file_path, self.content)
+        common.write_text_file(self.file_path, self.content)
         with open(self.file_path, 'rt', encoding=self.encoding) as fd:
             actual_content = fd.read()
         self.assertEqual(self.content, actual_content)
@@ -29,7 +29,7 @@ class WriteTextFileTest(unittest.TestCase):
         self.__create_test_file()
         modify_time = os.path.getmtime(self.file_path)
 
-        wireguard.write_text_file(self.file_path, self.content)
+        common.write_text_file(self.file_path, self.content)
 
         self.assertEqual(modify_time, os.path.getmtime(self.file_path))
 
@@ -38,7 +38,7 @@ class WriteTextFileTest(unittest.TestCase):
         self.__create_test_file()
         modify_time = os.path.getmtime(self.file_path)
 
-        wireguard.write_text_file(self.file_path, other_content)
+        common.write_text_file(self.file_path, other_content)
 
         self.assertNotEqual(modify_time, os.path.getmtime(self.file_path))
 
@@ -47,7 +47,7 @@ class WriteTextFileTest(unittest.TestCase):
         self.__create_test_file()
         os.chmod(self.file_path, 0o700)
 
-        wireguard.write_text_file(self.file_path, other_content)
+        common.write_text_file(self.file_path, other_content)
 
         self.assertTrue(os.access(self.file_path, os.R_OK))
         self.assertTrue(os.access(self.file_path, os.W_OK))
@@ -58,7 +58,7 @@ class WriteTextFileTest(unittest.TestCase):
         self.__create_test_file()
         os.chmod(self.file_path, 0o700)
 
-        wireguard.write_text_file(self.file_path, other_content, 0o600)
+        common.write_text_file(self.file_path, other_content, 0o600)
 
         self.assertTrue(os.access(self.file_path, os.R_OK))
         self.assertTrue(os.access(self.file_path, os.W_OK))
@@ -68,7 +68,7 @@ class WriteTextFileTest(unittest.TestCase):
         self.__create_test_file()
         os.chmod(self.file_path, 0o700)
 
-        wireguard.write_text_file(self.file_path, self.content, 0o600)
+        common.write_text_file(self.file_path, self.content, 0o600)
 
         self.assertTrue(os.access(self.file_path, os.R_OK))
         self.assertTrue(os.access(self.file_path, os.W_OK))

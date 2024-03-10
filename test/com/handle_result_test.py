@@ -2,7 +2,7 @@ import os.path
 import shutil
 import unittest
 
-import wireguard
+import common
 
 TEST_RETURN_VALUE = 'test_value'
 TEST_ARGS = (1, '1', True)
@@ -16,31 +16,31 @@ EXCEPTION = Exception('Test exception')
 
 class HandleResultTest(unittest.TestCase):
     tmp_dir = 'tmp'
-    original_result = wireguard.RESULT.copy()
-    original_result_log_path = wireguard.RESULT_LOG_PATH
+    original_result = common.RESULT.copy()
+    original_result_log_path = common.RESULT_LOG_PATH
     result_log_path = os.path.join(tmp_dir, 'result.json')
 
     @classmethod
     def setUpClass(cls):
-        wireguard.RESULT_LOG_PATH = cls.result_log_path
+        common.RESULT_LOG_PATH = cls.result_log_path
         # FIXME Why actions is not empty?
-        wireguard.RESULT['actions'].clear()
-        del wireguard.RESULT['meta']
+        common.RESULT['actions'].clear()
+        del common.RESULT['meta']
 
     @classmethod
     def tearDownClass(cls):
-        wireguard.RESULT = cls.original_result
-        wireguard.RESULT_LOG_PATH = cls.original_result_log_path
+        common.RESULT = cls.original_result
+        common.RESULT_LOG_PATH = cls.original_result_log_path
 
     def tearDown(self):
         if os.path.exists(self.tmp_dir):
             shutil.rmtree(self.tmp_dir)
-        wireguard.RESULT['actions'].clear()
-        wireguard.RESULT['has_error'] = False
+        common.RESULT['actions'].clear()
+        common.RESULT['has_error'] = False
 
     def test_no_args_no_return_value_func(self):
 
-        @wireguard.handle_result
+        @common.handle_result
         def no_args_no_return_value_func() -> None:
             pass
 
@@ -56,11 +56,11 @@ class HandleResultTest(unittest.TestCase):
             ]
         }
         no_args_no_return_value_func()
-        self.assertDictEqual(expected_result, wireguard.RESULT)
+        self.assertDictEqual(expected_result, common.RESULT)
 
     def test_no_args_return_value_func(self):
 
-        @wireguard.handle_result
+        @common.handle_result
         def no_args_return_value_func() -> any:
             return TEST_RETURN_VALUE
 
@@ -76,11 +76,11 @@ class HandleResultTest(unittest.TestCase):
             ]
         }
         no_args_return_value_func()
-        self.assertDictEqual(expected_result, wireguard.RESULT)
+        self.assertDictEqual(expected_result, common.RESULT)
 
     def test_args_no_return_value_func(self):
 
-        @wireguard.handle_result
+        @common.handle_result
         def args_no_return_value_func(*args, **kwargs) -> None:
             pass
 
@@ -96,11 +96,11 @@ class HandleResultTest(unittest.TestCase):
             ]
         }
         args_no_return_value_func(*TEST_ARGS, **TEST_KWARGS)
-        self.assertDictEqual(expected_result, wireguard.RESULT)
+        self.assertDictEqual(expected_result, common.RESULT)
 
     def test_args_return_value_func(self):
 
-        @wireguard.handle_result
+        @common.handle_result
         def args_return_value_func(*args, **kwargs) -> any:
             return TEST_RETURN_VALUE
 
@@ -116,11 +116,11 @@ class HandleResultTest(unittest.TestCase):
             ]
         }
         args_return_value_func(*TEST_ARGS, **TEST_KWARGS)
-        self.assertDictEqual(expected_result, wireguard.RESULT)
+        self.assertDictEqual(expected_result, common.RESULT)
 
     def test_exception_func(self):
 
-        @wireguard.handle_result
+        @common.handle_result
         def exception_func(*args, **kwargs) -> any:
             raise EXCEPTION
 
@@ -136,4 +136,4 @@ class HandleResultTest(unittest.TestCase):
             ]
         }
         self.assertRaises(type(EXCEPTION), exception_func, *TEST_ARGS, **TEST_KWARGS)
-        self.assertDictEqual(expected_result, wireguard.RESULT)
+        self.assertDictEqual(expected_result, common.RESULT)

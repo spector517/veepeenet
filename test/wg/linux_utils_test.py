@@ -2,6 +2,7 @@ import os
 import shutil
 import unittest
 
+import common
 import wireguard
 
 
@@ -10,21 +11,18 @@ class LinuxUtilsTest(unittest.TestCase):
     encoding = 'UTF-8'
     network_interface = 'eth0'
     subnet = '10.9.0.0/8'
-    ufw_rules_before_non_modified_path = 'res/etc/ufw/before.rules'
-    ufw_rules_before_path_modified_path = 'res/etc/ufw/before.rules.modified'
+    ufw_rules_before_non_modified_path = 'wg/res/etc/ufw/before.rules'
+    ufw_rules_before_path_modified_path = 'wg/res/etc/ufw/before.rules.modified'
     ip_version = 4
-    sysctl_non_modified_path = 'res/etc/sysctl.conf'
-    sysctl_modified_path = 'res/etc/sysctl.conf.modified'
-    ufw_forward_policy_non_modified_path = 'res/etc/default/ufw'
-    ufw_forward_policy_modified_path = 'res/etc/default/ufw.modified'
-    sshd_config_path = 'res/etc/ssh/sshd_config'
-    sshd_config_path_22_port = 'res/etc/ssh/sshd_config.22_port'
-    sshd_config_custom_port = 'res/etc/ssh/sshd_config.custom_port'
-    original_result = wireguard.RESULT.copy()
+    sysctl_non_modified_path = 'wg/res/etc/sysctl.conf'
+    sysctl_modified_path = 'wg/res/etc/sysctl.conf.modified'
+    ufw_forward_policy_non_modified_path = 'wg/res/etc/default/ufw'
+    ufw_forward_policy_modified_path = 'wg/res/etc/default/ufw.modified'
+    original_result = common.RESULT.copy()
 
     @classmethod
     def tearDownClass(cls):
-        wireguard.RESULT = cls.original_result
+        common.RESULT = cls.original_result
 
     def setUp(self) -> None:
         if os.path.exists(self.temp_dir):
@@ -97,18 +95,3 @@ class LinuxUtilsTest(unittest.TestCase):
         with open(expected_file_path, 'rt', encoding=self.encoding) as fd:
             expected_content = fd.read()
         self.assertEqual(expected_content, actual_content)
-
-    def test_get_ssh_port_number_default_port(self) -> None:
-        expected_port = 22
-        actual_port = wireguard.get_ssh_port_number(self.sshd_config_path)
-        self.assertEqual(expected_port, actual_port)
-
-    def test_get_ssh_port_number_22_port(self) -> None:
-        expected_port = 22
-        actual_port = wireguard.get_ssh_port_number(self.sshd_config_path_22_port)
-        self.assertEqual(expected_port, actual_port)
-
-    def test_get_ssh_port_number_custom_port(self) -> None:
-        expected_port = 2222
-        actual_port = wireguard.get_ssh_port_number(self.sshd_config_custom_port)
-        self.assertEqual(expected_port, actual_port)

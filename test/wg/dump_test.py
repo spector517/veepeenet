@@ -2,16 +2,17 @@ import json
 import os
 import unittest
 
+import common
 import wireguard
 
 
 class DumpTest(unittest.TestCase):
     encoding = 'UTF-8'
-    config_path = 'res/config.json'
-    clients_dir_path = 'res/clients'
+    config_path = 'wg/res/config.json'
+    clients_dir_path = 'wg/res/clients'
     clients_names = ['client1', 'client2', 'client3']
-    server_conf_path = 'res/etc/wireguard/wg0.conf'
-    original_result = wireguard.RESULT.copy()
+    server_conf_path = 'wg/res/etc/wireguard/wg0.conf'
+    original_result = common.RESULT.copy()
 
     @classmethod
     def tearDownClass(cls):
@@ -21,9 +22,6 @@ class DumpTest(unittest.TestCase):
         with open(self.config_path, 'rt', encoding=self.encoding) as fd:
             self.config_str = fd.read()
         self.config = json.loads(self.config_str)
-
-    def test_dump_config(self) -> None:
-        self.assertEqual(self.config_str.strip(), wireguard.dump_config(self.config).strip())
 
     def test_dump_server(self) -> None:
         with open(self.server_conf_path, 'rt', encoding=self.encoding) as fd:
