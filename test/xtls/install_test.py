@@ -56,7 +56,7 @@ class InstallTest(unittest.TestCase):
         mockito.verify(urllib.request, times=1).urlopen(xray.XRAY_INSTALLER_SCRIPT_URL,
                                                         timeout=common.RUN_COMMAND_TIMEOUT)
         mockito.verify(common).write_text_file(script_path, script_content.decode(common.ENCODING), 0o700)
-        mockito.verify(common).run_command(f'/bin/bash {script_path} @ install --version {self.xray_version}')
+        mockito.verify(common).run_command(f'{script_path} install --version {self.xray_version}')
 
     def test_install_xray__invalid_http_code(self) -> None:
         response_mock = mockito.mock({'getcode': lambda: 404,
@@ -79,7 +79,7 @@ class InstallTest(unittest.TestCase):
                                                         timeout=common.RUN_COMMAND_TIMEOUT)
         mockito.verify(common).write_text_file(script_path, script_content.decode(common.ENCODING), 0o700)
         mockito.when(common).run_command(
-            f'/bin/bash {script_path} @ install --version {self.xray_version}').thenRaise(
+            f'{script_path} install --version {self.xray_version}').thenRaise(
             subprocess.CalledProcessError(127, ''))
         with self.assertRaises(RuntimeError):
             xray.install_xray(self.xray_version, tmp_dir)
