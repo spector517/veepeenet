@@ -5,7 +5,6 @@ import textwrap
 
 import common
 
-WIREGUARD_PACKAGE_VERSION = '1.0.20210914-1ubuntu2'
 WIREGUARD_CONF_DIR = '/etc/wireguard'
 WIREGUARD_PROTOCOL = 'udp'
 
@@ -13,9 +12,9 @@ DEFAULT_WIREGUARD_PORT = 51820
 DEFAULT_WIREGUARD_INTERFACE = 'wg0'
 DEFAULT_WIREGUARD_SUBNET = '10.9.0.1/24'
 
-common.RESULT_LOG_PATH = os.path.expanduser('~/.veepeenet/wg/result.json')
-common.CONFIG_PATH = os.path.expanduser('~/.veepeenet/wg/config.json')
-common.DEFAULT_CLIENTS_DIR = os.path.expanduser('~/.veepeenet/wg/clients')
+common.RESULT_LOG_PATH = '/var/log/veepeenet/wg/result.json'
+common.CONFIG_PATH = '/usr/local/etc/veepeenet/wg/config.json'
+common.DEFAULT_CLIENTS_DIR = '/usr/local/etc/veepeenet/wg/clients'
 
 
 def main():
@@ -23,8 +22,6 @@ def main():
     common.CHECK_MODE = arguments.check
     if arguments.clean:
         common.clean_configuration(common.CONFIG_PATH, common.DEFAULT_CLIENTS_DIR)
-    if not is_wireguard_package_installed(WIREGUARD_PACKAGE_VERSION):
-        install_wireguard_apt_package(WIREGUARD_PACKAGE_VERSION)
     config = load_config(common.CONFIG_PATH, arguments)
 
     existing_clients = common.get_existing_clients(config)
@@ -128,18 +125,6 @@ def parse_arguments() -> argparse.Namespace:
         help='Dry run. Print changed files content to the console'
     )
     return parser.parse_args()
-
-
-@common.handle_result
-def is_wireguard_package_installed(version: str) -> bool:
-    wg_package_info = common.run_command('apt list --installed wireguard')[1]
-    return bool(list(filter(lambda x: x.startswith('wireguard') and version in x,
-                            wg_package_info.split('\n'))))
-
-
-@common.handle_result
-def install_wireguard_apt_package(version: str) -> None:
-    common.run_command(f'apt update && apt install -y wireguard={version}')
 
 
 @common.handle_result

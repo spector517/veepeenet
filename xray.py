@@ -2,12 +2,9 @@ import argparse
 import json
 import os.path
 import re
-import urllib.request
-import subprocess
 
 import common
 
-XRAY_VERSION = '1.8.8'
 TMP_DIR = '/tmp/xray'
 XRAY_INSTALLER_SCRIPT_URL = 'https://github.com/XTLS/Xray-install/raw/main/install-release.sh'
 XRAY_CONF_PATH = '/usr/local/etc/xray/config.json'
@@ -17,8 +14,8 @@ DEFAULT_XRAY_PORT = 443
 DEFAULT_REALITY_HOST = 'microsoft.com'
 DEFAULT_REALITY_PORT = 443
 
-common.RESULT_LOG_PATH = os.path.expanduser('~/.veepeenet/xray/result.json')
-common.CONFIG_PATH = os.path.expanduser('~/.veepeenet/xray/config.json')
+common.RESULT_LOG_PATH = '/var/log/veepeenet/xray/log.json'
+common.CONFIG_PATH = '/usr/local/etc/veepeenet/xray/config.json'
 
 
 def main():
@@ -26,8 +23,6 @@ def main():
     common.CHECK_MODE = arguments.check
     if arguments.clean:
         common.clean_configuration(common.CONFIG_PATH)
-    if not is_xray_installed(XRAY_VERSION):
-        install_xray(XRAY_VERSION)
     config = load_config(common.CONFIG_PATH, arguments)
 
     existing_clients = common.get_existing_clients(config)
@@ -107,32 +102,6 @@ def parse_arguments() -> argparse.Namespace:
         help='Dry run. Print changed files content to the console'
     )
     return parser.parse_args()
-
-
-@common.handle_result
-def is_xray_installed(xray_version: str) -> bool:
-    try:
-        res = common.run_command('xray --version')
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-        return False
-    found_versions = re.findall(r'(?<=Xray\s)[0-9.]+', res[1])
-    return found_versions[0] == xray_version if found_versions else False
-
-
-@common.handle_result
-def install_xray(xray_version: str, tmp_dir: str = TMP_DIR) -> None:
-    response = urllib.request.urlopen(XRAY_INSTALLER_SCRIPT_URL,
-                                      timeout=common.RUN_COMMAND_TIMEOUT)
-    if response.getcode() != 200:
-        raise RuntimeError(f'Invalid  http-code ({response.getcode()})')
-    script = response.read().decode(common.ENCODING)
-    script_path = os.path.join(tmp_dir, 'install-release.sh')
-
-    common.write_text_file(script_path, script, 0o700)
-    try:
-        common.run_command(f'{script_path} install --version {xray_version}')
-    except(subprocess.CalledProcessError, subprocess.TimeoutExpired) as ex:
-        raise RuntimeError(f'Installation error: {ex}')
 
 
 @common.handle_result
