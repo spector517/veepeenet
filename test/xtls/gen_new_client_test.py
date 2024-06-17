@@ -11,7 +11,7 @@ import xray
 
 class GenNewClientTest(unittest.TestCase):
     original_result = common.RESULT.copy()
-    test_uuid = '83822097-c943-44b6-8674-8e80104714de'
+    test_uuid = 'c1_uuid'
     config_path = os.path.join('xtls', 'res', 'config.json')
     config = {}
 
@@ -34,11 +34,11 @@ class GenNewClientTest(unittest.TestCase):
             'name': client_name,
             'uuid': self.test_uuid,
             'short_id': '0001',
-            'email': f'{client_name}@192.168.1.101',
-            'import_url': (f'vless://{self.test_uuid}@192.168.1.101:443?flow=xtls-rprx-vision'
-                           '&type=tcp&security=reality&fp=chrome&sni=yahoo.com'
-                           '&pbk=nVvbwNvhA7iiS77f2UkFR5h4lZxAnkryO7ZkkqK1eyo&sid=0001&'
-                           f'spx=%2F#{client_name}@192.168.1.101')
+            'email': f'{client_name}@my.server.local',
+            'import_url': (f'vless://{self.test_uuid}@my.server.local:443?flow=xtls-rprx-vision'
+                           '&type=tcp&security=reality&fp=chrome&sni=microsoft.com'
+                           '&pbk=server_public_key&sid=0001&'
+                           f'spx=%2F#{client_name}@my.server.local')
         }
         self.assertEqual(expected_client, xray.generate_new_client(client_name, self.config))
 
@@ -47,14 +47,14 @@ class GenNewClientTest(unittest.TestCase):
         expected_client = {
             'name': client_name,
             'uuid': self.test_uuid,
-            'short_id': '0003',
-            'email': f'{client_name}@192.168.1.101',
-            'import_url': (f'vless://{self.test_uuid}@192.168.1.101:443'
+            'short_id': '0002',
+            'email': f'{client_name}@my.server.local',
+            'import_url': (f'vless://{self.test_uuid}@my.server.local:443'
                            f'?flow=xtls-rprx-vision'
                            '&type=tcp'
                            '&security=reality'
-                           '&fp=chrome&sni=yahoo.com'
-                           '&pbk=nVvbwNvhA7iiS77f2UkFR5h4lZxAnkryO7ZkkqK1eyo&sid=0003'
-                           f'&spx=%2F#{client_name}@192.168.1.101')
+                           '&fp=chrome&sni=microsoft.com'
+                           '&pbk=server_public_key&sid=0002'
+                           f'&spx=%2F#{client_name}@my.server.local')
         }
         self.assertEqual(expected_client, xray.generate_new_client(client_name, self.config))

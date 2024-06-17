@@ -1,0 +1,20 @@
+{
+  "no_ufw": false,
+  "server": {
+    "host": "my.server.local",
+    "port": 443,
+    "reality_host": "microsoft.com",
+    "reality_port": 443,
+    "private_key": "server_private_key",
+    "public_key": "server_public_key"
+  },
+  "clients": [
+    {
+      "name": "client1",
+      "uuid": "c1_uuid",
+      "short_id": "0001",
+      "email": "client1@my.server.local",
+      "import_url": "vless://c1_uuid@my.server.local:443?flow=xtls-rprx-vision&type=tcp&security=reality&fp=chrome&sni=microsoft.com&pbk=server_public_key&sid=0001&spx=%2F#client1@my.server.local"
+    }
+  ]
+}

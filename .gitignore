@@ -1,5 +1,4 @@
 .venv
-*config.json
 venv
 .veepeenet
 .idea
