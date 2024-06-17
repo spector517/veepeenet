@@ -111,7 +111,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         '--no-ufw',
         action='store_true',
-        help='Do not use the Uncomplicated Firefall'
+        help='Do not use the Uncomplicated Firewall'
     )
     parser.add_argument(
         '--clean',

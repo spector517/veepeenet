@@ -53,30 +53,31 @@ def parse_arguments() -> argparse.Namespace:
     )
     parser.add_argument(
         '--host',
-        help='The IP/DNS-name of current host. Default is Calculate automatically if not specify.'
+        help=('The IP/DNS-name of current host. Default is Calculate automatically if not specify.'
+              ' It is recommended to specify manually')
     )
     parser.add_argument(
         '--port',
         type=int,
         default=0,
-        help=f'The VPN service port. Default is {DEFAULT_XRAY_PORT}'
+        help=f'The XRAY server port. Default is {DEFAULT_XRAY_PORT}'
     )
     parser.add_argument(
         '--reality-host',
-        help=f'The IP/DNS-name of current host. Default is {DEFAULT_REALITY_HOST}'
+        help=f'The reality host for active probing. Default is {DEFAULT_REALITY_HOST}'
     )
     parser.add_argument(
         '--reality-port',
         type=int,
         default=0,
-        help=f'The VPN service port. Default is {DEFAULT_REALITY_PORT}'
+        help=f'The reality port for active probing. Default is {DEFAULT_REALITY_PORT}'
     )
     parser.add_argument(
         '--add-clients',
         nargs='+',
         default=[],
         metavar='CLIENT',
-        help='List of Wireguard server clients names. Default - no generate clients configs.'
+        help='List of XRAY server clients names. Default - no generate clients configs.'
     )
     parser.add_argument(
         '--remove-clients',
@@ -89,7 +90,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         '--no-ufw',
         action='store_true',
-        help='Do not use the Uncomplicated Firefall'
+        help='Do not use the Uncomplicated Firewall'
     )
     parser.add_argument(
         '--clean',
