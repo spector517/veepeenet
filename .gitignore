@@ -1,8 +1,8 @@
 .venv
-*config.json
 venv
 .veepeenet
 .idea
 *.DS_Store
 *__pycache__
 *.log
+.pylintrc

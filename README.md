@@ -1,118 +1,122 @@
-# VeePeeNet Install
+# VeePeeNET
 
-Набор скриптов для установки и настройки компонентов VeePeeNet.
+Install and configure personal anti-censorship services (WireGuard and XRAY)
 
-## Требования
+## Requirements
 
-1. Ubuntu Server 22.04
+1. Ubuntu Server (22.04, 24.04)
 2. Python 3.8+
-3. Интернет соединение
+3. Internet connection
 
 ## Wireguard
 
-### Возможности
+### Features
 
-- Установка VPN-сервера Wireguard
-- Создание, хранение и изменение конфигурации VPN-сервера
-- Добавление и удаление клиентов VPN-сервера
+- Installing Wireguard VPN Server
+- Creating, storing and changing VPN server configuration
+- Adding and removing VPN server clients
 
-### Примеры использования
+### Installation
+install.sh wireguard
 
-#### Конфигурация и добавление клиентов
+### Usage
 
-```commandline
-sudo python3 wireguard.py --host my.domain.com --add-clients my_client1 my_client2 --output ./my_clients
-```
-Скрипт установит и настроит VPN-сервер Wireguard,
-создаст конфигурационные файлы клиентов **my_client1** и **my_client2** и поместит их в директорию **./my_clients**
-
-#### Удаление клиентов
+#### Configure and add clients
 
 ```commandline
-sudo python3 wireguard.py --remove-clients my_client2
+sudo wg-config --host my.domain.com --add-clients my_client1 my_client2 --output ./my_clients
 ```
-Скрипт удалит клиента **my_client2** и его конфигурационный файл
+Configure WireGuard server on host **my.domain.com**, create  client configuration files 
+**my_client1** and **my_client2** and save it to path **./my_clients**
 
-#### Реконфигурация с удалением предыдущей конфигурации
+#### Remove clients
 
 ```commandline
-sudo python3 wireguard.py --clean --host my.domain2.com --add-clients client1 client2 client3 --output ./my_clients
+sudo wg-config --remove-clients my_client2
 ```
-Скрипт удалит текущую конфигурацию и создаст новую
+Remove client **my_client2** configuration
 
-#### Получение справки
+#### Recreate configuration
 
 ```commandline
-python3 wireguard.py --help
+sudo wg-config --clean --host my.domain2.com --add-clients client1 client2 client3 --output ./my_clients
 ```
-Скрипт отобразит справочное сообщение
+Remove current configuration and create new configuration
 
-### Опции командной строки
+#### Get help
 
-- ```--host``` IP-адрес или DNS-имя сервера, на котором будет установлен VPN-сервер. Расчитывается автоматически.
-если не указан при помощи команды ```hostname -i```. Рекомендуется указывать самостоятельно.
-- ```--port``` Порт, на котором будет запущен VPN-сервер. Значение по умолчанию: 51820.
-- ```--subnet``` Подсеть VPN-сервера. Значение по умолчанию: 10.9.0.1/24. Изменять не рекомендуется.
-- ```--interface``` Виртуальный сетевой интерфейс VPN-сервера. Занчение по умолчанию: wg0. Изменять не рекомендуется.
-- ```--dns``` Список DNS-серверов. Значение по умолчанию: 1.1.1.1 1.0.0.1.
-- ```--add-clients``` Список имён клиентов, которых необходимо добавить в качестве пользователей VPN-сервера.
-- ```--remove-clients``` Список клиентов, которых необходимо удалить как пользователей VPN-сервера.
-- ```--output``` Путь к директории, в которую будут помещены конфигурациооные файлы клиентов.
-- ```--clean``` Перезаписать текущую конфигурацию.
-- ```--check``` Запуск в режиме dry-run. Отобразить все изменения в консоле.
-- ```--no-ufw``` Не использовать UFW. В этом случае Вам нужно будет настроить Netfilter самостоятельно.
+```commandline
+sudo wg-config --help
+```
+Show help message
+
+### Command line options
+
+- ```--host``` The IP/DNS-name of current host. Using ```hostname -i``` if not specified.
+It is recommended to specify manually.
+- ```--port``` VPN service port. Default is 51820.
+- ```--subnet``` Wireguard server subnet address. Default is: 10.9.0.1/24.
+- ```--interface``` Name of Wireguard virtual network interface. Default is wg0.
+- ```--dns``` Domain names servers. Default is 1.1.1.1 1.0.0.1.
+- ```--add-clients``` List of Wireguard server clients names. Default - no generate clients configs.
+- ```--remove-clients``` Removing clients list of Wireguard server. Non-existing clients names will be ignored.
+- ```--output``` Path to output clients configs directory. Default is /usr/local/etc/veepeenet/wg/clients.
+- ```--clean``` Remove existing config. Default is False.
+- ```--check``` Dry run. Print changed files content to the console
+- ```--no-ufw``` Do not use the Uncomplicated Firewall.
 
 ## Xray (Vless XTLS-Reality)
 
-### Возможности
+### Features
 
-- Установка Xray
-- Создание, хранение и изменение конфигурации Xray-сервера
-- Добавление и удаление клиентов Xray-сервера
+- Installing Xray
+- Creating, storing and changing  XRAY server configuration
+- Adding and removing XRAY server clients
 
-### Примеры использования
+### Usage
 
-#### Конфигурация и добавление клиентов
-
-```commandline
-sudo python3 xray.py --host my.domain.com --add-clients my_client1 my_client2
-```
-Скрипт установит и настроит Xray-сервер,
-отобразит ссылки для импорта конфигураций клиентов
-
-#### Удаление клиентов
+#### Configure and add clients
 
 ```commandline
-sudo python3 xray.py --remove-clients my_client2
+sudo xray-config --host my.domain.com --add-clients my_client1 my_client2
 ```
-Скрипт удалит клиента **my_client2**
 
-#### Реконфигурация с удалением предыдущей конфигурации
+Configure XRAY server on host **my.domain.com**, create client configuration s
+**my_client1** and **my_client2** and print share links
+
+#### Remove clients
 
 ```commandline
-sudo python3 xray.py --clean --host my.domain2.com --add-clients client1 client2 client3 
+sudo xray-config --remove-clients my_client2
 ```
-Скрипт удалит текущую конфигурацию и создаст новую
+Remove client **my_client2**
 
-#### Получение справки
+#### Recreate configuration
 
 ```commandline
-python3 xray.py --help
+sudo xray-config --clean --host my.domain2.com --add-clients client1 client2 client3 
 ```
-Скрипт отобразит справочное сообщение
+Remove current configuration and create new configuration
 
-### Опции командной строки
+#### Get help
 
-- ```--host``` IP-адрес или DNS-имя сервера, на котором будет установлен Xray-сервер. Расчитывается автоматически.
-если не указан при помощи команды ```hostname -i```. Рекомендуется указывать самостоятельно.
-- ```--port``` Порт, на котором будет запущен VPN-сервер. Значение по умолчанию: 51820.
-- ```--reality-host``` Хост, на который будет отпраляться запросы active probing. По умолчанию microsoft.com 
-- ```--reality-port``` Порт, на который будет отпраляться запросы active probing. По умолчанию: 443
-- ```--add-clients``` Список имён клиентов, которых необходимо добавить в качестве пользователей Xray-сервера.
-- ```--remove-clients``` Список клиентов, которых необходимо удалить как пользователей Xray-сервера.
-- ```--clean``` Перезаписать текущую конфигурацию.
-- ```--check``` Запуск в режиме dry-run. Отобразить все изменения в консоле.
-- ```--no-ufw``` Не использовать UFW. В этом случае Вам нужно будет настроить Netfilter самостоятельно.
+```commandline
+sudo xray-config --help
+```
+Show help message
+
+### Command line options
+
+- ```--host``` The IP/DNS-name of current host. Using ```hostname -i``` if not specified.
+It is recommended to specify manually.
+- ```--port``` The XRAY server port. Default is 443
+- ```--reality-host``` The reality host for active probing. Default is microsoft.com
+- ```--reality-port``` The reality port for active probing. Default is 443
+- ```--add-clients``` List of XRAY server clients names. Default - no generate clients configs.
+- ```--remove-clients``` Removing clients list of XRAY server. Non-existing clients names will be ignored.
+- ```--clean``` Remove existing config. Default is False.
+- ```--check``` Dry run. Print changed files content to the console.
+- ```--no-ufw``` Do not use the Uncomplicated Firewall
 
 ## Лиценция
 MIT

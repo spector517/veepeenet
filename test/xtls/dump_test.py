@@ -31,13 +31,13 @@ class DumpTest(unittest.TestCase):
     def test_dump_client(self):
         client = self.test_config['clients'][0]
         expected_client_dump = ('client1: '
-                                'vless://802a57df-ed00-431f-9dce-e1bcbca2753e@192.168.1.101:443'
+                                'vless://c1_uuid@my.server.local:443'
                                 '?flow=xtls-rprx-vision'
                                 '&type=tcp'
                                 '&security=reality'
                                 '&fp=chrome'
-                                '&sni=yahoo.com'
-                                '&pbk=nVvbwNvhA7iiS77f2UkFR5h4lZxAnkryO7ZkkqK1eyo&sid=0001'
-                                '&spx=%2F#client1@192.168.1.101')
+                                '&sni=microsoft.com'
+                                '&pbk=server_public_key&sid=0001'
+                                '&spx=%2F#client1@my.server.local')
         actual_client_dump = xray.dump_client(client)
         self.assertEqual(expected_client_dump, actual_client_dump)

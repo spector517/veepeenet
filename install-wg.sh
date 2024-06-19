@@ -1,17 +1,16 @@
 #!/bin/bash
 
 ### Install Wireguard part
-WIREGUARD_PACKAGE_VERSION='1.0.20210914-1ubuntu2'
-if ! apt list --installed | grep wireguard | grep $WIREGUARD_PACKAGE_VERSION | grep -q installed; then
+if ! apt list --installed | grep wireguard | grep -q installed; then
   echo 'INFO: Wireguard service is not installed, installing...'
-  apt update && apt install -y wireguard=$WIREGUARD_PACKAGE_VERSION
+  apt update && apt install -y wireguard
   echo 'INFO: Wireguard service installed.'
 else
   echo 'INFO: Wireguard service is already installed'
 fi
 
 ### Install VeePeeNET part
-if [[ -d '/etc/veepeenet/wg' ]] || [[ -d '/etc/veepeenet/wg' ]]  || [[ -d '/var/log/veepeenet/wg' ]]; then
+if [[ -d '/etc/veepeenet/wg' ]] || [[ -d '/etc/veepeenet/wg' ]] || [[ -d '/var/log/veepeenet/wg' ]]; then
   echo 'INFO: Updating VeePeeNET for Wireguard service configuration...'
 else
   echo 'INFO: Installing VeePeeNET for Wireguard service configuration...'
