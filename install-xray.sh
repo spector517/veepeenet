@@ -78,4 +78,4 @@ chmod 744 /usr/local/lib/veepeenet/xray-config.sh
 rm -f /usr/local/bin/xray-config
 ln -s /usr/local/lib/veepeenet/xray-config.sh /usr/local/bin/xray-config
 
-echo 'INFO: VeePeeNet for XRAY service is ready.'
+echo 'INFO: VeePeeNET for XRAY service is ready.'

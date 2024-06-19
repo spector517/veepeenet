@@ -1,6 +1,6 @@
 # VeePeeNET
 
-Install and configure personal anti-censorship services (WireGuard and XRAY)
+Install and configure personal anti-censorship services ([WireGuard](https://www.wireguard.com) and [Xray](https://github.com/xtls/xray-core))
 
 ## Requirements
 
@@ -8,7 +8,7 @@ Install and configure personal anti-censorship services (WireGuard and XRAY)
 2. Python 3.8+
 3. Internet connection
 
-## Wireguard
+## WireGuard
 
 ### Features
 
@@ -17,7 +17,16 @@ Install and configure personal anti-censorship services (WireGuard and XRAY)
 - Adding and removing VPN server clients
 
 ### Installation
-install.sh wireguard
+Run simple command:
+```commandline
+rm -rf /tmp/veepeenet \
+    && mkdir /tmp/veepeenet \
+    && (cd /tmp/veepeenet \
+        && curl -LO https://github.com/spector517/veepeenet/releases/latest/download/veepeenet.tar.gz \
+        && tar -xf veepeenet.tar.gz && (cd veepeenet-* && sudo ./install.sh wireguard)
+    )
+```
+
 
 ### Usage
 
@@ -72,6 +81,17 @@ It is recommended to specify manually.
 - Installing Xray
 - Creating, storing and changing  XRAY server configuration
 - Adding and removing XRAY server clients
+
+### Installation
+Run simple command:
+```commandline
+rm -rf /tmp/veepeenet \
+    && mkdir /tmp/veepeenet \
+    && (cd /tmp/veepeenet \
+        && curl -LO https://github.com/spector517/veepeenet/releases/latest/download/veepeenet.tar.gz \
+        && tar -xf veepeenet.tar.gz && (cd veepeenet-* && sudo ./install.sh xray)
+    )
+```
 
 ### Usage
 
