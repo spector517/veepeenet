@@ -4,7 +4,7 @@ Install and configure personal anti-censorship services (WireGuard and XRAY)
 
 ## Requirements
 
-1. Ubuntu Server 22.04
+1. Ubuntu Server (22.04, 24.04)
 2. Python 3.8+
 3. Internet connection
 
