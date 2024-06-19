@@ -24,6 +24,6 @@ cp ./*.py "$DISTRIB_PATH"
 cp ./xray.service "$DISTRIB_PATH"
 
 unzip "$DISTRIB_PATH"/Xray-linux-64.zip -d "$DISTRIB_PATH"/Xray-linux-64
-rm -f $DISTRIB_ARCHIVE_NAME
+rm -r "$DISTRIB_PATH"/Xray-linux-64.zip
 tar -czvf $DISTRIB_ARCHIVE_NAME "$DISTRIB_PATH"
 rm -r "$DISTRIB_PATH"
