@@ -118,5 +118,5 @@ It is recommended to specify manually.
 - ```--check``` Dry run. Print changed files content to the console.
 - ```--no-ufw``` Do not use the Uncomplicated Firewall
 
-## Лиценция
+## License
 MIT
