@@ -189,5 +189,10 @@ def restart_service(service_name: str) -> None:
 
 
 @handle_result
+def enable_service(service_name: str) -> None:
+    run_command(f'systemctl enable {service_name}.service')
+
+
+@handle_result
 def generate_uuid() -> str:
     return str(uuid.uuid4())

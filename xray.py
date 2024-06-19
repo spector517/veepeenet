@@ -49,7 +49,7 @@ def main():
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description='Configure the XRAY (XTLS-Reality) server',
-        epilog='VeePeeNet. Make the Internet free =)'
+        epilog='VeePeeNET. Make the Internet free =)'
     )
     parser.add_argument(
         '--host',

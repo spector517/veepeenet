@@ -54,7 +54,9 @@ def main():
         ssh_port = common.get_ssh_port_number(common.SSHD_CONFIG_PATH)
         common.configure_ufw(config['server']['port'], ssh_port, WIREGUARD_PROTOCOL)
 
-    common.restart_service(f"wg-quick@{config['server']['interface']}")
+    service_name = f"wg-quick@{config['server']['interface']}"
+    common.restart_service(service_name)
+    common.enable_service(service_name)
     common.write_text_file(common.RESULT_LOG_PATH, json.dumps(common.RESULT, indent=2))
 
 
@@ -62,7 +64,7 @@ def main():
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description='Configure the Wireguard VPN.',
-        epilog='VeePeeNet. Make the Internet free =)'
+        epilog='VeePeeNET. Make the Internet free =)'
     )
     parser.add_argument(
         '--host',
