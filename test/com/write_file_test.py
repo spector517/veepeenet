@@ -1,6 +1,7 @@
 import os
 import shutil
 import unittest
+import time
 
 import common
 
@@ -28,6 +29,7 @@ class WriteTextFileTest(unittest.TestCase):
     def test_write__file_exists_content_equals(self):
         self.__create_test_file()
         modify_time = os.path.getmtime(self.file_path)
+        time.sleep(0.1)
 
         common.write_text_file(self.file_path, self.content)
 
@@ -37,6 +39,7 @@ class WriteTextFileTest(unittest.TestCase):
         other_content = f'{self.content} changed'
         self.__create_test_file()
         modify_time = os.path.getmtime(self.file_path)
+        time.sleep(0.1)
 
         common.write_text_file(self.file_path, other_content)
 
