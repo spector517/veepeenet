@@ -74,6 +74,18 @@ It is recommended to specify manually.
 - ```--check``` Dry run. Print changed files content to the console
 - ```--no-ufw``` Do not use the Uncomplicated Firewall.
 
+### Removing
+
+Run simple command:
+```commandline
+rm -rf /tmp/veepeenet \
+    && mkdir /tmp/veepeenet \
+    && (cd /tmp/veepeenet \
+        && curl -LO https://github.com/spector517/veepeenet/releases/latest/download/veepeenet.tar.gz \
+        && tar -xf veepeenet.tar.gz && (cd veepeenet-* && sudo ./uninstall.sh wireguard)
+    )
+```
+
 ## Xray (Vless XTLS-Reality)
 
 ### Features
@@ -137,6 +149,18 @@ It is recommended to specify manually.
 - ```--clean``` Remove existing config. Default is False.
 - ```--check``` Dry run. Print changed files content to the console.
 - ```--no-ufw``` Do not use the Uncomplicated Firewall
+
+### Removing
+
+Run simple command:
+```commandline
+rm -rf /tmp/veepeenet \
+    && mkdir /tmp/veepeenet \
+    && (cd /tmp/veepeenet \
+        && curl -LO https://github.com/spector517/veepeenet/releases/latest/download/veepeenet.tar.gz \
+        && tar -xf veepeenet.tar.gz && (cd veepeenet-* && sudo ./uninstall.sh xray)
+    )
+```
 
 ## License
 MIT
