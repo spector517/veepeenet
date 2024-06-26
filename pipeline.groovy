@@ -1,6 +1,13 @@
 /* 
 
-Pipeline parameters list:
+Jenkins Pipeline
+
+Required non-default plugins:
+
+1. HTTP Request Plugin
+2. Pipeline Utility Steps
+
+Required parameters list:
 
 1. NODE
 2. DISTRIB_VERSION
