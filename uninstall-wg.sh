@@ -14,8 +14,12 @@ rm -f /usr/local/bin/wg-config
 rm -f /usr/local/lib/veepeenet/wg-config.sh
 echo 'INFO: VeePeeNET for WireGuard service configuration is removed.'
 
-if ! apt list --installed | grep wireguard | grep -q installed; then
+if apt list --installed | grep wireguard | grep -q installed; then
   echo 'INFO: Removing WireGuard service...'
-  apt remove -y wireguard
+  if ! systemctl stop wg-quick@*; then
+    echo 'ERROR: Stop WireGuard service failed.' >&2
+    exit 1
+  fi
+  apt remove -y wireguard wireguard-tools
   echo 'INFO: WireGuard service removed.'
 fi

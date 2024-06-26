@@ -131,6 +131,7 @@ node(params.NODE) {
         }
         log "Archiving distrib"
         tar file: archiveDistribPath, archive: true, compress: true, glob: "$distribName/**"
+        archiveArtifacts artifacts: archiveDistribName
         log "Archive created"
     }
 

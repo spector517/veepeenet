@@ -16,17 +16,17 @@ echo 'INFO: VeePeeNET for Xray service configuration is removed.'
 
 if [[ -f '/etc/systemd/system/xray.service' ]]; then
   echo 'INFO: Removing Xray service...'
-  if ! systemctl -q is-active xray.service; then
-    if ! systemctl stop xray.service; then
-      echo 'ERROR: Stop Xray service failed.' >&2
-      exit 1
-    fi
+  if ! systemctl stop xray.service; then
+    echo 'ERROR: Stop Xray service failed.' >&2
+    exit 1
   fi
   rm '/etc/systemd/system/xray.service'
   systemctl daemon-reload
-  echo 'INFO: Xray service removed.'
 fi
+rm -rf /usr/local/etc/xray
+echo 'INFO: Xray service removed.'
 
 echo "Removing Xray distrib..."
 rm -rf /usr/local/share/xray
 rm -rf /usr/local/bin/xray
+echo "Xray distrib removed"
