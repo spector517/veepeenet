@@ -118,14 +118,14 @@ node(params.NODE) {
         log "Building distrib"
         dir(distribPath) {
             log "Copy required components"
-            sh "cp $repoDir/install.sh ./"
-            sh "cp $repoDir/install-wg.sh ./"
-            sh "cp $repoDir/install-xray.sh ./"
+            [
+                "$repoDir/install.sh", "$repoDir/install-wg.sh", "$repoDir/install-xray.sh",
+                "$repoDir/uninstall.sh", "$repoDir/uninstall-wg.sh", "$repoDir/uninstall-xray.sh"
+                "$repoDir/*.py", "$repoDir/xray.service"
+            ].each { component ->
+                sh "cp $component ./"
+            }
             sh "chmod 755 *.sh"
-
-            sh "cp $repoDir/*.py ./"
-            sh "cp $repoDir/xray.service ./"
-
             sh "cp -r $xrayDistribPath ./"
             log "Required components successfully copied"
         }

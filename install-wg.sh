@@ -1,19 +1,19 @@
 #!/bin/bash
 
-### Install Wireguard part
+### Install WireGuard part
 if ! apt list --installed | grep wireguard | grep -q installed; then
-  echo 'INFO: Wireguard service is not installed, installing...'
+  echo 'INFO: WireGuard service is not installed, installing...'
   apt update && apt install -y wireguard
-  echo 'INFO: Wireguard service installed.'
+  echo 'INFO: WireGuard service installed.'
 else
-  echo 'INFO: Wireguard service is already installed'
+  echo 'INFO: WireGuard service is already installed'
 fi
 
 ### Install VeePeeNET part
 if [[ -d '/etc/veepeenet/wg' ]] || [[ -d '/etc/veepeenet/wg' ]] || [[ -d '/var/log/veepeenet/wg' ]]; then
-  echo 'INFO: Updating VeePeeNET for Wireguard service configuration...'
+  echo 'INFO: Updating VeePeeNET for WireGuard service configuration...'
 else
-  echo 'INFO: Installing VeePeeNET for Wireguard service configuration...'
+  echo 'INFO: Installing VeePeeNET for WireGuard service configuration...'
 fi
 
 mkdir -p \
@@ -33,4 +33,4 @@ chmod u+x /usr/local/lib/veepeenet/wg-config.sh
 rm -f /usr/local/bin/wg-config
 ln -s /usr/local/lib/veepeenet/wg-config.sh /usr/local/bin/wg-config
 
-echo 'INFO: VeePeeNet for Wireguard service configuration is ready.'
+echo 'INFO: VeePeeNET for WireGuard service configuration is ready.'

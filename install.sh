@@ -24,11 +24,11 @@ else
 fi
 
 if [[ $INSTALL_XRAY -eq 1 ]]; then
-  printf '\n >>> VeePeeNET XRAY\n'
+  printf '\n >>> INSTALLING VeePeeNET Xray\n'
   source ./install-xray.sh
 fi
 
 if [[ $INSTALL_WIREGUARD -eq 1 ]]; then
-  printf '\n >>> VeePeeNET Wireguard\n'
+  printf '\n >>> INSTALLING VeePeeNET WireGuard\n'
   source ./install-wg.sh
 fi
