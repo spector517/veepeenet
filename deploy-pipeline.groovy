@@ -66,7 +66,7 @@ node {
     }
 
     stage("Deploy") {
-        if (params.params.DISTRIB_URL) {
+        if (params.DISTRIB_URL) {
             extraVars = [
                 distrib_url: params.DISTRIB_URL,
                 distrib_auth: "Bearer $params.AUTH_TOKEN"
