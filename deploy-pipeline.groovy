@@ -26,11 +26,6 @@ node {
 
     cleanWs()
 
-    repoDir = "${pwd()}/veepeenet"
-    inventoryPath = "${pwd()}/inventory.ini"
-    deployPlaybookPath = "$repoDir/deploy-playbook.yml"
-    distribFile = "${pwd()}/veepeenet.tar.gz"
-
     stage("Checks") {
         requiredParametersNames = [
             "NODE", "HOST", "HOST_SSH_PORT", "HOST_SSH_CRED", "REPO_CLONE_URL", "REPO_BRANCH"
@@ -44,10 +39,15 @@ node {
         if (undefinedParams) {
             error("Required params are undefined: $undefinedParams")
         }
-        if (!params.VEEPEENET_VERSION && !fileExists(distribFile)) {
-            error("Params 'VEEPEENET_VERSION' must be defined or file '$distribFile' must exists")
+        if (!params.VEEPEENET_VERSION && !params.DISTRIB_FILE) {
+            error("Params 'VEEPEENET_VERSION' or 'DISTRIB_FILE must be defined")
         }
     }
+
+    repoDir = "${pwd()}/veepeenet"
+    inventoryPath = "${pwd()}/inventory.ini"
+    deployPlaybookPath = "$repoDir/deploy-playbook.yml"
+    distribFilePath = "${pwd()}/veepeenet.tar.gz"
 
     buildName "#$BUILD_NUMBER ${if (params.VEEPEENET_VERSION) params.VEEPEENET_VERSION else 'CUSTOM'}"
 
@@ -63,11 +63,16 @@ node {
         log("Generating inventory.ini")
         writeFile file: inventoryPath, text: params.HOST
         log("inventory.ini generated")
+        if (params.DISTRIB_FILE) {
+            log("Creating distrib file (distribFilePath)")
+            sh "echo $params.DISTRIB_FILE | base64 -d > $distribFilePath"
+            log("Distrib file created")
+        }
     }
 
     stage("Deploy") {
-        if (fileExists(distribFile)) {
-            extraVars = [distrib_path: "${pwd()}/"]
+        if (fileExists(distribFilePath)) {
+            extraVars = [distrib_path: distribFilePath]
         } else {
             extraVars = [release_version: params.VEEPEENET_VERSION]
         }
