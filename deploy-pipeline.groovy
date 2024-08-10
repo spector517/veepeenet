@@ -12,20 +12,24 @@ Required parameters list:
 
 1. NODE
 2. VEEPEENET_VERSION
-3. DISTRIB_URL
-4. AUTH_TOKEN
-5. HOST
-6. HOST_SSH_PORT
-7. HOST_SSH_CRED
-8. CHECK
-9. REPO_CLONE_URL
-10. REPO_BRANCH
+3. DISTRIB_FILE
+4. HOST
+5. HOST_SSH_PORT
+6. HOST_SSH_CRED
+7. CHECK
+8. REPO_CLONE_URL
+9. REPO_BRANCH
 
 */
 
 node {
 
     cleanWs()
+
+    repoDir = "${pwd()}/veepeenet"
+    inventoryPath = "${pwd()}/inventory.ini"
+    deployPlaybookPath = "$repoDir/deploy-playbook.yml"
+    distribFile = "${pwd()}/veepeenet.tar.gz"
 
     stage("Checks") {
         requiredParametersNames = [
@@ -40,16 +44,12 @@ node {
         if (undefinedParams) {
             error("Required params are undefined: $undefinedParams")
         }
-        if (!params.VEEPEENET_VERSION && !params.DISTRIB_URL) {
-            error("Params 'VEEPEENET_VERSION' or 'DISTRIB_URL' must be defined")
+        if (!params.VEEPEENET_VERSION && !fileExists(distribFile)) {
+            error("Params 'VEEPEENET_VERSION' must be defined or file '$distribFile' must exists")
         }
     }
 
     buildName "#$BUILD_NUMBER ${if (params.VEEPEENET_VERSION) params.VEEPEENET_VERSION else 'CUSTOM'}"
-
-    repoDir = "${pwd()}/veepeenet"
-    inventoryPath = "${pwd()}/inventory.ini"
-    deployPlaybookPath = "$repoDir/deploy-playbook.yml"
 
     stage("Sources") {
         dir(repoDir) {
@@ -66,11 +66,8 @@ node {
     }
 
     stage("Deploy") {
-        if (params.DISTRIB_URL) {
-            extraVars = [
-                distrib_url: params.DISTRIB_URL,
-                distrib_auth: "Bearer $params.AUTH_TOKEN"
-            ]
+        if (fileExists(distribFile)) {
+            extraVars = [distrib_path: "${pwd()}/"]
         } else {
             extraVars = [release_version: params.VEEPEENET_VERSION]
         }

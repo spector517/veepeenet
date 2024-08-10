@@ -21,19 +21,17 @@
       when:
         - release_version is defined and release_version | length > 0
 
-    - name: Download VeePeeNET archive from custom URL
-      ansible.builtin.get_url:
-        url: "{{ distrib_url }}"
-        headers:
-          Authorization: "{{ distrib_auth | default('') }}"
+    - name: Use custom distrib archive
+      ansible.builtin.copy:
+        src: "{{ distrib_path }}"
         dest: "{{ temp_dir.path }}/veepeenet.tar.gz"
+        remote_src: true
         mode: '0755'
       run_once: true
       delegate_to: localhost
       check_mode: false
       when:
-        - distrib_url is defined and distrib_url | length > 0
-
+        - distrib_path is defined or distrib_path | length > 0
 
     - name: Create temporary directory on remote hosts
       ansible.builtin.tempfile:
