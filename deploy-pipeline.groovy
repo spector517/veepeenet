@@ -13,13 +13,13 @@ Required parameters list:
 1. NODE
 2. VEEPEENET_VERSION
 3. DISTRIB_URL
-4. HOST
-5. HOST_SSH_PORT
-6. HOST_SSH_CRED
-7. CHECK
-8. REPO_CLONE_URL
-9. REPO_BRANCH
-10.AUTH_TOKEN
+4. AUTH_TOKEN
+5. HOST
+6. HOST_SSH_PORT
+7. HOST_SSH_CRED
+8. CHECK
+9. REPO_CLONE_URL
+10. REPO_BRANCH
 
 */
 
@@ -71,6 +71,7 @@ node {
                 playbook: deployPlaybookPath,
                 inventory: inventoryPath,
                 credentialsId: params.HOST_SSH_CRED,
+                disableHostKeyChecking: true,
                 extraVars: [
                     release_version: params.VEEPEENET_VERSION,
                     distrib_url: params.DISTRIB_URL,
