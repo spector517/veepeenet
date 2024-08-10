@@ -31,7 +31,7 @@
       delegate_to: localhost
       check_mode: false
       when:
-        - distrib_path is defined or distrib_path | length > 0
+        - distrib_path is defined and distrib_path | length > 0
 
     - name: Create temporary directory on remote hosts
       ansible.builtin.tempfile:
