@@ -66,18 +66,22 @@ node {
     }
 
     stage("Deploy") {
+        if (params.VEEPEENET_VERSION) {
+            extraVars = [release_version: params.VEEPEENET_VERSION]
+        } else {
+            extraVars = [
+                distrib_url: params.DISTRIB_URL,
+                distrib_auth: "Bearer $params.AUTH_TOKEN"
+            ]
+        }
+        extraVars << [ansible_port:params.HOST_SSH_PORT]
         ansiColor {
             ansiblePlaybook(
                 playbook: deployPlaybookPath,
                 inventory: inventoryPath,
                 credentialsId: params.HOST_SSH_CRED,
                 disableHostKeyChecking: true,
-                extraVars: [
-                    release_version: params.VEEPEENET_VERSION,
-                    distrib_url: params.DISTRIB_URL,
-                    distrib_auth: params.AUTH_TOKEN,
-                    ansible_port: params.HOST_SSH_PORT
-                ],
+                extraVars: extraVars,
                 extras: "${if (params.CHECK) '--check' else ''}",
                 colorized: true
             )
