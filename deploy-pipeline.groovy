@@ -66,13 +66,13 @@ node {
     }
 
     stage("Deploy") {
-        if (params.VEEPEENET_VERSION) {
-            extraVars = [release_version: params.VEEPEENET_VERSION]
-        } else {
+        if (params.params.DISTRIB_URL) {
             extraVars = [
                 distrib_url: params.DISTRIB_URL,
                 distrib_auth: "Bearer $params.AUTH_TOKEN"
             ]
+        } else {
+            extraVars = [release_version: params.VEEPEENET_VERSION]
         }
         extraVars << [ansible_port:params.HOST_SSH_PORT]
         ansiColor {
