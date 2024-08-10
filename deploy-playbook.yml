@@ -1,7 +1,5 @@
 - name: Deploy and install veepeenet on remote hosts
   hosts: all
-  vars:
-    release_version: "v1.2.1"
   tasks:
     - name: Create temporary directory on master host
       ansible.builtin.tempfile:
