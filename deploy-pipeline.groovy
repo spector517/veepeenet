@@ -12,13 +12,12 @@ Required parameters list:
 
 1. NODE
 2. VEEPEENET_VERSION
-3. DISTRIB_FILE
-4. HOST
-5. HOST_SSH_PORT
-6. HOST_SSH_CRED
-7. CHECK
-8. REPO_CLONE_URL
-9. REPO_BRANCH
+3. HOST
+4. HOST_SSH_PORT
+5. HOST_SSH_CRED
+6. CHECK
+7. REPO_CLONE_URL
+8. REPO_BRANCH
 
 */
 
@@ -28,7 +27,7 @@ node {
 
     stage("Checks") {
         requiredParametersNames = [
-            "NODE", "HOST", "HOST_SSH_PORT", "HOST_SSH_CRED", "REPO_CLONE_URL", "REPO_BRANCH"
+            "NODE", "VEEPEENET_VERSION", "HOST", "HOST_SSH_PORT", "HOST_SSH_CRED", "REPO_CLONE_URL", "REPO_BRANCH"
         ]
         undefinedParams = []
         requiredParametersNames.each { paramName ->
@@ -38,9 +37,6 @@ node {
         }
         if (undefinedParams) {
             error("Required params are undefined: $undefinedParams")
-        }
-        if (!params.VEEPEENET_VERSION && !params.DISTRIB_FILE) {
-            error("Params 'VEEPEENET_VERSION' or 'DISTRIB_FILE must be defined")
         }
     }
 
@@ -63,27 +59,19 @@ node {
         log("Generating inventory.ini")
         writeFile file: inventoryPath, text: params.HOST
         log("inventory.ini generated")
-        if (params.DISTRIB_FILE) {
-            log("Creating distrib file (distribFilePath)")
-            sh "echo $params.DISTRIB_FILE | base64 -d > $distribFilePath"
-            log("Distrib file created")
-        }
     }
 
     stage("Deploy") {
-        if (fileExists(distribFilePath)) {
-            extraVars = [distrib_path: distribFilePath]
-        } else {
-            extraVars = [release_version: params.VEEPEENET_VERSION]
-        }
-        extraVars << [ansible_port:params.HOST_SSH_PORT]
         ansiColor {
             ansiblePlaybook(
                 playbook: deployPlaybookPath,
                 inventory: inventoryPath,
                 credentialsId: params.HOST_SSH_CRED,
                 disableHostKeyChecking: true,
-                extraVars: extraVars,
+                extraVars: [
+                    release_version: params.VEEPEENET_VERSION,
+                    ansible_port:params.HOST_SSH_PORT
+                ],
                 extras: "${if (params.CHECK) '--check' else ''}",
                 colorized: true
             )
