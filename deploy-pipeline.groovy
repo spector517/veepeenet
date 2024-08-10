@@ -74,8 +74,8 @@ node {
                     release_version: params.VEEPEENET_VERSION,
                     distrib_url: params.DISTRIB_URL,
                     distrib_auth: params.AUTH_TOKEN
-                ]
-                extras: "${if (param.CHECK) '--check' else ''}"
+                ],
+                extras: "${if (param.CHECK) '--check' else ''}",
                 colorized: true
             )
         }
