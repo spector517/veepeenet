@@ -1,0 +1,77 @@
+- name: Deploy and install veepeenet on remote hosts
+  hosts: all
+  vars:
+    release_version: "v1.2.1"
+  tasks:
+    - name: Create temporary directory on master host
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: veepeenet
+      register: temp_dir
+      run_once: true
+      delegate_to: localhost
+      check_mode: false
+
+    - name: Download VeePeeNET release archive
+      ansible.builtin.get_url:
+        url: "https://github.com/spector517/veepeenet/releases/download/{{ release_version }}/veepeenet.tar.gz"
+        dest: "{{ temp_dir.path }}/veepeenet.tar.gz"
+        mode: '0755'
+      run_once: true
+      delegate_to: localhost
+      check_mode: false
+      when:
+        - release_version is defined and release_version | length > 0
+
+    - name: Download VeePeeNET archive from custom URL
+      ansible.builtin.get_url:
+        url: "{{ distrib_url }}"
+        headers:
+          Authorization: "{{ distrib_auth | default('') }}"
+        dest: "{{ temp_dir.path }}/veepeenet.tar.gz"
+        mode: '0755'
+      run_once: true
+      delegate_to: localhost
+      check_mode: false
+      when:
+        - distrib_url is defined and distrib_url | length > 0
+
+
+    - name: Create temporary directory on remote hosts
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: veepeenet
+      register: remote_temp_dir
+      check_mode: false
+
+    - name: Unpack VeePeeNET archive
+      ansible.builtin.unarchive:
+        src: "{{ temp_dir.path }}/veepeenet.tar.gz"
+        dest: "{{ remote_temp_dir.path }}"
+        mode: '0755'
+      check_mode: false
+
+    - name: Install components
+      ansible.builtin.shell:
+        chdir: "{{ remote_temp_dir.path }}"
+        cmd: "install.sh {{ component }}"
+      become: true
+      changed_when: true
+      loop:
+        - wigeguard
+        - xray
+      loop_control:
+        loop_var: component
+
+    - name: Clean up temporary files on remote hosts
+      ansible.builtin.file:
+        path: "{{ remote_temp_dir.path }}"
+        state: absent
+      check_mode: false
+
+    - name: Remove temporary directory
+      ansible.builtin.file:
+        path: "{{ temp_dir.path }}"
+        state: absent
+      check_mode: false
+      delegate_to: localhost
