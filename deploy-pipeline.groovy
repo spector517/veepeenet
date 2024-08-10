@@ -13,12 +13,13 @@ Required parameters list:
 1. NODE
 2. VEEPEENET_VERSION
 3. DISTRIB_URL
-3. HOST
-4. HOST_SSH_CRED
-5. CHECK
-6. REPO_CLONE_URL
-7. REPO_BRANCH
-8. AUTH_TOKEN
+4. HOST
+5. HOST_SSH_PORT
+6. HOST_SSH_CRED
+7. CHECK
+8. REPO_CLONE_URL
+9. REPO_BRANCH
+10.AUTH_TOKEN
 
 */
 
@@ -28,7 +29,7 @@ node {
 
     stage("Checks") {
         requiredParametersNames = [
-            "NODE", "HOST", "HOST_SSH_CRED", "CHECK", "REPO_CLONE_URL", "REPO_BRANCH", "AUTH_TOKEN"
+            "NODE", "HOST", "HOST_SSH_PORT", "HOST_SSH_CRED", "REPO_CLONE_URL", "REPO_BRANCH"
         ]
         undefinedParams = []
         requiredParametersNames.each { paramName ->
@@ -73,9 +74,10 @@ node {
                 extraVars: [
                     release_version: params.VEEPEENET_VERSION,
                     distrib_url: params.DISTRIB_URL,
-                    distrib_auth: params.AUTH_TOKEN
+                    distrib_auth: params.AUTH_TOKEN,
+                    ansible_port: params.HOST_SSH_PORT
                 ],
-                extras: "${if (param.CHECK) '--check' else ''}",
+                extras: "${if (params.CHECK) '--check' else ''}",
                 colorized: true
             )
         }
