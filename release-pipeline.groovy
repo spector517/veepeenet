@@ -1,6 +1,6 @@
 /* 
 
-Jenkins Pipeline
+Jenkins Release pipeline
 
 Required non-default plugins:
 
