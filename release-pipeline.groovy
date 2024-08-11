@@ -170,7 +170,7 @@ node(params.NODE) {
                     [name: "Authorization", value: "Bearer $github_token"],
                 ],
                 uploadFile: archiveDistribPath,
-                multipartName: archiveDistribName
+                wrapAsMultipart: false
             log "Archive distrib uploaded"
         }
     }
