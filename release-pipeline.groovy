@@ -11,13 +11,14 @@ Required parameters list:
 
 1. NODE
 2. DISTRIB_VERSION
-3. XRAY_VERSION
-4. REPO_CLONE_URL
-5. REPO_BRANCH
-6. XRAY_DOWNLOADS_URL
-7. CREATE_RELEASE_URL
-8. UPLOAD_ASSETS_URL
-9. AUTH_TOKEN
+3. CREATE_RELEASE
+4. XRAY_VERSION
+5. REPO_CLONE_URL
+6. REPO_BRANCH
+7. XRAY_DOWNLOADS_URL
+8. CREATE_RELEASE_URL
+9. UPLOAD_ASSETS_URL
+10.AUTH_TOKEN
 
 */
 
@@ -151,37 +152,41 @@ node(params.NODE) {
         log "Archive created"
     }
 
-    stage("Release") {
-        withCredentials([string(credentialsId: AUTH_TOKEN, variable: "github_token")]) {
-            log "Creating release draft"
-            releaseResponse = httpRequest url: CREATE_RELEASE_URL, contentType: "APPLICATION_JSON_UTF8", httpMode: 'POST',
-                customHeaders: [
-                    [name: "Authorization", value: "Bearer $github_token"],
-                ],
-                requestBody: writeJSON(
-                    json: [
-                        tag_name: DISTRIB_VERSION,
-                        target_commitish: REPO_BRANCH,
-                        name: "VeePeeNET $DISTRIB_VERSION",
-                        draft: true,
-                        prerelease: false,
-                        generate_release_notes: false
+    if (params.CREATE_RELEASE) {
+        stage("Release") {
+            withCredentials([string(credentialsId: AUTH_TOKEN, variable: "github_token")]) {
+                log "Creating release draft"
+                releaseResponse = httpRequest url: CREATE_RELEASE_URL, contentType: "APPLICATION_JSON_UTF8", httpMode: 'POST',
+                    customHeaders: [
+                        [name: "Authorization", value: "Bearer $github_token"],
                     ],
-                    returnText: true
-                )
-            releaseId = readJSON(text: releaseResponse.content)["id"]
-            log "Release draft created (id: $releaseId)"
-            
-            log "Uploading archive distrib to release draft"
-            httpRequest url: "$UPLOAD_ASSETS_URL/$releaseId/assets?name=$archiveDistribName", httpMode: 'POST',
-                contentType: "APPLICATION_OCTETSTREAM",
-                customHeaders: [
-                    [name: "Authorization", value: "Bearer $github_token"],
-                ],
-                uploadFile: archiveDistribPath,
-                wrapAsMultipart: false
-            log "Archive distrib uploaded"
+                    requestBody: writeJSON(
+                        json: [
+                            tag_name: DISTRIB_VERSION,
+                            target_commitish: REPO_BRANCH,
+                            name: "VeePeeNET $DISTRIB_VERSION",
+                            draft: true,
+                            prerelease: false,
+                            generate_release_notes: false
+                        ],
+                        returnText: true
+                    )
+                releaseId = readJSON(text: releaseResponse.content)["id"]
+                log "Release draft created (id: $releaseId)"
+
+                log "Uploading archive distrib to release draft"
+                httpRequest url: "$UPLOAD_ASSETS_URL/$releaseId/assets?name=$archiveDistribName", httpMode: 'POST',
+                    contentType: "APPLICATION_OCTETSTREAM",
+                    customHeaders: [
+                        [name: "Authorization", value: "Bearer $github_token"],
+                    ],
+                    uploadFile: archiveDistribPath,
+                    wrapAsMultipart: false
+                log "Archive distrib uploaded"
+            }
         }
+    } else {
+        log "Skip release creation"
     }
 }
 
