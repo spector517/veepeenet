@@ -198,7 +198,7 @@ def load_config(
 
 @common.handle_result
 def get_clients_strings(config: dict) -> List[str]:
-    return [f"{client['name']}: {config['clients_dir']}/{client['name']}"
+    return [f"{client['name']}: {config['clients_dir']}/{client['name']}.conf"
             for client in config['clients']]
 
 
