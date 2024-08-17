@@ -51,6 +51,7 @@ node(params.NODE) {
     distribPath = "${pwd()}/$distribName"
     archiveDistribName = "veepeenet.tar.gz"
     archiveDistribPath = "${pwd()}/$archiveDistribName"
+    metaFilePath = "${pwd()}/meta.json"
     
     stage("Sources") {
         dir(repoDir) {
@@ -122,13 +123,21 @@ node(params.NODE) {
     }
 
     stage("Distrib") {
+        log "Generating meta file"
+        meta = [
+            version: DISTRIB_VERSION,
+            buildNumber: BUILD_NUMBER,
+            buildDate: new Date()
+        ]
+        writeJSON file: metaFilePath, json: meta
+        log "Meta file generated"
         log "Building distrib"
         dir(distribPath) {
             log "Copy required components"
             [
                 "$repoDir/install.sh", "$repoDir/install-wg.sh", "$repoDir/install-xray.sh",
                 "$repoDir/uninstall.sh", "$repoDir/uninstall-wg.sh", "$repoDir/uninstall-xray.sh",
-                "$repoDir/*.py", "$repoDir/xray.service"
+                "$repoDir/*.py", "$repoDir/xray.service", metaFilePath
             ].each { component ->
                 sh "cp $component ./"
             }

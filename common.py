@@ -4,6 +4,7 @@ import shutil
 import subprocess
 import sys
 import uuid
+from typing import List
 
 ROUTE_FILE_PATH = '/proc/net/route'
 UFW_BEFORE_RULES_PATH = '/etc/ufw/before.rules'
@@ -12,6 +13,7 @@ FORWARD_POLICY_FILE = '/etc/default/ufw'
 SSHD_CONFIG_PATH = '/etc/ssh/sshd_config'
 ENCODING = 'UTF-8'
 RUN_COMMAND_TIMEOUT = 20_000
+META_FILE_PATH = "/usr/local/etc/veepeenet/meta.json"
 
 DEFAULT_SSH_PORT = 22
 DEFAULT_NO_UFW = False
@@ -55,6 +57,45 @@ def handle_result(func: callable) -> callable:
         return res
 
     return wrapper
+
+
+@handle_result
+def get_version_info() -> str:
+    with open(META_FILE_PATH, 'rt', encoding=ENCODING) as fd:
+        meta = json.loads(fd.read())
+    return f"{meta['version']}, build {meta['buildNumber']}"
+
+
+@handle_result
+def get_status(config: dict, version_info: str, service_name: str,
+               server_name: str, clients_strings: List[str]) -> str:
+    server_status = 'Running' if is_service_running(service_name) else 'Stopped'
+    client_info_lines = [f"\t\t{client_str}" for client_str in clients_strings]
+    summary_pending = 51
+    fill_char = '-'
+    header = center_string(f" VeePeeNET ({version_info}) ", summary_pending, fill_char)
+    footer = fill_char * summary_pending
+    status_lines = [
+        header,
+        f'{server_name} server info:',
+        f'\tstatus: {server_status}',
+        f"\taddress: {config['server']['host']}:{config['server']['port']}",
+        '\tclients:']
+    if client_info_lines:
+        status_lines.extend(client_info_lines)
+    else:
+        status_lines.append('\t\tServer has no clients')
+    status_lines.append(footer)
+    return '\n'.join(status_lines)
+
+
+def center_string(info, length, fill_char='-'):
+    if len(info) >= length:
+        return info[:length]
+    total_padding = length - len(info)
+    left_padding = total_padding // 2
+    right_padding = total_padding - left_padding
+    return fill_char * left_padding + info + fill_char * right_padding
 
 
 def write_text_file(file_path: str, text: str, mode: int = 0) -> None:
@@ -191,6 +232,11 @@ def restart_service(service_name: str) -> None:
 @handle_result
 def enable_service(service_name: str) -> None:
     run_command(f'systemctl enable {service_name}.service')
+
+
+@handle_result
+def is_service_running(service_name: str) -> bool:
+    return run_command(f'systemctl is-active {service_name} -q')[0] == 0
 
 
 @handle_result
