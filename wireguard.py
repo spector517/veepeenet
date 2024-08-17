@@ -2,11 +2,13 @@ import argparse
 import json
 import os
 import textwrap
+from typing import List
 
 import common
 
 WIREGUARD_CONF_DIR = '/etc/wireguard'
 WIREGUARD_PROTOCOL = 'udp'
+SERVER_NAME = 'WireGuard'
 
 DEFAULT_WIREGUARD_PORT = 51820
 DEFAULT_WIREGUARD_INTERFACE = 'wg0'
@@ -18,11 +20,18 @@ common.DEFAULT_CLIENTS_DIR = '/usr/local/etc/veepeenet/wg/clients'
 
 
 def main():
-    arguments = parse_arguments()
+    version_info = common.get_version_info()
+    arguments = parse_arguments(version_info)
     common.CHECK_MODE = arguments.check
     if arguments.clean:
         common.clean_configuration(common.CONFIG_PATH, common.DEFAULT_CLIENTS_DIR)
     config = load_config(common.CONFIG_PATH, arguments)
+    service_name = f"wg-quick@{config['server']['interface']}"
+
+    if arguments.status:
+        print(common.get_status(config, version_info, service_name,
+                                SERVER_NAME, get_clients_strings(config)))
+        return
 
     existing_clients = common.get_existing_clients(config)
     new_clients_names = common.get_new_clients_names(arguments.add_clients, existing_clients)
@@ -54,16 +63,18 @@ def main():
         ssh_port = common.get_ssh_port_number(common.SSHD_CONFIG_PATH)
         common.configure_ufw(config['server']['port'], ssh_port, WIREGUARD_PROTOCOL)
 
-    service_name = f"wg-quick@{config['server']['interface']}"
     common.restart_service(service_name)
     common.enable_service(service_name)
     common.write_text_file(common.RESULT_LOG_PATH, json.dumps(common.RESULT, indent=2))
+    print(common.get_status(config, version_info, service_name,
+                            SERVER_NAME, get_clients_strings(config)))
 
 
 @common.handle_result
-def parse_arguments() -> argparse.Namespace:
+def parse_arguments(version_info: str) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description='Configure the Wireguard VPN.',
+        prog='wg-config',
+        description=f'VeePeeNET ({version_info}). Configure the {SERVER_NAME} VPN.',
         epilog='VeePeeNET. Make the Internet free =)'
     )
     parser.add_argument(
@@ -78,11 +89,11 @@ def parse_arguments() -> argparse.Namespace:
     )
     parser.add_argument(
         '--subnet',
-        help=f'Wireguard server subnet address. Default is {DEFAULT_WIREGUARD_SUBNET}.'
+        help=f'{SERVER_NAME} server subnet address. Default is {DEFAULT_WIREGUARD_SUBNET}.'
     )
     parser.add_argument(
         '--interface',
-        help=(f'Name of Wireguard virtual network interface. '
+        help=(f'Name of {SERVER_NAME} virtual network interface. '
               f'Default is {DEFAULT_WIREGUARD_INTERFACE}.')
     )
     parser.add_argument(
@@ -95,14 +106,14 @@ def parse_arguments() -> argparse.Namespace:
         nargs='+',
         default=[],
         metavar='CLIENT',
-        help='List of Wireguard server clients names. Default - no generate clients configs.'
+        help=f'List of {SERVER_NAME} server clients names. Default - no generate clients configs.'
     )
     parser.add_argument(
         '--remove-clients',
         nargs='+',
         default=[],
         metavar='CLIENT',
-        help=('Removing clients list of Wireguard server.'
+        help=(f'Removing clients list of {SERVER_NAME} server.'
               ' Non-existing clients names will be ignored.')
     )
     parser.add_argument(
@@ -125,6 +136,11 @@ def parse_arguments() -> argparse.Namespace:
         action='store_true',
         default=False,
         help='Dry run. Print changed files content to the console'
+    )
+    parser.add_argument(
+        '--status',
+        action='store_true',
+        help=f'Show {SERVER_NAME} server information'
     )
     return parser.parse_args()
 
@@ -178,6 +194,12 @@ def load_config(
              else common.DEFAULT_CLIENTS)
     })
     return config
+
+
+@common.handle_result
+def get_clients_strings(config: dict) -> List[str]:
+    return [f"{client['name']}: {config['clients_dir']}/{client['name']}"
+            for client in config['clients']]
 
 
 @common.handle_result

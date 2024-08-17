@@ -18,9 +18,14 @@ else
     case $arg in
         xray ) INSTALL_XRAY=1;;
         wireguard ) INSTALL_WIREGUARD=1;;
-        * ) echo "ERROR: Unexpected component '$arg'"; exit 1;;
+        * ) echo "ERROR: Unexpected component '$arg'" >&2; exit 1;;
     esac
   done
+fi
+
+if [[ $INSTALL_WIREGUARD -eq 1 ]] || [[ $INSTALL_XRAY -eq 1 ]]; then
+  mkdir -p /usr/local/etc/veepeenet
+  cp ./meta.json /usr/local/etc/veepeenet/meta.json
 fi
 
 if [[ $INSTALL_XRAY -eq 1 ]]; then

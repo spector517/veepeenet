@@ -73,6 +73,7 @@ It is recommended to specify manually.
 - ```--clean``` Remove existing config. Default is False.
 - ```--check``` Dry run. Print changed files content to the console
 - ```--no-ufw``` Do not use the Uncomplicated Firewall.
+- ```--status``` Show WireGuard server information
 
 ### Removing
 
@@ -149,6 +150,7 @@ It is recommended to specify manually.
 - ```--clean``` Remove existing config. Default is False.
 - ```--check``` Dry run. Print changed files content to the console.
 - ```--no-ufw``` Do not use the Uncomplicated Firewall
+- ```--status``` Show Xray server information
 
 ### Removing
 
