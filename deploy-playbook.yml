@@ -49,12 +49,12 @@
 
     - name: Install components
       ansible.builtin.shell:
-        chdir: "{{ remote_temp_dir.path }}"
-        cmd: "install.sh {{ component }}"
+        chdir: "{{ remote_temp_dir.path }}/veepeenet-v1.3.0"
+        cmd: "./install.sh {{ component }}"
       become: true
       changed_when: true
       loop:
-        - wigeguard
+        - wireguard
         - xray
       loop_control:
         loop_var: component
