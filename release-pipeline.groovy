@@ -128,7 +128,7 @@ node(params.NODE) {
         meta = [
             version: DISTRIB_VERSION,
             buildNumber: BUILD_NUMBER,
-            buildDate: new Date()
+            buildDate: new Date().toString()
         ]
         writeJSON file: metaFilePath, json: meta
         log "Meta file generated"
