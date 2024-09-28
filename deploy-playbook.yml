@@ -32,6 +32,7 @@
       check_mode: false
       when:
         - distrib_path is defined and distrib_path | length > 0
+        - distrib_version is defined and distrib_version | length > 0
 
     - name: Create temporary directory on remote hosts
       ansible.builtin.tempfile:
@@ -49,7 +50,7 @@
 
     - name: Install components
       ansible.builtin.shell:
-        chdir: "{{ remote_temp_dir.path }}/veepeenet-v1.3.0"
+        chdir: "{{ remote_temp_dir.path }}/veepeenet-{{ distrib_version or release_version }}"
         cmd: "./install.sh {{ component }}"
       become: true
       changed_when: true
