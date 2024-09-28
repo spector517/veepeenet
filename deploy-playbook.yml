@@ -21,6 +21,12 @@
       when:
         - release_version is defined and release_version | length > 0
 
+    - name: Define veepeenet version
+      ansible.builtin.set_fact:
+        veepeenet_version: "{{ release_version }}"
+      when:
+        - release_version is defined and release_version | length > 0
+
     - name: Use custom distrib archive
       ansible.builtin.copy:
         src: "{{ distrib_path }}"
@@ -32,6 +38,11 @@
       check_mode: false
       when:
         - distrib_path is defined and distrib_path | length > 0
+
+    - name: Define veepeenet version
+      ansible.builtin.set_fact:
+        veepeenet_version: "{{ distrib_version }}"
+      when:
         - distrib_version is defined and distrib_version | length > 0
 
     - name: Create temporary directory on remote hosts
@@ -50,7 +61,7 @@
 
     - name: Install components
       ansible.builtin.shell:
-        chdir: "{{ remote_temp_dir.path }}/veepeenet-{{ distrib_version or release_version }}"
+        chdir: "{{ remote_temp_dir.path }}/veepeenet-{{ veepeenet_version }}"
         cmd: "./install.sh {{ component }}"
       become: true
       changed_when: true
