@@ -4,8 +4,9 @@ Jenkins Release pipeline
 
 Required non-default plugins:
 
-1. HTTP Request Plugin
+1. HTTP Request
 2. Pipeline Utility Steps
+3. Build Name and Description Setter
 
 Required parameters list:
 
