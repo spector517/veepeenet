@@ -30,8 +30,8 @@ def main():
     config = load_config(common.CONFIG_PATH, arguments)
 
     if arguments.status:
-        print(common.get_status(config, version_info, SERVICE_NAME,
-                                SERVER_NAME, get_clients_strings(config)))
+        print(common.get_status(config, version_info, SERVICE_NAME, SERVER_NAME,
+                                get_server_version(), get_clients_strings(config)))
         return
 
     existing_clients = common.get_existing_clients(config)
@@ -51,8 +51,8 @@ def main():
 
     common.restart_service(SERVICE_NAME)
     common.write_text_file(common.RESULT_LOG_PATH, json.dumps(common.RESULT, indent=2))
-    print(common.get_status(config, version_info, SERVICE_NAME,
-                            SERVER_NAME, get_clients_strings(config)))
+    print(common.get_status(config, version_info, SERVICE_NAME, SERVER_NAME,
+                            get_server_version(), get_clients_strings(config)))
 
 
 def parse_arguments(version_info: str) -> argparse.Namespace:
@@ -162,6 +162,13 @@ def load_config(
              else common.DEFAULT_CLIENTS)
     })
     return config
+
+
+@common.handle_result
+def get_server_version() -> str:
+    stdout = common.run_command('xray --version')[1]
+    found_version = re.findall(r'(?<=Xray\s)[\d.]+', stdout)
+    return found_version[0] if found_version else 'unknown'
 
 
 @common.handle_result

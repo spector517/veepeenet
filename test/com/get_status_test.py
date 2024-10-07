@@ -1,4 +1,5 @@
 import unittest
+
 import mockito
 
 import common
@@ -31,6 +32,7 @@ class TestGetStatus(unittest.TestCase):
         self.version_info = '1.0 build 23'
         self.service_name = 'xray'
         self.server_name = 'Xray'
+        self.server_version = '7.7.7 build 777'
 
     def test_get_status_with_clients(self):
         clients_strings = ['client1', 'client2']
@@ -44,6 +46,7 @@ class TestGetStatus(unittest.TestCase):
         expected_output = (
             '------------ VeePeeNET (1.0 build 23) -------------\n'
             'Xray server info:\n'
+            '\tversion: 7.7.7 build 777\n'
             '\tstatus: Running\n'
             '\taddress: 127.0.0.1:8080\n'
             '\tclients:\n'
@@ -53,7 +56,7 @@ class TestGetStatus(unittest.TestCase):
         )
 
         result = common.get_status(config, self.version_info, self.service_name,
-                                   self.server_name, clients_strings)
+                                   self.server_name, self.server_version, clients_strings)
         self.assertEqual(result, expected_output)
 
     def test_get_status_no_clients(self):
@@ -67,6 +70,7 @@ class TestGetStatus(unittest.TestCase):
         expected_output = (
             '------------ VeePeeNET (1.0 build 23) -------------\n'
             'Xray server info:\n'
+            '\tversion: 7.7.7 build 777\n'
             '\tstatus: Stopped\n'
             '\taddress: 127.0.0.1:8080\n'
             '\tclients:\n'
@@ -75,5 +79,5 @@ class TestGetStatus(unittest.TestCase):
         )
 
         result = common.get_status(config, self.version_info, self.service_name,
-                                   self.server_name, [])
+                                   self.server_name, self.server_version, [])
         self.assertEqual(result, expected_output)

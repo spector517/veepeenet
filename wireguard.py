@@ -3,6 +3,7 @@ import json
 import os
 import textwrap
 from typing import List
+import re
 
 import common
 
@@ -29,8 +30,8 @@ def main():
     service_name = f"wg-quick@{config['server']['interface']}"
 
     if arguments.status:
-        print(common.get_status(config, version_info, service_name,
-                                SERVER_NAME, get_clients_strings(config)))
+        print(common.get_status(config, version_info, service_name, SERVER_NAME,
+                                get_server_version(), get_clients_strings(config)))
         return
 
     existing_clients = common.get_existing_clients(config)
@@ -66,8 +67,8 @@ def main():
     common.restart_service(service_name)
     common.enable_service(service_name)
     common.write_text_file(common.RESULT_LOG_PATH, json.dumps(common.RESULT, indent=2))
-    print(common.get_status(config, version_info, service_name,
-                            SERVER_NAME, get_clients_strings(config)))
+    print(common.get_status(config, version_info, service_name, SERVER_NAME,
+                            get_server_version(), get_clients_strings(config)))
 
 
 @common.handle_result
@@ -194,6 +195,12 @@ def load_config(
              else common.DEFAULT_CLIENTS)
     })
     return config
+
+
+def get_server_version() -> str:
+    stdout = common.run_command('wg --version')[1]
+    found_version = re.findall(r'(?<=wireguard-tools\s)v[\d.]+', stdout)
+    return found_version[0] if found_version else 'unknown'
 
 
 @common.handle_result

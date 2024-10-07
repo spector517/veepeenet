@@ -67,8 +67,8 @@ def get_version_info() -> str:
 
 
 @handle_result
-def get_status(config: dict, version_info: str, service_name: str,
-               server_name: str, clients_strings: List[str]) -> str:
+def get_status(config: dict, version_info: str, service_name: str, server_name: str,
+               server_version: str, clients_strings: List[str]) -> str:
     server_status = 'Running' if is_service_running(service_name) else 'Stopped'
     client_info_lines = [f"\t\t{client_str}" for client_str in clients_strings]
     summary_pending = 51
@@ -78,6 +78,7 @@ def get_status(config: dict, version_info: str, service_name: str,
     status_lines = [
         header,
         f'{server_name} server info:',
+        f'\tversion: {server_version}',
         f'\tstatus: {server_status}',
         f"\taddress: {config['server']['host']}:{config['server']['port']}",
         '\tclients:']
