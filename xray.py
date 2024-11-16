@@ -11,7 +11,6 @@ XRAY_INSTALLER_SCRIPT_URL = 'https://github.com/XTLS/Xray-install/raw/main/insta
 XRAY_CONF_PATH = '/usr/local/etc/xray/config.json'
 XRAY_PROTOCOL = 'tcp'
 SERVICE_NAME = 'xray'
-SERVER_NAME = 'Xray'
 
 DEFAULT_XRAY_PORT = 443
 DEFAULT_REALITY_HOST = 'microsoft.com'
@@ -19,6 +18,7 @@ DEFAULT_REALITY_PORT = 443
 
 common.RESULT_LOG_PATH = '/var/log/veepeenet/xray/log.json'
 common.CONFIG_PATH = '/usr/local/etc/veepeenet/xray/config.json'
+common.SERVER_NAME = 'Xray'
 
 
 def main():
@@ -30,7 +30,7 @@ def main():
     config = load_config(common.CONFIG_PATH, arguments)
 
     if arguments.status:
-        print(common.get_status(config, version_info, SERVICE_NAME, SERVER_NAME,
+        print(common.get_status(config, version_info, SERVICE_NAME,
                                 get_server_version(), get_clients_strings(config)))
         return
 
@@ -51,7 +51,7 @@ def main():
 
     common.restart_service(SERVICE_NAME)
     common.write_text_file(common.RESULT_LOG_PATH, json.dumps(common.RESULT, indent=2))
-    print(common.get_status(config, version_info, SERVICE_NAME, SERVER_NAME,
+    print(common.get_status(config, version_info, SERVICE_NAME,
                             get_server_version(), get_clients_strings(config)))
 
 
@@ -59,7 +59,7 @@ def parse_arguments(version_info: str) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog='xray-config',
         description=(f'VeePeeNET ({version_info})'
-                     f'Configure the {SERVER_NAME} (XTLS-Reality) server.'),
+                     f'Configure the {common.SERVER_NAME} (XTLS-Reality) server.'),
         epilog='VeePeeNET. Make the Internet free =)'
     )
     parser.add_argument(
@@ -71,7 +71,8 @@ def parse_arguments(version_info: str) -> argparse.Namespace:
         '--port',
         type=int,
         default=0,
-        help=f'The {SERVER_NAME} server port. Default is {DEFAULT_XRAY_PORT}'
+        help=(f'The {common.SERVER_NAME} server port.'
+              f' Default is {DEFAULT_XRAY_PORT}')
     )
     parser.add_argument(
         '--reality-host',
@@ -88,14 +89,15 @@ def parse_arguments(version_info: str) -> argparse.Namespace:
         nargs='+',
         default=[],
         metavar='CLIENT',
-        help=f'List of {SERVER_NAME} server clients names. Default - no generate clients configs.'
+        help=(f'List of {common.SERVER_NAME} server clients names.'
+               'Default - no generate clients configs.')
     )
     parser.add_argument(
         '--remove-clients',
         nargs='+',
         default=[],
         metavar='CLIENT',
-        help=(f'Removing clients list of {SERVER_NAME} server.'
+        help=(f'Removing clients list of {common.SERVER_NAME} server.'
               ' Non-existing clients names will be ignored.')
     )
     parser.add_argument(
@@ -116,7 +118,7 @@ def parse_arguments(version_info: str) -> argparse.Namespace:
     parser.add_argument(
         '--status',
         action='store_true',
-        help=f'Show {SERVER_NAME} server information'
+        help=f'Show {common.SERVER_NAME} server information'
     )
     return parser.parse_args()
 

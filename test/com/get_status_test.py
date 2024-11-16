@@ -56,7 +56,7 @@ class TestGetStatus(unittest.TestCase):
         )
 
         result = common.get_status(config, self.version_info, self.service_name,
-                                   self.server_name, self.server_version, clients_strings)
+                                   self.server_version, clients_strings)
         self.assertEqual(result, expected_output)
 
     def test_get_status_no_clients(self):
@@ -79,5 +79,5 @@ class TestGetStatus(unittest.TestCase):
         )
 
         result = common.get_status(config, self.version_info, self.service_name,
-                                   self.server_name, self.server_version, [])
+                                   self.server_version, [])
         self.assertEqual(result, expected_output)

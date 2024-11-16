@@ -34,6 +34,7 @@ RESULT = {
     },
     'actions': []
 }
+SERVER_NAME = 'veepeenet'
 
 
 def handle_result(func: callable) -> callable:
@@ -67,7 +68,7 @@ def get_version_info() -> str:
 
 
 @handle_result
-def get_status(config: dict, version_info: str, service_name: str, server_name: str,
+def get_status(config: dict, version_info: str, service_name: str,
                server_version: str, clients_strings: List[str]) -> str:
     server_status = 'Running' if is_service_running(service_name) else 'Stopped'
     client_info_lines = [f"\t\t{client_str}" for client_str in clients_strings]
@@ -77,7 +78,7 @@ def get_status(config: dict, version_info: str, service_name: str, server_name: 
     footer = fill_char * summary_pending
     status_lines = [
         header,
-        f'{server_name} server info:',
+        f'{SERVER_NAME} server info:',
         f'\tversion: {server_version}',
         f'\tstatus: {server_status}',
         f"\taddress: {config['server']['host']}:{config['server']['port']}",
@@ -123,21 +124,19 @@ def write_text_file(file_path: str, text: str, mode: int = 0) -> None:
 def run_command(command: str, stdin: str = '') -> tuple:
     if CHECK_MODE:
         command = f'echo "{command}"'
-    try:
-        run_result = subprocess.run(
-            command,
-            input=stdin.encode(ENCODING),
-            capture_output=True,
-            check=True,
-            timeout=RUN_COMMAND_TIMEOUT,
-            shell=True
-        )
 
-        return (run_result.returncode,
-                run_result.stdout.decode(ENCODING).strip(),
-                run_result.stderr.decode(ENCODING).strip())
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as ex:
-        raise ex
+    run_result = subprocess.run(
+        command,
+        input=stdin.encode(ENCODING),
+        capture_output=True,
+        check=True,
+        timeout=RUN_COMMAND_TIMEOUT,
+        shell=True
+    )
+
+    return (run_result.returncode,
+            run_result.stdout.decode(ENCODING).strip(),
+            run_result.stderr.decode(ENCODING).strip())
 
 
 @handle_result

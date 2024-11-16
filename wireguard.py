@@ -9,7 +9,6 @@ import common
 
 WIREGUARD_CONF_DIR = '/etc/wireguard'
 WIREGUARD_PROTOCOL = 'udp'
-SERVER_NAME = 'WireGuard'
 
 DEFAULT_WIREGUARD_PORT = 51820
 DEFAULT_WIREGUARD_INTERFACE = 'wg0'
@@ -18,6 +17,7 @@ DEFAULT_WIREGUARD_SUBNET = '10.9.0.1/24'
 common.RESULT_LOG_PATH = '/var/log/veepeenet/wg/result.json'
 common.CONFIG_PATH = '/usr/local/etc/veepeenet/wg/config.json'
 common.DEFAULT_CLIENTS_DIR = '/usr/local/etc/veepeenet/wg/clients'
+common.SERVER_NAME = 'WireGuard'
 
 
 def main():
@@ -30,7 +30,7 @@ def main():
     service_name = f"wg-quick@{config['server']['interface']}"
 
     if arguments.status:
-        print(common.get_status(config, version_info, service_name, SERVER_NAME,
+        print(common.get_status(config, version_info, service_name,
                                 get_server_version(), get_clients_strings(config)))
         return
 
@@ -67,7 +67,7 @@ def main():
     common.restart_service(service_name)
     common.enable_service(service_name)
     common.write_text_file(common.RESULT_LOG_PATH, json.dumps(common.RESULT, indent=2))
-    print(common.get_status(config, version_info, service_name, SERVER_NAME,
+    print(common.get_status(config, version_info, service_name,
                             get_server_version(), get_clients_strings(config)))
 
 
@@ -75,7 +75,7 @@ def main():
 def parse_arguments(version_info: str) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog='wg-config',
-        description=f'VeePeeNET ({version_info}). Configure the {SERVER_NAME} VPN.',
+        description=f'VeePeeNET ({version_info}). Configure the {common.SERVER_NAME} VPN.',
         epilog='VeePeeNET. Make the Internet free =)'
     )
     parser.add_argument(
@@ -90,11 +90,11 @@ def parse_arguments(version_info: str) -> argparse.Namespace:
     )
     parser.add_argument(
         '--subnet',
-        help=f'{SERVER_NAME} server subnet address. Default is {DEFAULT_WIREGUARD_SUBNET}.'
+        help=f'{common.SERVER_NAME} server subnet address. Default is {DEFAULT_WIREGUARD_SUBNET}.'
     )
     parser.add_argument(
         '--interface',
-        help=(f'Name of {SERVER_NAME} virtual network interface. '
+        help=(f'Name of {common.SERVER_NAME} virtual network interface. '
               f'Default is {DEFAULT_WIREGUARD_INTERFACE}.')
     )
     parser.add_argument(
@@ -107,14 +107,15 @@ def parse_arguments(version_info: str) -> argparse.Namespace:
         nargs='+',
         default=[],
         metavar='CLIENT',
-        help=f'List of {SERVER_NAME} server clients names. Default - no generate clients configs.'
+        help=(f'List of {common.SERVER_NAME} server clients names.'
+              ' Default - no generate clients configs.')
     )
     parser.add_argument(
         '--remove-clients',
         nargs='+',
         default=[],
         metavar='CLIENT',
-        help=(f'Removing clients list of {SERVER_NAME} server.'
+        help=(f'Removing clients list of {common.SERVER_NAME} server.'
               ' Non-existing clients names will be ignored.')
     )
     parser.add_argument(
@@ -141,7 +142,7 @@ def parse_arguments(version_info: str) -> argparse.Namespace:
     parser.add_argument(
         '--status',
         action='store_true',
-        help=f'Show {SERVER_NAME} server information'
+        help=f'Show {common.SERVER_NAME} server information'
     )
     return parser.parse_args()
 
