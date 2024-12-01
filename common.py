@@ -121,7 +121,7 @@ def write_text_file(file_path: str, text: str, mode: int = 0) -> None:
 
 
 @handle_result
-def run_command(command: str, stdin: str = '') -> tuple:
+def run_command(command: str, stdin: str = '', check: bool = True) -> tuple:
     if CHECK_MODE:
         command = f'echo "{command}"'
 
@@ -129,7 +129,7 @@ def run_command(command: str, stdin: str = '') -> tuple:
         command,
         input=stdin.encode(ENCODING),
         capture_output=True,
-        check=True,
+        check=check,
         timeout=RUN_COMMAND_TIMEOUT,
         shell=True
     )
@@ -236,7 +236,7 @@ def enable_service(service_name: str) -> None:
 
 @handle_result
 def is_service_running(service_name: str) -> bool:
-    return run_command(f'systemctl is-active {service_name} -q')[0] == 0
+    return run_command(f'systemctl is-active {service_name} -q', check=False)[0] == 0
 
 
 @handle_result
