@@ -59,7 +59,7 @@ def parse_arguments(version_info: str) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog='xray-config',
         description=(f'VeePeeNET ({version_info})'
-                     f'Configure the {common.SERVER_NAME} (XTLS-Reality) server.'),
+                     f' Configure the {common.SERVER_NAME} (XTLS-Reality) server.'),
         epilog='VeePeeNET. Make the Internet free =)'
     )
     parser.add_argument(
