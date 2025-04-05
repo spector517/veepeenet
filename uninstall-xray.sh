@@ -26,7 +26,7 @@ fi
 rm -rf /usr/local/etc/xray
 echo 'INFO: Xray service removed.'
 
-echo "Removing Xray distrib..."
+echo "INFO: Removing Xray distrib..."
 rm -rf /usr/local/share/xray
 rm -rf /usr/local/bin/xray
-echo "Xray distrib removed"
+echo "INFO: Xray distrib removed"

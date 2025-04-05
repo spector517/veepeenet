@@ -131,7 +131,7 @@ node(params.NODE) {
             buildNumber: BUILD_NUMBER,
             buildDate: new Date().toString()
         ]
-        writeJSON file: metaFilePath, json: meta
+        writeJSON file: metaFilePath, json: meta, pretty: 2
         log "Meta file generated"
         log "Building distrib"
         dir(distribPath) {
