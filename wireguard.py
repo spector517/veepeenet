@@ -34,9 +34,10 @@ def main():
                                 get_server_version(), get_clients_strings(config)))
         return
 
-    existing_clients = common.get_existing_clients(config)
-    new_clients_names = common.get_new_clients_names(arguments.add_clients, existing_clients)
     subnet = config['server']['subnet']
+    existing_clients = common.get_existing_clients(config)
+    actualize_clients_local_ip(existing_clients, subnet)
+    new_clients_names = common.get_new_clients_names(arguments.add_clients, existing_clients)
     for new_client_name in new_clients_names:
         new_client = generate_new_client(new_client_name, existing_clients, subnet)
         existing_clients.append(new_client)
@@ -224,6 +225,13 @@ def generate_new_client(client_name: str, existing_clients: list, subnet: str) -
         'public_key': public_key,
         'private_key': private_key
     }
+
+
+@common.handle_result
+def actualize_clients_local_ip(clients: list, subnet: str) -> None:
+    for client in clients:
+        client_number = client['ip'].split('.')[-1]
+        client['ip'] = '.'.join(subnet.split('.')[0:-1] + [client_number])
 
 
 @common.handle_result

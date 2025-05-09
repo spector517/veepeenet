@@ -80,3 +80,18 @@ class ProcessClientsTest(unittest.TestCase):
                 self.assertFalse(os.path.exists(client_conf_path))
             else:
                 self.assertTrue(os.path.exists(client_conf_path))
+
+    def test_actualize_clients_local_ip(self) -> None:
+        clients = self.clients.copy()
+        clients.append(
+            {'name': 'client3', 'ip': '10.6.0.5'}
+        )
+        subnet = "10.6.0.0/24"
+        expected_clients = [
+            {'name': 'client1', 'ip': '10.6.0.2'},
+            {'name': 'client2', 'ip': '10.6.0.3'},
+            {'name': 'client3', 'ip': '10.6.0.4'},
+            {'name': 'client3', 'ip': '10.6.0.5'}
+        ]
+        wireguard.actualize_clients_local_ip(clients, subnet)
+        self.assertEqual(expected_clients, clients)
