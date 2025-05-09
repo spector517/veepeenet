@@ -226,36 +226,27 @@ def dump_xray(config: dict) -> str:
             {
                 'port': config['server']['port'],
                 'protocol': 'vless',
-                'tag': 'vless_tls',
+                'tag': 'vless-inbound',
                 'settings': {
                     'clients': clients,
                     'decryption': 'none'
                 },
                 'streamSettings': {
-                    'network': 'tcp',
+                    'network': 'raw',
                     'security': 'reality',
                     'realitySettings': {
-                        'show': False,
                         'dest': f"{config['server']['reality_host']}:{config['server']['port']}",
-                        'xver': 0,
                         'serverNames': [config['server']['reality_host']],
                         'privateKey': config['server']['private_key'],
-                        'minClientVer': '',
-                        'maxClientVer': '',
-                        'maxTimeDiff': 0,
                         'shortIds': [client['short_id'] for client in config['clients']]
                     }
-                },
-                'sniffing': {
-                    'enabled': True,
-                    'destOverride': ['http', 'tls', 'quic']
                 }
             }
         ],
         'outbounds': [
             {
                 'protocol': 'freedom',
-                'tag': 'direct'
+                'tag': 'direct-outbound'
             }
         ]
     }
