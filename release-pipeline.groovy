@@ -140,7 +140,7 @@ node(params.NODE) {
             [
                 "$repoDir/install.sh", "$repoDir/install-wg.sh", "$repoDir/install-xray.sh",
                 "$repoDir/uninstall.sh", "$repoDir/uninstall-wg.sh", "$repoDir/uninstall-xray.sh",
-                "$repoDir/*.py", "$repoDir/xray.service", metaFilePath
+                "$repoDir/*.py", "$repoDir/xray.service", metaFilePath, "$repoDir/LICENSE"
             ].each { component ->
                 sh "cp $component ./"
             }
