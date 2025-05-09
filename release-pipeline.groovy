@@ -48,7 +48,8 @@ node(params.NODE) {
 
     repoDir = "${pwd()}/veepeenet"
     venvPath = "${pwd()}/venv"
-    xrayDistribPath = "${pwd()}/Xray-linux-64"
+    xrayDistribName = "Xray-linux-64"
+    xrayDistribPath = "${pwd()}/$xrayDistribName"
     distribName = "veepeenet-$DISTRIB_VERSION"
     distribPath = "${pwd()}/$distribName"
     archiveDistribName = "veepeenet.tar.gz"
@@ -144,7 +145,10 @@ node(params.NODE) {
                 sh "cp $component ./"
             }
             sh "chmod 755 *.sh"
-            sh "cp -r $xrayDistribPath ./"
+            dir(xrayDistribName) {
+                sh "cp $xrayDistribPath/xray ./"
+                sh "cp $xrayDistribPath/LICENSE ./"
+            }
             log "Required components successfully copied"
         }
         log "Archiving distrib"

@@ -3,7 +3,6 @@
 ### Install Xray Project part
 mkdir -p \
   /usr/local/etc/xray \
-  /usr/local/share/xray \
   /var/log/xray \
 
 if [[ -f '/etc/systemd/system/xray.service' ]]; then
@@ -27,8 +26,6 @@ if [[ $Xray_SERVICE_ALREADY_INSTALLED -eq 1 ]]; then
   fi
 fi
 
-cp ./Xray-linux-64/geoip.dat /usr/local/share/xray
-cp ./Xray-linux-64/geosite.dat /usr/local/share/xray
 cp ./Xray-linux-64/xray /usr/local/bin
 chmod 755 /usr/local/bin/xray
 cp ./xray.service /etc/systemd/system
