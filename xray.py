@@ -7,7 +7,6 @@ from typing import List
 import common
 
 TMP_DIR = '/tmp/xray'
-XRAY_INSTALLER_SCRIPT_URL = 'https://github.com/XTLS/Xray-install/raw/main/install-release.sh'
 XRAY_CONF_PATH = '/usr/local/etc/xray/config.json'
 XRAY_PROTOCOL = 'tcp'
 SERVICE_NAME = 'xray'
