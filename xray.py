@@ -3,6 +3,7 @@ import json
 import os.path
 import re
 from typing import List
+from urllib.parse import quote
 
 import common
 
@@ -199,6 +200,7 @@ def generate_new_client(new_client_name: str, config: dict) -> dict:
     port = config['server']['port']
     reality_host = config['server']['reality_host']
     public_key = config['server']['public_key']
+    spider_x = quote("/" + new_client_name, safe="")
     return {
         'name': new_client_name,
         'uuid': uuid,
@@ -212,7 +214,8 @@ def generate_new_client(new_client_name: str, config: dict) -> dict:
                        f'&sni={reality_host}'
                        f'&pbk={public_key}'
                        f'&sid={short_id}'
-                       f'&spx=%2F#{new_client_name}@{host}')
+                       f'&spx={spider_x}'
+                       f'#{new_client_name}@{host}')
     }
 
 

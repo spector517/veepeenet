@@ -38,7 +38,7 @@ class GenNewClientTest(unittest.TestCase):
             'import_url': (f'vless://{self.test_uuid}@my.server.local:443?flow=xtls-rprx-vision'
                            '&type=tcp&security=reality&fp=chrome&sni=microsoft.com'
                            '&pbk=server_public_key&sid=0001&'
-                           f'spx=%2F#{client_name}@my.server.local')
+                           f'spx=%2F{client_name}#{client_name}@my.server.local')
         }
         self.assertEqual(expected_client, xray.generate_new_client(client_name, self.config))
 
@@ -55,6 +55,6 @@ class GenNewClientTest(unittest.TestCase):
                            '&security=reality'
                            '&fp=chrome&sni=microsoft.com'
                            '&pbk=server_public_key&sid=0002'
-                           f'&spx=%2F#{client_name}@my.server.local')
+                           f'&spx=%2F{client_name}#{client_name}@my.server.local')
         }
         self.assertEqual(expected_client, xray.generate_new_client(client_name, self.config))

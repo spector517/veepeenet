@@ -14,7 +14,7 @@
       "uuid": "c1_uuid",
       "short_id": "0001",
       "email": "client1@my.server.local",
-      "import_url": "vless://c1_uuid@my.server.local:443?flow=xtls-rprx-vision&type=tcp&security=reality&fp=chrome&sni=microsoft.com&pbk=server_public_key&sid=0001&spx=%2F#client1@my.server.local"
+      "import_url": "vless://c1_uuid@my.server.local:443?flow=xtls-rprx-vision&type=tcp&security=reality&fp=chrome&sni=microsoft.com&pbk=server_public_key&sid=0001&spx=%2Fclient1#client1@my.server.local"
     }
   ]
 }

@@ -38,6 +38,6 @@ class DumpTest(unittest.TestCase):
                                 '&fp=chrome'
                                 '&sni=microsoft.com'
                                 '&pbk=server_public_key&sid=0001'
-                                '&spx=%2F#client1@my.server.local')
+                                '&spx=%2Fclient1#client1@my.server.local')
         actual_client_dump = xray.dump_client(client)
         self.assertEqual(expected_client_dump, actual_client_dump)
