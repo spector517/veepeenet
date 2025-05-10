@@ -34,6 +34,7 @@ def main():
                                 get_server_version(), get_clients_strings(config)))
         return
 
+    actualize_existing_clients(config)
     existing_clients = common.get_existing_clients(config)
     new_clients_names = common.get_new_clients_names(arguments.add_clients, existing_clients)
     for new_client_name in new_clients_names:
@@ -192,32 +193,37 @@ def generate_server_keys() -> tuple:
 
 
 @common.handle_result
+def actualize_existing_clients(config: dict) -> None:
+    for i, client in enumerate(config['clients']):
+        config['clients'][i] = get_client_config(
+            client['name'], client['uuid'], client['short_id'], config['server'])
+
+
+@common.handle_result
 def generate_new_client(new_client_name: str, config: dict) -> dict:
     existing_numbers = [int(client['short_id']) for client in config['clients']]
     short_id = f'{common.generate_unique_number(range(1, 100), existing_numbers):04}'
     uuid = common.generate_uuid()
-    host = config['server']['host']
-    port = config['server']['port']
-    reality_host = config['server']['reality_host']
-    public_key = config['server']['public_key']
-    spider_x = quote("/" + new_client_name, safe="")
+    return get_client_config(new_client_name, uuid, short_id, config['server'])
+
+
+def get_client_config(name: str, uuid: str, short_id: str, server_config: dict) -> dict:
     return {
-        'name': new_client_name,
+        'name': name,
         'uuid': uuid,
         'short_id': short_id,
-        'email': f'{new_client_name}@{host}',
-        'import_url': (f'vless://{uuid}@{host}:{port}'
+        'email': f"{name}@{server_config['host']}",
+        'import_url': (f"vless://{uuid}@{server_config['host']}:{server_config['port']}"
                        '?flow=xtls-rprx-vision'
                        '&type=tcp'
                        '&security=reality'
                        '&fp=chrome'
-                       f'&sni={reality_host}'
-                       f'&pbk={public_key}'
+                       f"&sni={server_config['reality_host']}"
+                       f"&pbk={server_config['public_key']}"
                        f'&sid={short_id}'
-                       f'&spx={spider_x}'
-                       f'#{new_client_name}@{host}')
+                       f"&spx={quote('/' + name, safe='')}"
+                       f"#{name}@{server_config['host']}")
     }
-
 
 @common.handle_result
 def dump_xray(config: dict) -> str:
