@@ -215,7 +215,7 @@ def get_client_config(name: str, uuid: str, short_id: str, server_config: dict) 
         'email': f"{name}@{server_config['host']}",
         'import_url': (f"vless://{uuid}@{server_config['host']}:{server_config['port']}"
                        '?flow=xtls-rprx-vision'
-                       '&type=tcp'
+                       '&type=raw'
                        '&security=reality'
                        '&fp=chrome'
                        f"&sni={server_config['reality_host']}"

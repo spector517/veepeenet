@@ -36,7 +36,7 @@ class ProcessClientsTest(unittest.TestCase):
             'short_id': '0001',
             'email': f'{client_name}@my.server.local',
             'import_url': (f'vless://{self.test_uuid}@my.server.local:443?flow=xtls-rprx-vision'
-                           '&type=tcp&security=reality&fp=chrome&sni=microsoft.com'
+                           '&type=raw&security=reality&fp=chrome&sni=microsoft.com'
                            '&pbk=server_public_key&sid=0001&'
                            f'spx=%2F{client_name}#{client_name}@my.server.local')
         }
@@ -51,7 +51,7 @@ class ProcessClientsTest(unittest.TestCase):
             'email': f'{client_name}@my.server.local',
             'import_url': (f'vless://{self.test_uuid}@my.server.local:443'
                            f'?flow=xtls-rprx-vision'
-                           '&type=tcp'
+                           '&type=raw'
                            '&security=reality'
                            '&fp=chrome&sni=microsoft.com'
                            '&pbk=server_public_key&sid=0002'
@@ -70,7 +70,7 @@ class ProcessClientsTest(unittest.TestCase):
             'short_id': '0001',
             'email': f'{client_name}@{host}',
             'import_url': (f'vless://c1_uuid@{host}:{port}?flow=xtls-rprx-vision'
-                           f'&type=tcp&security=reality&fp=chrome&sni={reality_host}'
+                           f'&type=raw&security=reality&fp=chrome&sni={reality_host}'
                            '&pbk=server_public_key&sid=0001&'
                            f'spx=%2F{client_name}#{client_name}@{host}')
         }]

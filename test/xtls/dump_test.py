@@ -33,7 +33,7 @@ class DumpTest(unittest.TestCase):
         expected_client_dump = ('client1: '
                                 'vless://c1_uuid@my.server.local:443'
                                 '?flow=xtls-rprx-vision'
-                                '&type=tcp'
+                                '&type=raw'
                                 '&security=reality'
                                 '&fp=chrome'
                                 '&sni=microsoft.com'
