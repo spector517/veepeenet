@@ -32,5 +32,6 @@ chmod u+x /usr/local/lib/veepeenet/wg-config.sh
 
 rm -f /usr/local/bin/wg-config
 ln -s /usr/local/lib/veepeenet/wg-config.sh /usr/local/bin/wg-config
+wg-config
 
 echo 'INFO: VeePeeNET for WireGuard service configuration is ready.'
