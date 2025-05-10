@@ -4,6 +4,8 @@ import os
 import shutil
 import unittest
 
+import mockito
+
 import common
 import wireguard
 
@@ -18,6 +20,7 @@ class ConfigTest(unittest.TestCase):
     original_check_mode = common.CHECK_MODE
     original_config_path = common.CONFIG_PATH
     original_clients_dir = common.DEFAULT_CLIENTS_DIR
+    default_host = '0.0.0.0'
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -37,9 +40,11 @@ class ConfigTest(unittest.TestCase):
         if os.path.exists(self.temp_dir):
             shutil.rmtree(self.temp_dir)
         os.mkdir(self.temp_dir)
+        mockito.when(common).detect_ipv4().thenReturn(self.default_host)
 
     def tearDown(self) -> None:
         shutil.rmtree(self.temp_dir)
+        mockito.unstub()
 
     def test_load_config__no_config_no_args(self) -> None:
         config_path = 'non-existing-config.json'
@@ -49,7 +54,7 @@ class ConfigTest(unittest.TestCase):
             'clients_dir': common.DEFAULT_CLIENTS_DIR,
             'no_ufw': False,
             'server': {
-                'host': 'hostname -i',
+                'host': self.default_host,
                 'port': wireguard.DEFAULT_WIREGUARD_PORT,
                 'subnet': wireguard.DEFAULT_WIREGUARD_SUBNET,
                 'interface': wireguard.DEFAULT_WIREGUARD_INTERFACE,

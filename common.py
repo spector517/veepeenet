@@ -4,6 +4,7 @@ import shutil
 import subprocess
 import sys
 import uuid
+import re
 from typing import List
 
 ROUTE_FILE_PATH = '/proc/net/route'
@@ -19,6 +20,7 @@ DEFAULT_SSH_PORT = 22
 DEFAULT_NO_UFW = False
 DEFAULT_CLIENTS = []
 DEFAULT_DNS = ['1.1.1.1', '1.0.0.1']
+DEFAULT_SERVER_IP = '127.0.0.1'
 
 CHECK_MODE = False
 DEFAULT_CLIENTS_DIR = os.path.expanduser('~/.veepeenet/clients')
@@ -158,7 +160,16 @@ def get_config_value(config: dict, key: str, prefix: str = '') -> any:
 
 @handle_result
 def get_current_host_ip() -> str:
-    return run_command('hostname -i')[1]
+    return detect_ipv4()
+
+
+@handle_result
+def detect_ipv4() -> str:
+    result = run_command('hostname -i', check=False)
+    if result[0] != 0 or not result[1]:
+        return DEFAULT_SERVER_IP
+    matcher = re.search(r'(?:\d{1,3}\.){3}\d{1,3}', result[1])
+    return matcher.group(0) if matcher else DEFAULT_SERVER_IP
 
 
 @handle_result

@@ -8,6 +8,9 @@ import xray
 
 class ServerVersionTest(unittest.TestCase):
 
+    def tearDown(self) -> None:
+        mockito.unstub()
+
     def test_server_version__version_found(self):
         xray_version_string = (
             'Xray 1.8.24 (Xray, Penetrates Everything.) 6baad79 (go1.23.0 linux/amd64)\n'

@@ -25,7 +25,7 @@ class ConfigTest(unittest.TestCase):
             f'Private key: {self.private_key}\n'
             f'Public key: {self.public_key}\n'
         )
-        mockito.when(common).run_command('hostname -i').thenReturn((0, self.hostname, None))
+        mockito.when(common).detect_ipv4().thenReturn(self.hostname, None)
         mockito.when(common).run_command('xray x25519').thenReturn((0, gen_keys_stdout, None))
 
     def tearDown(self) -> None:

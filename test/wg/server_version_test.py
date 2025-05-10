@@ -8,6 +8,9 @@ import wireguard
 
 class ServerVersionTest(unittest.TestCase):
 
+    def tearDown(self) -> None:
+        mockito.unstub()
+
     def test_server_version__version_found(self):
         wg_version_string = 'wireguard-tools v1.0.20210914 - https://git.zx2c4.com/wireguard-tools/\n'
 

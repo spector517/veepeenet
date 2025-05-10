@@ -34,6 +34,9 @@ class TestGetStatus(unittest.TestCase):
         self.server_name = 'Xray'
         self.server_version = '7.7.7 build 777'
 
+    def tearDown(self) -> None:
+        mockito.unstub()
+
     def test_get_status_with_clients(self):
         clients_strings = ['client1', 'client2']
         mockito.when(common).is_service_running(self.service_name).thenReturn(True)
