@@ -66,7 +66,7 @@ def handle_result(func: callable) -> callable:
 def get_version_info() -> str:
     with open(META_FILE_PATH, 'rt', encoding=ENCODING) as fd:
         meta = json.loads(fd.read())
-    return f"{meta['version']}, build {meta['buildNumber']}"
+    return f"{meta['version']} build {meta['buildNumber']}"
 
 
 @handle_result
