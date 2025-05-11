@@ -1,6 +1,6 @@
 #!/bin/bash
 
-read -rp "This action delete ALL your Xray configurations! Are you sure? (Y/N): " confirm
+read -rp "This action delete ALL your Xray configurations and Xray distributive! Are you sure? (Y/N): " confirm
 if ! [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]]; then
   echo "WARN: Aborted."
   exit 0

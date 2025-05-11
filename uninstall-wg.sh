@@ -1,6 +1,6 @@
 #!/bin/bash
 
-read -rp "This action delete ALL your WireGuard configurations! Are you sure? (Y/N): " confirm
+read -rp "This action delete ALL your WireGuard configurations and WireGuard packages! Are you sure? (Y/N): " confirm
 if ! [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]]; then
   echo "WARN: Aborted."
   exit 0
