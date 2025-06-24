@@ -1,9 +1,16 @@
 #!/bin/bash
 
-read -rp "This action delete ALL your Xray configurations and Xray distributive! Are you sure? (Y/N): " confirm
-if ! [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]]; then
-  echo "WARN: Aborted."
-  exit 0
+QUIET=0
+if [[ "$1" == "-q" ]]; then
+  QUIET=1
+fi
+
+if [[ $QUIET -eq 0 ]]; then
+  read -rp "This action delete ALL your Xray configurations and Xray distributive! Are you sure? (Y/N): " confirm
+  if ! [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]]; then
+    echo "WARN: Aborted."
+    exit 0
+  fi
 fi
 
 echo 'INFO: Removing VeePeeNET for Xray service configuration...'
