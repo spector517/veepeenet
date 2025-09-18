@@ -62,14 +62,9 @@
     - name: Install components
       ansible.builtin.shell:
         chdir: "{{ remote_temp_dir.path }}/veepeenet-{{ veepeenet_version }}"
-        cmd: "./install.sh {{ component }}"
+        cmd: "./install-xray.sh"
       become: true
       changed_when: true
-      loop:
-        - wireguard
-        - xray
-      loop_control:
-        loop_var: component
 
     - name: Clean up temporary files on remote hosts
       ansible.builtin.file:

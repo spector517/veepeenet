@@ -1,5 +1,12 @@
 #!/bin/bash
 
+set -e
+
+if [[ "$EUID" -ne 0 ]]; then
+  echo "ERROR: You must run this script as root" >&2
+  exit 1
+fi
+
 QUIET=0
 if [[ "$1" == "-q" ]]; then
   QUIET=1

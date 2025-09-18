@@ -1,19 +1,26 @@
 #!/bin/bash
 
+set -e
+
+if [[ "$EUID" -ne 0 ]]; then
+  echo "ERROR: You must run this script as root" >&2
+  exit 1
+fi
+
 ### Install Xray Project part
 mkdir -p \
   /usr/local/etc/xray \
   /var/log/xray \
 
 if [[ -f '/etc/systemd/system/xray.service' ]]; then
-  Xray_SERVICE_ALREADY_INSTALLED=1
+  XRAY_SERVICE_ALREADY_INSTALLED=1
   echo 'INFO: Xray service already installed'
 else
-  Xray_SERVICE_ALREADY_INSTALLED=0
+  XRAY_SERVICE_ALREADY_INSTALLED=0
   echo 'INFO: Xray is not installed'
 fi
 
-if [[ $Xray_SERVICE_ALREADY_INSTALLED -eq 1 ]]; then
+if [[ $XRAY_SERVICE_ALREADY_INSTALLED -eq 1 ]]; then
   if ! systemctl -q is-active xray.service; then
     echo 'WARN: Xray service is not running'
   else
@@ -32,7 +39,7 @@ cp ./xray.service /etc/systemd/system
 chmod 644 /etc/systemd/system/xray.service
 systemctl daemon-reload
 
-if [[ $Xray_SERVICE_ALREADY_INSTALLED -eq 1 ]]; then
+if [[ $XRAY_SERVICE_ALREADY_INSTALLED -eq 1 ]]; then
   echo 'INFO: Xray service updated'
 else
   systemctl enable xray.service
@@ -57,6 +64,9 @@ if [[ -d '/usr/local/lib/veepeenet' ]] || [[ -d '/etc/veepeenet/xray' ]]  || [[ 
 else
   echo 'INFO: Installing VeePeeNET for Xray service configuration...'
 fi
+
+mkdir -p /usr/local/etc/veepeenet
+cp ./meta.json /usr/local/etc/veepeenet/meta.json
 
 mkdir -p \
   /usr/local/lib/veepeenet \
