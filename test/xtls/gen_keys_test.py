@@ -17,14 +17,16 @@ class GenKeysTest(unittest.TestCase):
         mockito.unstub()
 
     def test_generate_server_keys_success(self) -> None:
-        private_key = 'iL90SiQVSG4TzYyvLsOKP9unFSalPlagjE7_-tmX5XE'
-        public_key = 'nVvbwNvhA7iiS77f2UkFR5h4lZxAnkryO7ZkkqK1eyo'
+        private_key = 'iCnxOZ80KI28or1VFYoVy81yATZxIMLqkdEyqeuNSHc'
+        password = 'vVGaBN8TgepTPbRE62e9Kz5U8gNvtgeY2Y03lgTfsX0'
+        hash32 = 'Ty4Q5ryEH6JAlr-sPZnsQzmf0g0EXQbW8luyhUsi7gQ'
         gen_keys_stdout = (
-            f'Private key: {private_key}\n'
-            f'Public key: {public_key}\n'
+            f'PrivateKey: {private_key}\n'
+            f'Password: {password}\n'
+            f'Hash32: {hash32}\n'
         )
         mockito.when(common).run_command('xray x25519').thenReturn((0, gen_keys_stdout, None))
-        self.assertEqual((private_key, public_key), xray.generate_server_keys())
+        self.assertEqual((private_key, password), xray.generate_server_keys())
 
     def test_generate_server_keys__error_code(self) -> None:
         mockito.when(common).run_command('xray x25519').thenReturn((127, None, None))

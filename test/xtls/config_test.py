@@ -13,7 +13,8 @@ class ConfigTest(unittest.TestCase):
     original_result = common.RESULT.copy()
     hostname = '192.168.1.101'
     private_key = 'iL90SiQVSG4TzYyvLsOKP9unFSalPlagjE7_-tmX5XE_2'
-    public_key = 'nVvbwNvhA7iiS77f2UkFR5h4lZxAnkryO7ZkkqK1eyo_2'
+    password = 'nVvbwNvhA7iiS77f2UkFR5h4lZxAnkryO7ZkkqK1eyo_2'
+    hash32 = 'Ty4Q5ryEH6JAlr-sPZnsQzmf0g0EXQbW8luyhUsi7gQ'
     config_path = os.path.join('xtls', 'res', 'config.json')
 
     @classmethod
@@ -22,8 +23,9 @@ class ConfigTest(unittest.TestCase):
 
     def setUp(self) -> None:
         gen_keys_stdout = (
-            f'Private key: {self.private_key}\n'
-            f'Public key: {self.public_key}\n'
+            f'PrivateKey: {self.private_key}\n'
+            f'Password: {self.password}\n'
+            f'Hash32: {self.hash32}\n'
         )
         mockito.when(common).detect_ipv4().thenReturn(self.hostname, None)
         mockito.when(common).run_command('xray x25519').thenReturn((0, gen_keys_stdout, None))
@@ -43,7 +45,7 @@ class ConfigTest(unittest.TestCase):
                 'reality_host': xray.DEFAULT_REALITY_HOST,
                 'reality_port': xray.DEFAULT_REALITY_PORT,
                 'private_key': self.private_key,
-                'public_key': self.public_key
+                'public_key': self.password
             },
             'clients': common.DEFAULT_CLIENTS
         }
@@ -67,7 +69,7 @@ class ConfigTest(unittest.TestCase):
                 'reality_host': arguments['reality_host'],
                 'reality_port': arguments['reality_port'],
                 'private_key': self.private_key,
-                'public_key': self.public_key
+                'public_key': self.password
             },
             'clients': common.DEFAULT_CLIENTS
         }

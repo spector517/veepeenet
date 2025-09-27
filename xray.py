@@ -186,10 +186,11 @@ def generate_server_keys() -> tuple:
     command_result = common.run_command('xray x25519')
     if command_result[0] != 0:
         raise RuntimeError(f'Keys generation error. Code {command_result[0]}')
-    keys = re.findall(r'(?<=\skey:\s).+$', command_result[1], re.MULTILINE)
-    if len(keys) != 2:
+    private_key = re.findall(r'(?<=PrivateKey: ).+$', command_result[1], re.MULTILINE)
+    public_key = re.findall(r'(?<=Password: ).+$', command_result[1], re.MULTILINE)
+    if not private_key or not public_key:
         raise RuntimeError(f'Keys generation error. Keys not found. Stdout: {command_result[1]}')
-    return keys[0], keys[1]
+    return private_key[0], public_key[0]
 
 
 @common.handle_result
