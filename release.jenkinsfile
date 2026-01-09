@@ -16,7 +16,6 @@ Required parameters list:
 4. XRAY_VERSION
 5. REPO_CLONE_URL
 6. REPO_BRANCH
-7. XRAY_DOWNLOADS_URL
 8. CREATE_RELEASE_URL
 9. UPLOAD_ASSETS_URL
 10.AUTH_TOKEN
@@ -30,7 +29,7 @@ node(params.NODE) {
     stage("Checks") {
         requiredParametersNames = [
             "NODE", "DISTRIB_VERSION", "XRAY_VERSION",
-            "REPO_CLONE_URL", "REPO_BRANCH", "XRAY_DOWNLOADS_URL",
+            "REPO_CLONE_URL", "REPO_BRANCH",
             "CREATE_RELEASE_URL", "UPLOAD_ASSETS_URL", "AUTH_TOKEN"
         ]
         undefinedParams = []
@@ -48,8 +47,6 @@ node(params.NODE) {
 
     repoDir = "${pwd()}/veepeenet"
     venvPath = "${pwd()}/venv"
-    xrayDistribName = "Xray-linux-64"
-    xrayDistribPath = "${pwd()}/$xrayDistribName"
     distribName = "veepeenet-$DISTRIB_VERSION"
     distribPath = "${pwd()}/$distribName"
     archiveDistribName = "veepeenet.tar.gz"
@@ -112,6 +109,16 @@ node(params.NODE) {
     stage("Build") {
         withEnv(["PYTHONPATH=$repoDir"]) {
             dir("$repoDir") {
+                log "Write versions file"
+                versions = [
+                    veepeenet_version: DISTRIB_VERSION,
+                    veepeenet_build: BUILD_NUMBER,
+                    xray_version: XRAY_VERSION
+                ]
+                versionsPath = "app/resources/versions.json"
+                sh "rm -f $versionsPath"
+                writeJSON file: versionsPath, json: versions
+                log "Write versions file success"
                 log "Building wheel"
                 sh "$venvPath/bin/python -m build ./"
                 log "Building wheel successfully"
