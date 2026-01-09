@@ -80,7 +80,7 @@ node(params.NODE) {
         log "Start code linting"
         dir(repoDir) {
             try {
-                resultCode << sh(script: "$venvPath/bin/pylint ./app", returnStatus: true)
+                resultCode = sh(script: "$venvPath/bin/pylint ./app", returnStatus: true)
                 if (resultCode != 0) {
                     error("Code styling need works")
                 }
