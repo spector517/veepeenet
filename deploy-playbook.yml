@@ -62,7 +62,7 @@
     - name: Install components
       ansible.builtin.shell:
         chdir: "{{ remote_temp_dir.path }}/veepeenet-{{ veepeenet_version }}"
-        cmd: "./install-xray.sh"
+        cmd: "./install.sh"
       become: true
       changed_when: true
 
