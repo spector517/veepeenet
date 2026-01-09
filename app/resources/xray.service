@@ -1,5 +1,5 @@
 [Unit]
-Description=Xray Service
+Description=Xray Service (VeePeeNET managed)
 Documentation=https://github.com/xtls
 After=network.target nss-lookup.target
 

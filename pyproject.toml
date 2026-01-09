@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "veepeenet"
+version = "2.0.0"
+description = "VeePeeNET. Setup personal anti-censorships services"
+requires-python = ">=3.12"
+
+dependencies = [
+    "pydantic~=2.12",
+    "typer~=0.21",
+    "requests~=2.32"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest~=9.0",
+    "pytest-mock~=3.15",
+    "build~=1.4",
+    "pylint~=4.0",
+    "ansible-lint~=26.1"
+]
+
+[project.scripts]
+xrayctl = "app.main:app"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+app = ["resources/**"]

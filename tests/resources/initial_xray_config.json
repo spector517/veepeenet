@@ -1,0 +1,50 @@
+{
+  "log": {
+    "access": "/var/log/xray/access.log",
+    "error": "/var/log/xray/error.log",
+    "loglevel": "info",
+    "dnsLog": false
+  },
+  "inbounds": [
+    {
+      "listen": "0.0.0.0",
+      "port": 8443,
+      "protocol": "vless",
+      "tag": "vless-inbound",
+      "settings": {
+        "clients": [],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "realitySettings": {
+          "dest": "example.com:443",
+          "serverNames": [
+            "example.com"
+          ],
+          "privateKey": "very-secret-key",
+          "shortIds": []
+        },
+        "security": "reality"
+      },
+      "sniffing": {
+        "enabled": false,
+        "routeOnly": true,
+        "destOverride": [
+          "http",
+          "tls",
+          "quic"
+        ]
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "tag": "direct",
+      "protocol": "freedom"
+    },
+    {
+      "tag": "blackhole",
+      "protocol": "blackhole"
+    }
+  ]
+}
