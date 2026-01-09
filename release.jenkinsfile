@@ -125,7 +125,7 @@ node(params.NODE) {
             log "Copy required components"
             [
                 "$repoDir/dist/*.whl",
-                "$repoDir/install.sh"
+                "$repoDir/install.sh",
                 "$repoDir/uninstall.sh",
                 "$repoDir/LICENSE"
             ].each { component ->
