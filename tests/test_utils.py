@@ -1,7 +1,13 @@
+from pathlib import Path
+from sys import getdefaultencoding
+from tempfile import TemporaryDirectory
+from time import sleep
+from unittest.mock import MagicMock
+
 import pytest
 from pytest_mock import MockFixture
-from unittest.mock import mock_open, MagicMock
-from sys import getdefaultencoding
+
+from app.model.xray import Xray
 from app.utils import (
     gen_xray_private_key,
     gen_xray_password,
@@ -24,12 +30,11 @@ from app.utils import (
     detect_veepeenet_versions,
     is_xray_service_enabled,
 )
-from app.model.xray import Xray
 
 
-@pytest.fixture
-def valid_xray_config_with_clients_path() -> str:
-    return 'tests/resources/valid_xray_config_with_clients.json'
+@pytest.fixture(name='valid_xray_config_with_clients_path')
+def fixture_valid_xray_config_with_clients_path() -> Path:
+    return Path('tests/resources/valid_xray_config_with_clients.json')
 
 
 class TestGenXrayPrivateKey:
@@ -160,7 +165,8 @@ class TestDisableXrayService:
 
 class TestGetVlessClientUrl:
 
-    def test_get_vless_client_url_success(self, mocker: MockFixture, valid_xray_config_with_clients_path: str):
+    def test_get_vless_client_url_success(
+            self, mocker: MockFixture, valid_xray_config_with_clients_path: Path):
         mocker.patch('app.utils.gen_xray_password', return_value='random-password-1')
         expected_client_url = (
             'vless://random-uuid-1@0.0.0.0:443?flow=xtls-rprx-vision'
@@ -181,8 +187,7 @@ class TestGetVlessClientUrl:
 
         assert actual_url == expected_client_url
 
-
-    def test_get_vless_client_url_not_found(self, valid_xray_config_with_clients_path: str):
+    def test_get_vless_client_url_not_found(self, valid_xray_config_with_clients_path: Path):
         with open(valid_xray_config_with_clients_path, 'rt', encoding=getdefaultencoding()) as f:
             xray_config_content = f.read()
 
@@ -227,53 +232,55 @@ class TestUfwOpenPort:
 
 class TestDetectSshPort:
 
-    def test_detect_ssh_port_found(self, mocker):
+    def test_detect_ssh_port_found(self):
         sshd_config_content = (
             '# This is a comment\n'
             'Port 2222\n'
             'PermitRootLogin no\n'
         )
-        mock_open_func = mocker.patch('builtins.open', mock_open(read_data=sshd_config_content))
+        mock_path = MagicMock(spec=Path)
+        mock_path.read_text.return_value = sshd_config_content
 
-        result = detect_ssh_port('/etc/ssh/sshd_config')
+        result = detect_ssh_port(mock_path)
 
         assert result == 2222
-        mock_open_func.assert_called_once_with(
-            '/etc/ssh/sshd_config', 'rt', encoding='utf-8'
-        )
+        mock_path.read_text.assert_called_once_with(encoding=getdefaultencoding())
 
-    def test_detect_ssh_port_default_port(self, mocker):
+    def test_detect_ssh_port_default_port(self):
         sshd_config_content = (
             '# This is a comment\n'
             'Port 22\n'
             'PermitRootLogin no\n'
         )
-        mocker.patch('builtins.open', mock_open(read_data=sshd_config_content))
+        mock_path = MagicMock(spec=Path)
+        mock_path.read_text.return_value = sshd_config_content
 
-        result = detect_ssh_port('/etc/ssh/sshd_config')
+        result = detect_ssh_port(mock_path)
 
         assert result == 22
 
-    def test_detect_ssh_port_not_found(self, mocker):
+    def test_detect_ssh_port_not_found(self):
         sshd_config_content = (
             '# This is a comment\n'
             'PermitRootLogin no\n'
             'PasswordAuthentication no\n'
         )
-        mocker.patch('builtins.open', mock_open(read_data=sshd_config_content))
+        mock_path = MagicMock(spec=Path)
+        mock_path.read_text.return_value = sshd_config_content
 
-        result = detect_ssh_port('/etc/ssh/sshd_config')
+        result = detect_ssh_port(mock_path)
 
         assert result is None
 
-    def test_detect_ssh_port_commented_line(self, mocker):
+    def test_detect_ssh_port_commented_line(self):
         sshd_config_content = (
             '# Port 2222\n'
             'Port 22\n'
         )
-        mocker.patch('builtins.open', mock_open(read_data=sshd_config_content))
+        mock_path = MagicMock(spec=Path)
+        mock_path.read_text.return_value = sshd_config_content
 
-        result = detect_ssh_port('/etc/ssh/sshd_config')
+        result = detect_ssh_port(mock_path)
 
         assert result == 22
 
@@ -306,65 +313,68 @@ class TestDetectCurrentIpv4:
 
 class TestWriteTextFile:
 
-    def test_write_text_file_new_file(self, mocker):
-        mocker.patch('app.utils.exists', return_value=False)
-        mock_makedirs = mocker.patch('app.utils.makedirs')
-        mock_open_func = mocker.patch('builtins.open', mock_open())
-        mock_chmod = mocker.patch('app.utils.chmod')
+    def test_write_text_file_new_file(self):
+        with TemporaryDirectory() as temp_dir:
+            file_path = Path(temp_dir) / 'test.txt'
 
-        write_text_file('/tmp/test.txt', 'test content')
+            write_text_file(file_path, 'test content')
 
-        mock_makedirs.assert_called_once()
-        mock_open_func.assert_called_once_with('/tmp/test.txt', 'wt', encoding='utf-8')
-        mock_chmod.assert_not_called()
+            assert file_path.exists()
+            assert file_path.read_text(encoding=getdefaultencoding()) == 'test content'
 
-    def test_write_text_file_existing_same_content(self, mocker):
-        mocker.patch('app.utils.exists', return_value=True)
-        mocker.patch('builtins.open', mock_open(read_data='test content'))
-        mock_makedirs = mocker.patch('app.utils.makedirs')
-        mock_chmod = mocker.patch('app.utils.chmod')
+    def test_write_text_file_existing_same_content(self):
+        with TemporaryDirectory() as temp_dir:
+            file_path = Path(temp_dir) / 'test.txt'
+            file_path.write_text('test content', encoding=getdefaultencoding())
+            original_stat = file_path.stat()
 
-        write_text_file('/tmp/test.txt', 'test content')
+            sleep(0.01)
 
-        mock_makedirs.assert_not_called()
-        mock_chmod.assert_not_called()
+            write_text_file(file_path, 'test content')
 
-    def test_write_text_file_existing_different_content(self, mocker):
-        mocker.patch('app.utils.exists', return_value=True)
-        mock_open_func = mocker.patch(
-            'builtins.open',
-            mock_open(read_data='old content')
-        )
-        mock_chmod = mocker.patch('app.utils.chmod')
+            new_stat = file_path.stat()
+            assert original_stat.st_mtime == new_stat.st_mtime
+            assert file_path.read_text(encoding=getdefaultencoding()) == 'test content'
 
-        write_text_file('/tmp/test.txt', 'new content')
+    def test_write_text_file_existing_different_content(self):
+        with TemporaryDirectory() as temp_dir:
+            file_path = Path(temp_dir) / 'test.txt'
+            file_path.write_text('old content', encoding=getdefaultencoding())
 
-        calls = mock_open_func.call_args_list
-        write_call = [c for c in calls if c[0][1] == 'wt']
-        assert len(write_call) > 0
-        mock_chmod.assert_not_called()
+            write_text_file(file_path, 'new content')
 
-    def test_write_text_file_with_chmod(self, mocker):
-        mocker.patch('app.utils.exists', return_value=False)
-        mocker.patch('app.utils.makedirs')
-        mocker.patch('builtins.open', mock_open())
-        mock_chmod = mocker.patch('app.utils.chmod')
+            assert file_path.read_text(encoding=getdefaultencoding()) == 'new content'
 
-        write_text_file('/tmp/test.txt', 'test content', mode=0o644)
+    def test_write_text_file_with_chmod(self):
+        with TemporaryDirectory() as temp_dir:
+            file_path = Path(temp_dir) / 'test.txt'
 
-        mock_chmod.assert_called_once_with('/tmp/test.txt', 0o644)
+            write_text_file(file_path, 'test content', mode=0o644)
 
-    def test_write_text_file_with_directory_creation(self, mocker):
-        mocker.patch('app.utils.exists', return_value=False)
-        mock_makedirs = mocker.patch('app.utils.makedirs')
-        mocker.patch('builtins.open', mock_open())
-        mocker.patch('app.utils.chmod')
+            assert file_path.exists()
+            file_mode = file_path.stat().st_mode & 0o777
+            assert file_mode == 0o644
 
-        write_text_file('/tmp/nested/dir/test.txt', 'content')
+    def test_write_text_file_with_directory_creation(self):
+        with TemporaryDirectory() as temp_dir:
+            file_path = Path(temp_dir) / 'nested' / 'dir' / 'test.txt'
 
-        mock_makedirs.assert_called_once()
-        call_args = mock_makedirs.call_args
-        assert '/tmp/nested/dir' in call_args[0][0]
+            write_text_file(file_path, 'content')
+
+            assert file_path.exists()
+            assert file_path.parent.exists()
+            assert file_path.read_text(encoding=getdefaultencoding()) == 'content'
+
+    def test_write_text_file_with_nested_directory_and_chmod(self):
+        with TemporaryDirectory() as temp_dir:
+            file_path = Path(temp_dir) / 'nested' / 'dir' / 'test.txt'
+
+            write_text_file(file_path, 'content', mode=0o755)
+
+            assert file_path.exists()
+            file_mode = file_path.stat().st_mode & 0o777
+            assert file_mode == 0o755
+            assert file_path.read_text(encoding=getdefaultencoding()) == 'content'
 
 
 class TestIsXrayDistribInstalled:
@@ -414,93 +424,96 @@ class TestIsXrayDistribInstalled:
 class TestInstallXrayDistrib:
 
     def test_install_xray_distrib_new_file(self, mocker):
-        mock_exists = mocker.patch('app.utils.exists', return_value=False)
-        mock_remove = mocker.patch('app.utils.remove')
-        mocker.patch('app.utils.dirname', return_value='/usr/local/bin')
-        mock_makedirs = mocker.patch('app.utils.makedirs')
-        mock_chmod = mocker.patch('app.utils.chmod')
-        mock_get = mocker.patch('app.utils.get')
-        mock_zipfile = mocker.patch('app.utils.ZipFile')
+        mock_bin_path = MagicMock(spec=Path)
+        mock_bin_path.unlink.side_effect = FileNotFoundError()
+        mock_bin_path.parent.mkdir = MagicMock()
+        mock_bin_path.write_bytes = MagicMock()
+        mock_bin_path.chmod = MagicMock()
 
+        mock_get = mocker.patch('app.utils.get_request')
         mock_response = MagicMock()
         mock_response.content = b'zip_content'
         mock_get.return_value = mock_response
 
         mock_xray_file = MagicMock()
         mock_xray_file.read.return_value = b'xray_binary'
+        mock_zipfile = mocker.patch('app.utils.ZipFile')
         mock_zip_instance = MagicMock()
-        mock_zip_instance.__enter__.return_value.open.return_value.__enter__.return_value = mock_xray_file
-        mock_zipfile.return_value.__enter__.return_value = mock_zip_instance
+        open_return_value = mock_zip_instance.__enter__.return_value.open.return_value.__enter__
+        open_return_value.return_value = mock_xray_file
+        mock_zipfile.return_value = mock_zip_instance
 
-        mocker.patch('builtins.open', mock_open())
+        install_xray_distrib('http://example.com/xray.zip', mock_bin_path)
 
-        install_xray_distrib('http://example.com/xray.zip', '/usr/local/bin/xray')
-
-        mock_exists.assert_called_once_with('/usr/local/bin/xray')
-        mock_remove.assert_not_called()
-        mock_makedirs.assert_called_once()
-        assert mock_chmod.call_count == 2
+        mock_bin_path.unlink.assert_called_once()
+        mock_bin_path.parent.mkdir.assert_called_once_with(parents=True, mode=0o755, exist_ok=True)
+        mock_bin_path.write_bytes.assert_called_once_with(b'xray_binary')
+        mock_bin_path.chmod.assert_called_once_with(0o744)
+        mock_get.assert_called_once_with('http://example.com/xray.zip', timeout=20_000)
 
     def test_install_xray_distrib_existing_file(self, mocker):
-        mocker.patch('app.utils.exists', return_value=True)
-        mock_remove = mocker.patch('app.utils.remove')
-        mocker.patch('app.utils.dirname', return_value='/usr/local/bin')
-        mocker.patch('app.utils.makedirs')
-        mocker.patch('app.utils.chmod')
-        mock_get = mocker.patch('app.utils.get')
-        mock_zipfile = mocker.patch('app.utils.ZipFile')
+        mock_bin_path = MagicMock(spec=Path)
+        mock_bin_path.unlink = MagicMock()
+        mock_bin_path.parent.mkdir = MagicMock()
+        mock_bin_path.write_bytes = MagicMock()
+        mock_bin_path.chmod = MagicMock()
 
+        mock_get = mocker.patch('app.utils.get_request')
         mock_response = MagicMock()
         mock_response.content = b'zip_content'
         mock_get.return_value = mock_response
 
         mock_xray_file = MagicMock()
         mock_xray_file.read.return_value = b'xray_binary'
+        mock_zipfile = mocker.patch('app.utils.ZipFile')
         mock_zip_instance = MagicMock()
-        mock_zip_instance.__enter__.return_value.open.return_value.__enter__.return_value = mock_xray_file
-        mock_zipfile.return_value.__enter__.return_value = mock_zip_instance
+        open_return_value = mock_zip_instance.__enter__.return_value.open.return_value.__enter__
+        open_return_value.return_value = mock_xray_file
+        mock_zipfile.return_value = mock_zip_instance
 
-        mocker.patch('builtins.open', mock_open())
+        install_xray_distrib('http://example.com/xray.zip', mock_bin_path)
 
-        install_xray_distrib('http://example.com/xray.zip', '/usr/local/bin/xray')
-
-        mock_remove.assert_called_once_with('/usr/local/bin/xray')
+        mock_bin_path.unlink.assert_called_once()
+        mock_bin_path.parent.mkdir.assert_called_once_with(parents=True, mode=0o755, exist_ok=True)
+        mock_bin_path.write_bytes.assert_called_once_with(b'xray_binary')
+        mock_bin_path.chmod.assert_called_once_with(0o744)
 
 
 class TestIsXrayServiceInstalled:
 
     def test_is_xray_service_installed_true(self, mocker):
         expected_content = '[Unit]\nDescription=Xray Service\n'
-        mocker.patch('app.utils.exists', return_value=True)
+        mock_path = MagicMock(spec=Path)
+        mock_path.read_text.return_value = expected_content
         mock_app_resources = mocker.patch(
             'app.utils.app_resources.joinpath'
         ).return_value
         mock_app_resources.read_text.return_value = expected_content
-        mocker.patch('builtins.open', mock_open(read_data=expected_content))
 
-        result = is_xray_service_installed('/etc/systemd/system/xray.service')
+        result = is_xray_service_installed(mock_path)
 
         assert result is True
+        mock_path.read_text.assert_called_once_with(encoding=getdefaultencoding())
 
-    def test_is_xray_service_installed_file_not_exists(self, mocker):
-        mock_exists = mocker.patch('app.utils.exists', return_value=False)
+    def test_is_xray_service_installed_file_not_exists(self):
+        mock_path = MagicMock(spec=Path)
+        mock_path.read_text.side_effect = FileNotFoundError()
 
-        result = is_xray_service_installed('/etc/systemd/system/xray.service')
+        result = is_xray_service_installed(mock_path)
 
         assert result is False
-        mock_exists.assert_called_once_with('/etc/systemd/system/xray.service')
 
     def test_is_xray_service_installed_different_content(self, mocker):
         expected_content = '[Unit]\nDescription=Xray Service\n'
         actual_content = '[Unit]\nDescription=Different Service\n'
-        mocker.patch('app.utils.exists', return_value=True)
+        mock_path = MagicMock(spec=Path)
+        mock_path.read_text.return_value = actual_content
         mock_app_resources = mocker.patch(
             'app.utils.app_resources.joinpath'
         ).return_value
         mock_app_resources.read_text.return_value = expected_content
-        mocker.patch('builtins.open', mock_open(read_data=actual_content))
 
-        result = is_xray_service_installed('/etc/systemd/system/xray.service')
+        result = is_xray_service_installed(mock_path)
 
         assert result is False
 
@@ -508,6 +521,7 @@ class TestIsXrayServiceInstalled:
 class TestInstallXrayService:
     def test_install_xray_service_success(self, mocker):
         service_content = '[Unit]\nDescription=Xray Service\n'
+        mock_path = MagicMock(spec=Path)
         mock_app_resources = mocker.patch(
             'app.utils.app_resources.joinpath'
         ).return_value
@@ -515,10 +529,10 @@ class TestInstallXrayService:
         mock_write_text_file = mocker.patch('app.utils.write_text_file')
         mock_run_command = mocker.patch('app.utils.run_command', return_value=(0, '', ''))
 
-        install_xray_service('/etc/systemd/system/xray.service')
+        install_xray_service(mock_path)
 
         mock_write_text_file.assert_called_once_with(
-            '/etc/systemd/system/xray.service',
+            mock_path,
             service_content,
             mode=0o644
         )

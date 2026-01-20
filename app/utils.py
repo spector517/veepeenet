@@ -1,13 +1,13 @@
+from importlib.resources import files
 from io import BytesIO
+from pathlib import Path
 from re import findall, MULTILINE, search
 from subprocess import run
 from sys import getdefaultencoding
-from os.path import exists, dirname
-from os import makedirs, chmod, remove
-from importlib.resources import files
+from typing import Literal
 from zipfile import ZipFile
 
-from requests import get
+from requests import get as get_request
 
 from app.model.xray import Xray
 from app.view import VersionsView
@@ -23,29 +23,30 @@ def is_xray_distrib_installed(version: str) -> bool:
     return version in run_result[1]
 
 
-def install_xray_distrib(zip_url: str, bin_path: str) -> None:
-    if exists(bin_path):
-        remove(bin_path)
-    bin_dir = dirname(bin_path)
-    makedirs(bin_dir, exist_ok=True)
-    chmod(bin_dir, 0o755)
-    distrib_bytes = get(zip_url).content
+def install_xray_distrib(zip_url: str, bin_path: Path) -> None:
+    try:
+        bin_path.unlink()
+    except FileNotFoundError:
+        ...
+    bin_path.parent.mkdir(parents=True, mode=0o755, exist_ok=True)
+
+    distrib_bytes = get_request(zip_url, timeout=20_000).content
     with ZipFile(BytesIO(distrib_bytes)) as zip_file:
-        with zip_file.open('xray') as xray_file, open(bin_path, 'wb') as xray_out_file:
-            xray_out_file.write(xray_file.read())
-    chmod(bin_path, 0o744)
+        with zip_file.open('xray') as xray_file:
+            bin_path.write_bytes(xray_file.read())
+            bin_path.chmod(0o744)
 
 
-def is_xray_service_installed(unit_path: str) -> bool:
-    if not exists(unit_path):
+def is_xray_service_installed(unit_path: Path) -> bool:
+    try:
+        actual_unit_content = unit_path.read_text(encoding=getdefaultencoding())
+        expected_unit_content = app_resources.joinpath('xray.service').read_text()
+        return expected_unit_content == actual_unit_content
+    except FileNotFoundError:
         return False
-    expected_unit_content = app_resources.joinpath('xray.service').read_text()
-    with open(unit_path, 'rt', encoding=getdefaultencoding()) as fd:
-        actual_unit_content = fd.read()
-    return actual_unit_content == expected_unit_content
 
 
-def install_xray_service(unit_path: str) -> None:
+def install_xray_service(unit_path: Path) -> None:
     unit_content = app_resources.joinpath('xray.service').read_text()
     write_text_file(unit_path, unit_content, mode=0o644)
     run_command('systemctl daemon-reload', check=True)
@@ -106,38 +107,38 @@ def disable_xray_service() -> None:
 def get_vless_client_url(client_name: str, xray_config: Xray) -> str | None:
     for i, client in enumerate(xray_config.inbounds[0].settings.clients):
         if client_name == client.email.split('@')[0]:
+            sni = xray_config.inbounds[0].stream_settings.reality_settings.server_names[0]
+            password = gen_xray_password(
+                xray_config.inbounds[0].stream_settings.reality_settings.private_key)
             return (f'vless://{client.id}@{xray_config.inbounds[0].listen}:'
                     f'{xray_config.inbounds[0].port}'
                     '?flow=xtls-rprx-vision'
                     '&type=raw'
                     '&security=reality'
                     '&fp=chrome'
-                    f'&sni={xray_config.inbounds[0].stream_settings.reality_settings.server_names[0]}'
-                    f'&pbk={gen_xray_password(
-                        xray_config.inbounds[0].stream_settings.reality_settings.private_key
-                    )}'
+                    f'&sni={sni}'
+                    f'&pbk={password}'
                     f'&sid={xray_config.inbounds[0].stream_settings.reality_settings.short_ids[i]}'
                     f'&spx=%2F{client_name}'
                     f'#{client.email}')
     return None
 
 
-def ufw_open_port(open_port: int, open_port_protocol: str, ssh_port: int) -> None:
+def ufw_open_port(
+        open_port: int, open_port_protocol: Literal['tcp', 'udp'], ssh_port: int) -> None:
     run_command((f'ufw allow {open_port}/{open_port_protocol}'
                  f' && ufw allow {ssh_port}/tcp'
                  ' && yes | ufw enable'
                  ' && ufw reload'))
 
 
-def detect_ssh_port(sshd_config_path: str) -> int | None:
-    with open(sshd_config_path, 'rt', encoding=getdefaultencoding()) as fd:
-        lines = fd.readlines()
-        for line in lines:
-            if line.strip().startswith('#'):
-                continue
-            if line.strip().startswith('Port'):
-                return int(line.strip().split(' ')[-1])
-        return None
+def detect_ssh_port(sshd_config_path: Path) -> int | None:
+    for line in sshd_config_path.read_text(encoding=getdefaultencoding()).splitlines():
+        if line.strip().startswith('#'):
+            continue
+        if line.strip().startswith('Port'):
+            return int(line.strip().split(' ')[-1])
+    return None
 
 
 def detect_current_ipv4() -> str | None:
@@ -146,20 +147,16 @@ def detect_current_ipv4() -> str | None:
     return matcher.group(0) if matcher else None
 
 
-def write_text_file(file_path: str, text: str, mode: int = 0) -> None:
-    content_equals = False
-    if not exists(file_path):
-        makedirs(dirname(file_path), exist_ok=True)
-    else:
-        with open(file_path, 'rt', encoding=getdefaultencoding()) as fd:
-            if fd.read() == text:
-                content_equals = True
-
-    if not content_equals:
-        with open(file_path, 'wt', encoding=getdefaultencoding()) as fd:
-            fd.write(text)
+def write_text_file(file_path: Path, text: str, mode: int = 0) -> None:
+    try:
+        content = file_path.read_text(encoding=getdefaultencoding())
+        if content != text:
+            file_path.write_text(text, encoding=getdefaultencoding())
+    except FileNotFoundError:
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_text(text, encoding=getdefaultencoding())
     if mode:
-        chmod(file_path, mode)
+        file_path.chmod(mode)
 
 
 def run_command(command: str, stdin: str = '', check: bool = False, timeout: int = 20_000) \
