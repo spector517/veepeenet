@@ -7,15 +7,15 @@ from app.defaults import XRAY_ACCESS_LOG_PATH, XRAY_ERROR_LOG_PATH
 
 
 class Log(XrayModel):
-    access: str = Field(default=XRAY_ACCESS_LOG_PATH)
-    error: str = Field(default=XRAY_ERROR_LOG_PATH)
+    access: str = Field(default=str(XRAY_ACCESS_LOG_PATH))
+    error: str = Field(default=str(XRAY_ERROR_LOG_PATH))
     loglevel: Literal['off', 'error', 'info', 'debug'] = Field(default='info')
     dns_log: bool = Field(default=False)
 
 
 class Dns(XrayModel):
     servers: list[str] = Field(
-        default=['1.1.1.1', '1.0.0.1', '8.8.8.8', '8.8.4.4'])
+        default_factory=lambda: ['1.1.1.1', '1.0.0.1', '8.8.8.8', '8.8.4.4'])
 
 
 class DnsOutbound(XrayModel):

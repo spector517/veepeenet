@@ -159,6 +159,30 @@ def write_text_file(file_path: Path, text: str, mode: int = 0) -> None:
         file_path.chmod(mode)
 
 
+def remove_duplicates(source: list) -> list:
+    result = []
+    for item in source:
+        if item not in result:
+            result.append(item)
+    return result
+
+
+def get_new_items(old: list, new: list) -> list:
+    new_items = []
+    for item in new:
+        if item not in old:
+            new_items.append(item)
+    return new_items
+
+
+def get_existing_items(old: list, new: list) -> list:
+    existing = []
+    for item in new:
+        if item in old:
+            existing.append(item)
+    return existing
+
+
 def run_command(command: str, stdin: str = '', check: bool = False, timeout: int = 20_000) \
         -> tuple[int, str, str]:
     run_result = run(

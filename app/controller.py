@@ -31,7 +31,10 @@ from app.utils import (
     install_xray_distrib,
     install_xray_service,
     detect_veepeenet_versions,
-    start_xray_service
+    start_xray_service,
+    remove_duplicates,
+    get_new_items,
+    get_existing_items
 )
 from app.view import ServerView, ClientView
 
@@ -213,9 +216,9 @@ def add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -> 
     host = xray_config.inbounds[0].listen
     short_ids = xray_config.inbounds[0].stream_settings.reality_settings.short_ids
 
-    existing_names = set([client.email.split('@')[0] for client in clients])
-    new_names = set(names) - existing_names
-    already_existing_names = set(names) & existing_names
+    existing_names = remove_duplicates([client.email.split('@')[0] for client in clients])
+    new_names = get_new_items(existing_names, remove_duplicates(names))
+    already_existing_names = get_existing_items(existing_names, new_names)
 
     if already_existing_names:
         print('These clients already exist and will be skipped:',

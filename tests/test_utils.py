@@ -29,6 +29,9 @@ from app.utils import (
     run_command,
     detect_veepeenet_versions,
     is_xray_service_enabled,
+    remove_duplicates,
+    get_new_items,
+    get_existing_items,
 )
 
 
@@ -633,7 +636,7 @@ class TestRunCommand:
         assert call_args[1]['timeout'] == 5
 
 
-class TestDetectVeepeeenetVersions:
+class TestDetectVeepeenetVersions:
 
     def test_detect_veepeenet_versions_success(self, mocker):
         versions_json = '{"app": "1.0.0", "xray": "1.8.0"}'
@@ -653,3 +656,188 @@ class TestDetectVeepeeenetVersions:
         assert result == mock_versions_view
         mock_app_resources.read_text.assert_called_once_with('utf-8')
         mock_validate.assert_called_once_with(versions_json)
+
+
+class TestRemoveDuplicates:
+
+    def test_remove_duplicates_empty_list(self):
+        result = remove_duplicates([])
+
+        assert not result
+
+    def test_remove_duplicates_no_duplicates(self):
+        source = [1, 2, 3, 4, 5]
+
+        result = remove_duplicates(source)
+
+        assert result == [1, 2, 3, 4, 5]
+
+    def test_remove_duplicates_with_duplicates(self):
+        source = [1, 2, 2, 3, 3, 3, 4, 5, 5]
+
+        result = remove_duplicates(source)
+
+        assert result == [1, 2, 3, 4, 5]
+
+    def test_remove_duplicates_all_same(self):
+        source = [5, 5, 5, 5, 5]
+
+        result = remove_duplicates(source)
+
+        assert result == [5]
+
+    def test_remove_duplicates_strings(self):
+        source = ['a', 'b', 'a', 'c', 'b', 'd']
+
+        result = remove_duplicates(source)
+
+        assert result == ['a', 'b', 'c', 'd']
+
+    def test_remove_duplicates_mixed_types(self):
+        source = [1, 'a', 1, 'a', 2, 'b']
+
+        result = remove_duplicates(source)
+
+        assert result == [1, 'a', 2, 'b']
+
+
+class TestGetNewItems:
+
+    def test_get_new_items_no_new_items(self):
+        old = [1, 2, 3]
+        new = [1, 2, 3]
+
+        result = get_new_items(old, new)
+
+        assert not result
+
+    def test_get_new_items_all_new(self):
+        old = [1, 2, 3]
+        new = [4, 5, 6]
+
+        result = get_new_items(old, new)
+
+        assert result == [4, 5, 6]
+
+    def test_get_new_items_mixed(self):
+        old = [1, 2, 3]
+        new = [2, 3, 4, 5]
+
+        result = get_new_items(old, new)
+
+        assert result == [4, 5]
+
+    def test_get_new_items_empty_old(self):
+        old = []
+        new = [1, 2, 3]
+
+        result = get_new_items(old, new)
+
+        assert result == [1, 2, 3]
+
+    def test_get_new_items_empty_new(self):
+        old = [1, 2, 3]
+        new = []
+
+        result = get_new_items(old, new)
+
+        assert not result
+
+    def test_get_new_items_both_empty(self):
+        old = []
+        new = []
+
+        result = get_new_items(old, new)
+
+        assert not result
+
+    def test_get_new_items_strings(self):
+        old = ['a', 'b', 'c']
+        new = ['b', 'c', 'd', 'e']
+
+        result = get_new_items(old, new)
+
+        assert result == ['d', 'e']
+
+    def test_get_new_items_preserves_order(self):
+        old = [1, 2]
+        new = [5, 1, 3, 2, 4]
+
+        result = get_new_items(old, new)
+
+        assert result == [5, 3, 4]
+
+
+class TestGetExistingItems:
+
+    def test_get_existing_items_all_exist(self):
+        old = [1, 2, 3]
+        new = [1, 2, 3]
+
+        result = get_existing_items(old, new)
+
+        assert result == [1, 2, 3]
+
+    def test_get_existing_items_none_exist(self):
+        old = [1, 2, 3]
+        new = [4, 5, 6]
+
+        result = get_existing_items(old, new)
+
+        assert not result
+
+    def test_get_existing_items_partial(self):
+        old = [1, 2, 3]
+        new = [2, 3, 4, 5]
+
+        result = get_existing_items(old, new)
+
+        assert result == [2, 3]
+
+    def test_get_existing_items_empty_old(self):
+        old = []
+        new = [1, 2, 3]
+
+        result = get_existing_items(old, new)
+
+        assert not result
+
+    def test_get_existing_items_empty_new(self):
+        old = [1, 2, 3]
+        new = []
+
+        result = get_existing_items(old, new)
+
+        assert not result
+
+    def test_get_existing_items_both_empty(self):
+        old = []
+        new = []
+
+        result = get_existing_items(old, new)
+
+        assert not result
+
+    def test_get_existing_items_strings(self):
+        old = ['a', 'b', 'c']
+        new = ['b', 'c', 'd', 'e']
+
+        result = get_existing_items(old, new)
+
+        assert result == ['b', 'c']
+
+    def test_get_existing_items_preserves_order(self):
+        old = [1, 2, 3, 4, 5]
+        new = [5, 1, 3, 2, 4]
+
+        result = get_existing_items(old, new)
+
+        assert result == [5, 1, 3, 2, 4]
+
+    def test_get_existing_items_duplicates_in_new(self):
+        old = [1, 2, 3]
+        new = [1, 2, 1, 3, 2]
+
+        result = get_existing_items(old, new)
+
+        assert result == [1, 2, 1, 3, 2]

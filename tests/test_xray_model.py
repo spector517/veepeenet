@@ -44,7 +44,7 @@ class TestDns:
         }
 
         dns = Dns()
-        dns.servers.append('77.88.8.8')
+        dns.servers.append('77.88.8.8') # pylint: disable=no-member
         actual_map = dns.model_dump(by_alias=True)
 
         assert actual_map == expected_map
