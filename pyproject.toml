@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "veepeenet"
 version = "2.0.0"
-description = "VeePeeNET. Setup personal anti-censorships services"
+description = "VeePeeNET. Deploy personal anti-censorships services"
 requires-python = ">=3.12"
 
 dependencies = [

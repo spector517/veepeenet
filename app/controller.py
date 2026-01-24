@@ -1,6 +1,6 @@
-from sys import getdefaultencoding, exit
-from os.path import exists
 from os import getuid
+from pathlib import Path
+from sys import getdefaultencoding, exit as sys_exit
 from urllib.parse import urljoin
 from uuid import uuid4
 
@@ -13,9 +13,9 @@ from app.defaults import (
     XRAY_ACCESS_LOG_PATH,
     XRAY_ERROR_LOG_PATH
 )
+from app.model.vless_inbound import Client
 from app.model.vless_inbound import VlessInbound, StreamSettings, RealitySettings
 from app.model.xray import Xray
-from app.model.vless_inbound import Client
 from app.utils import (
     gen_xray_private_key,
     write_text_file,
@@ -36,14 +36,14 @@ from app.utils import (
 from app.view import ServerView, ClientView
 
 
-def check_and_prepare(
-        bin_path: str = XRAY_BINARY_PATH,
-        unit_path: str = XRAY_SERVICE_UNIT_PATH,
+def check_and_install(
+        bin_path: Path = XRAY_BINARY_PATH,
+        unit_path: Path = XRAY_SERVICE_UNIT_PATH,
         archive_name: str = XRAY_ARCHIVE_NAME
 ) -> None:
     if getuid() != 0:
         print('Xray configuration must be run as root')
-        exit(-1)
+        sys_exit(-1)
     versions = detect_veepeenet_versions()
     was_stopped = False
 
@@ -76,13 +76,19 @@ def check_and_prepare(
         print('Started Xray service')
 
 
+def exit_if_xray_config_not_found(xray_config_path: Path = XRAY_CONFIG_PATH) -> None:
+    if not xray_config_path.exists():
+        print('Xray config file not found, please run the `config` command first')
+        sys_exit(-1)
+
+
 def config(
         listen: str,
         listen_port: int,
         reality_host: str,
         reality_port: int,
         clean: bool,
-        xray_config_path: str = XRAY_CONFIG_PATH
+        xray_config_path: Path = XRAY_CONFIG_PATH
 ) -> None:
     if not listen:
         listen = detect_current_ipv4()
@@ -93,12 +99,12 @@ def config(
     if not detect_host_address_answer:
         raise RuntimeError('Please specify it manually via --host option')
 
-    if not exists(xray_config_path) or clean:
+    if not xray_config_path.exists() or clean:
         if clean:
             answer = confirm_config_rewriting()
             if not answer:
                 print('Aborted')
-                exit(0)
+                sys_exit(0)
 
         xray_config = create_config(listen, listen_port, reality_host, reality_port)
     else:
@@ -121,7 +127,8 @@ def confirm_host_detection(host: str) -> bool:
 
 
 def confirm_config_rewriting() -> bool:
-    answer = input('ATTENTION!!! Xray config file already exists, are you sure to overwrite it? (y/N): ')
+    answer = input('ATTENTION!!!'
+                   'Xray config file already exists, are you sure to overwrite it? (y/N): ')
     return answer.lower() == 'y'
 
 
@@ -138,11 +145,12 @@ def create_config(listen: str, listen_port: int, reality_host: str, reality_port
     return Xray(inbounds=[vless_inbound])
 
 
-def load_config(xray_config_path: str) -> Xray:
-    if not exists(xray_config_path):
-        raise FileNotFoundError(f'Config file not found: {xray_config_path}')
-    with open(xray_config_path, 'rt', encoding=getdefaultencoding()) as config_file:
-        config_content = config_file.read()
+def load_config(xray_config_path: Path) -> Xray:
+    try:
+        config_content = xray_config_path.read_text(getdefaultencoding())
+    except FileNotFoundError:
+        print('Config file not found')
+        raise
     return Xray.model_validate_json(config_content, by_alias=True)
 
 
@@ -161,9 +169,6 @@ def update_config(
 
 
 def status() -> ServerView:
-    if not exists(XRAY_CONFIG_PATH):
-        print('Xray config file not found, please run the `init` command first')
-        exit(-1)
     xray_config = load_config(XRAY_CONFIG_PATH)
     versions = detect_veepeenet_versions()
 
@@ -186,10 +191,7 @@ def status() -> ServerView:
         clients=client_views)
 
 
-def stop(xray_config_path: str = XRAY_CONFIG_PATH) -> None:
-    if not exists(xray_config_path):
-        print('Xray config file not found, please run the `init` command first')
-        exit(-1)
+def stop() -> None:
     if not is_xray_service_running():
         print('Xray service is not running')
         return
@@ -197,10 +199,7 @@ def stop(xray_config_path: str = XRAY_CONFIG_PATH) -> None:
     print('Xray service stopped')
 
 
-def start(xray_config_path: str = XRAY_CONFIG_PATH) -> None:
-    if not exists(xray_config_path):
-        print('Xray config file not found, please run the `init` command first')
-        exit(-1)
+def start() -> None:
     if is_xray_service_running():
         print('Xray service is already running')
         return
@@ -208,11 +207,7 @@ def start(xray_config_path: str = XRAY_CONFIG_PATH) -> None:
     print('Xray service started')
 
 
-def add_clients(names: list[str], xray_config_path: str = XRAY_CONFIG_PATH) -> None:
-    if not exists(xray_config_path):
-        print('Xray config file not found, please run the `init` command first')
-        exit(-1)
-
+def add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -> None:
     xray_config = load_config(XRAY_CONFIG_PATH)
     clients = xray_config.inbounds[0].settings.clients
     host = xray_config.inbounds[0].listen

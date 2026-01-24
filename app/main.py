@@ -1,18 +1,49 @@
-from typing import Annotated
+from functools import wraps
+from typing import Annotated, Callable, Any
 
 from typer import Typer, Option, Argument
 
+from app import controller
 from app.defaults import (
     VLESS_LISTEN_PORT,
     REALITY_HOST,
     REALITY_PORT,
 )
-import app.controller as controller
 
 app = Typer()
 
 
+def handle_error(func: Callable[..., ...]) -> Callable[..., ...]:
+    def get_error_text() -> str:
+        errors = {
+            config: 'Error during configuration Xray service',
+            status: 'Error retrieving status of Xray service',
+            start: 'Error starting Xray service',
+            stop: 'Error stopping Xray service',
+            restart: 'Error restarting Xray service',
+            add_clients: 'Error adding clients to Xray service',
+            remove_clients: 'Error removing clients from Xray service',
+        }
+        try:
+            return errors[func]
+        except KeyError:
+            return 'Unknown error'
+
+    @wraps(func)
+    def wrapper(*args, **kwargs) -> Any | None:
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            print(f'{get_error_text()}: {e}')
+            if '_debug' in kwargs and kwargs['_debug']:
+                raise
+            return None
+
+    return wrapper
+
+
 @app.command(help='Initialize Xray VLESS server with Reality')
+@handle_error
 def config(
         host: Annotated[str, Option(
             help=('Public interface of server.'
@@ -22,83 +53,63 @@ def config(
         reality_host: Annotated[str, Option(help='Reality host.')] = REALITY_HOST,
         reality_port: Annotated[int, Option(help='Reality port.')] = REALITY_PORT,
         clean: Annotated[bool, Option(help='Override current configuration')] = False,
-        debug: Annotated[bool, Option(hidden=True)] = False
+        _debug: Annotated[bool, Option('--debug', hidden=True)] = False
 ) -> None:
-    try:
-        controller.check_and_prepare()
-        controller.config(host, port, reality_host, reality_port, clean)
-        print('Configuration completed')
-    except Exception as e:
-        print(f'Error during initialization: {e}')
-        if debug:
-            raise e
+    controller.check_and_install()
+    controller.config(host, port, reality_host, reality_port, clean)
+    print('Configuration completed')
 
 
 @app.command(help='Show Xray service status')
+@handle_error
 def status(json: Annotated[bool, Option(help='Show in JSON-format')] = False,
-           debug: Annotated[bool, Option(hidden=True)] = False
-           ) -> None:
-    try:
-        controller.check_and_prepare()
-        server_view = controller.status()
-        if json:
-            print(server_view.model_dump_json(exclude_none=True, indent=2))
-        else:
-            print(repr(server_view))
-    except Exception as e:
-        print(f'Error retrieving status: {e}')
-        if debug:
-            raise e
+           _debug: Annotated[bool, Option(hidden=True)] = False) -> None:
+    controller.exit_if_xray_config_not_found()
+    controller.check_and_install()
+    server_view = controller.status()
+    if json:
+        print(server_view.model_dump_json(exclude_none=True, indent=2))
+    else:
+        print(repr(server_view))
 
 
 @app.command(help='Start Xray service')
-def start(debug: Annotated[bool, Option(hidden=True)] = False) -> None:
-    try:
-        controller.check_and_prepare()
-        controller.start()
-    except Exception as e:
-        print(f'Error starting Xray service: {e}')
-        if debug:
-            raise e
+@handle_error
+def start(_debug: Annotated[bool, Option(hidden=True)] = False) -> None:
+    controller.exit_if_xray_config_not_found()
+    controller.check_and_install()
+    controller.start()
 
 
 @app.command(help='Stop Xray service')
-def stop(debug: Annotated[bool, Option(hidden=True)] = False) -> None:
-    try:
-        controller.check_and_prepare()
-        controller.stop()
-    except Exception as e:
-        print(f'Error stopping Xray service: {e}')
-        if debug:
-            raise e
+@handle_error
+def stop(_debug: Annotated[bool, Option(hidden=True)] = False) -> None:
+    controller.exit_if_xray_config_not_found()
+    controller.check_and_install()
+    controller.stop()
 
 
 @app.command(help='Restart Xray service')
-def restart(debug: Annotated[bool, Option(hidden=True)] = False) -> None:
-    try:
-        controller.check_and_prepare()
-        controller.stop()
-        controller.start()
-    except Exception as e:
-        print(f'Error restarting Xray service: {e}')
-        if debug:
-            raise e
+@handle_error
+def restart(_debug: Annotated[bool, Option(hidden=True)] = False) -> None:
+    controller.exit_if_xray_config_not_found()
+    controller.check_and_install()
+    controller.stop()
+    controller.start()
 
 
 @app.command(help='Add clients to Xray VLESS Reality server')
+@handle_error
 def add_clients(client_names: Annotated[list[str],
-        Argument(help='List of new client of Xray VLESS Reality server')],
-        debug: Annotated[bool, Option(hidden=True)] = False) -> None:
-    try:
-        controller.check_and_prepare()
-        controller.add_clients(client_names)
-    except Exception as e:
-        print(f'Error adding clients: {e}')
-        if debug:
-            raise e
+Argument(help='List of new client of Xray VLESS Reality server')],
+                _debug: Annotated[bool, Option(hidden=True)] = False) -> None:
+    controller.exit_if_xray_config_not_found()
+    controller.check_and_install()
+    controller.add_clients(client_names)
 
 
 @app.command()
+@handle_error
 def remove_clients() -> None:
     ...
 

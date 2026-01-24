@@ -9,7 +9,8 @@ from app.model.vless_inbound import VlessInbound
 from app.model.vless_outbound import VlessOutbound
 
 Outbound = Annotated[
-    VlessOutbound | FreedomOutbound | BlackholeOutbound | DnsOutbound, Field(discriminator='protocol')]
+    VlessOutbound | FreedomOutbound | BlackholeOutbound | DnsOutbound,
+    Field(discriminator='protocol')]
 
 
 class Xray(XrayModel):
