@@ -180,14 +180,14 @@ class TestGetVlessClientUrl:
             '&sni=yahoo.com'
             '&pbk=random-password-1'
             '&sid=0001'
-            '&spx=%2Fc1'
-            '#c1@0.0.0.0'
+            '&spx=%2Fc1.client'
+            '#c1.client@0.0.0.0'
         )
         with open(valid_xray_config_with_clients_path, 'rt', encoding=getdefaultencoding()) as f:
             xray_config_content = f.read()
 
         actual_url = get_vless_client_url(
-            'c1', Xray.model_validate_json(xray_config_content))
+            'c1.client', Xray.model_validate_json(xray_config_content))
 
         assert actual_url == expected_client_url
 

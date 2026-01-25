@@ -6,6 +6,7 @@ from subprocess import run
 from sys import getdefaultencoding
 from typing import Literal
 from zipfile import ZipFile
+from urllib.parse import quote_plus as safe_url_encode
 
 from requests import get as get_request
 
@@ -106,10 +107,11 @@ def disable_xray_service() -> None:
 
 def get_vless_client_url(client_name: str, xray_config: Xray) -> str | None:
     for i, client in enumerate(xray_config.inbounds[0].settings.clients):
-        if client_name == ''.join(client.email.split('@')[0].split('.')[:-1]):
+        if client_name == '.'.join(client.email.split('@')[0].split('.')[:-1]):
             sni = xray_config.inbounds[0].stream_settings.reality_settings.server_names[0]
             password = gen_xray_password(
                 xray_config.inbounds[0].stream_settings.reality_settings.private_key)
+            spx = safe_url_encode(f'/{client_name}')
             return (f'vless://{client.id}@{xray_config.inbounds[0].listen}:'
                     f'{xray_config.inbounds[0].port}'
                     '?flow=xtls-rprx-vision'
@@ -119,7 +121,7 @@ def get_vless_client_url(client_name: str, xray_config: Xray) -> str | None:
                     f'&sni={sni}'
                     f'&pbk={password}'
                     f'&sid={xray_config.inbounds[0].stream_settings.reality_settings.short_ids[i]}'
-                    f'&spx=%2F{client_name}'
+                    f'&spx={spx}'
                     f'#{client_name}@{client.email.split('@')[-1]}')
     return None
 

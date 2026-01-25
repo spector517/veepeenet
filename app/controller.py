@@ -255,10 +255,10 @@ def add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -> 
     existing_clients_data = [ClientData.from_model(client, host) for client in settings.clients]
     existing_names = [client_data.name for client_data in existing_clients_data]
     new_names = get_new_items(existing_names, remove_duplicates(names))
-    already_existing_names = get_existing_items(existing_names, new_names)
+    already_existing_names = get_existing_items(existing_names, names)
 
     if already_existing_names:
-        print('These clients already exist and will be skipped: ',
+        print('These clients already exist and will be skipped:',
               ', '.join(already_existing_names))
     if not new_names:
         print('No new clients found')
@@ -278,7 +278,7 @@ def add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -> 
         xray_config_path,
         xray_config.model_dump_json(by_alias=True, exclude_none=True, indent=2),
         0o644)
-    print('Added new clients: ',  ', '.join(new_names))
+    print('Added new clients:',  ', '.join(new_names))
     restart_service_if_running()
 
 
@@ -295,7 +295,7 @@ def remove_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) 
     unknown_names = get_new_items(existing_names, names)
 
     if unknown_names:
-        print('These clients are unknown and will be skipped: ',
+        print('These clients are unknown and will be skipped:',
               ', '.join(unknown_names))
     if not removable_names:
         print('No clients found to remove')
@@ -314,5 +314,5 @@ def remove_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) 
         xray_config_path,
         xray_config.model_dump_json(by_alias=True, exclude_none=True, indent=2),
         0o644)
-    print('Removed clients: ', ', '.join(removable_names))
+    print('Removed clients:', ', '.join(removable_names))
     restart_service_if_running()
