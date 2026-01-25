@@ -264,15 +264,12 @@ def add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -> 
         print('No new clients found')
         return
 
-    new_clients_string = str()
     existing_short_ids = [client_data.short_id for client_data in existing_clients_data]
     for name in new_names:
         short_id = get_short_id(existing_short_ids)
         existing_short_ids.append(short_id)
         new_client_data = ClientData(name=name, short_id=short_id, host=host)
         existing_clients_data.append(new_client_data)
-        new_clients_string += f'\t{repr(ClientView(
-            name=name, url=get_vless_client_url(name, xray_config)))}\n'
 
     settings.clients = [client_data.to_model() for client_data in existing_clients_data]
     reality_settings.short_ids = [f'{short_id:04}' for short_id in existing_short_ids]
@@ -281,7 +278,7 @@ def add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -> 
         xray_config_path,
         xray_config.model_dump_json(by_alias=True, exclude_none=True, indent=2),
         0o644)
-    print('Added new clients:', new_clients_string, sep='\n', end='')
+    print('Added new clients: ',  ', '.join(new_names))
     restart_service_if_running()
 
 

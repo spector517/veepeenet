@@ -34,9 +34,9 @@ def handle_error(func: Callable[..., ...]) -> Callable[..., ...]:
         try:
             return func(*args, **kwargs)
         except Exception as e:  # pylint: disable=broad-exception-caught
-            print(f'{get_error_text()}: {e}')
             if '_debug' in kwargs and kwargs['_debug']:
                 raise
+            print(f'{get_error_text()}: {e}')
             return None
 
     return wrapper
@@ -62,7 +62,7 @@ def config(
 @app.command(help='Show Xray service status')
 @handle_error
 def status(json: Annotated[bool, Option(help='Show in JSON-format')] = False,
-           _debug: Annotated[bool, Option(hidden=True)] = False) -> None:
+           _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     controller.exit_if_xray_config_not_found()
     controller.check_and_install()
     server_view = controller.status()
@@ -74,7 +74,7 @@ def status(json: Annotated[bool, Option(help='Show in JSON-format')] = False,
 
 @app.command(help='Start Xray service')
 @handle_error
-def start(_debug: Annotated[bool, Option(hidden=True)] = False) -> None:
+def start(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     controller.exit_if_xray_config_not_found()
     controller.check_and_install()
     controller.start()
@@ -82,7 +82,7 @@ def start(_debug: Annotated[bool, Option(hidden=True)] = False) -> None:
 
 @app.command(help='Stop Xray service')
 @handle_error
-def stop(_debug: Annotated[bool, Option(hidden=True)] = False) -> None:
+def stop(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     controller.exit_if_xray_config_not_found()
     controller.check_and_install()
     controller.stop()
@@ -90,7 +90,7 @@ def stop(_debug: Annotated[bool, Option(hidden=True)] = False) -> None:
 
 @app.command(help='Restart Xray service')
 @handle_error
-def restart(_debug: Annotated[bool, Option(hidden=True)] = False) -> None:
+def restart(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     controller.exit_if_xray_config_not_found()
     controller.check_and_install()
     controller.stop()
@@ -101,7 +101,7 @@ def restart(_debug: Annotated[bool, Option(hidden=True)] = False) -> None:
 @handle_error
 def add_clients(client_names: Annotated[list[str],
         Argument(help='List of new client of Xray VLESS Reality server')],
-                _debug: Annotated[bool, Option(hidden=True)] = False) -> None:
+                    _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     controller.exit_if_xray_config_not_found()
     controller.check_and_install()
     controller.add_clients(client_names)
@@ -111,7 +111,7 @@ def add_clients(client_names: Annotated[list[str],
 @handle_error
 def remove_clients(client_names: Annotated[list[str],
         Argument(help='List of clients to remove from Xray VLESS Reality server')],
-                   _debug: Annotated[bool, Option(hidden=True)] = False) -> None:
+                    _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     controller.exit_if_xray_config_not_found()
     controller.check_and_install()
     controller.remove_clients(client_names)
