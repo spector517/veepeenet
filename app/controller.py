@@ -213,10 +213,10 @@ def status(xray_config_path: Path = XRAY_CONFIG_PATH) -> ServerView:
 
     client_views: list[ClientView] = []
     for client in xray_config.inbounds[0].settings.clients:
-        client_name = client.email.split('@')[0]
-        client_url = get_vless_client_url(client_name, xray_config)
+        client_data = ClientData.from_model(client, xray_config.inbounds[0].listen)
+        client_url = get_vless_client_url(client_data.name, xray_config)
         client_views.append(ClientView(
-            name=client_name,
+            name=client_data.name,
             url=client_url))
 
     return ServerView(
