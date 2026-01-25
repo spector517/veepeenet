@@ -106,7 +106,7 @@ def disable_xray_service() -> None:
 
 def get_vless_client_url(client_name: str, xray_config: Xray) -> str | None:
     for i, client in enumerate(xray_config.inbounds[0].settings.clients):
-        if client_name == client.email.split('@')[0]:
+        if client_name == ''.join(client.email.split('@')[0].split('.')[:-1]):
             sni = xray_config.inbounds[0].stream_settings.reality_settings.server_names[0]
             password = gen_xray_password(
                 xray_config.inbounds[0].stream_settings.reality_settings.private_key)
@@ -120,7 +120,7 @@ def get_vless_client_url(client_name: str, xray_config: Xray) -> str | None:
                     f'&pbk={password}'
                     f'&sid={xray_config.inbounds[0].stream_settings.reality_settings.short_ids[i]}'
                     f'&spx=%2F{client_name}'
-                    f'#{client.email}')
+                    f'#{client_name}@{client.email.split('@')[-1]}')
     return None
 
 
@@ -181,6 +181,13 @@ def get_existing_items(old: list, new: list) -> list:
         if item in old:
             existing.append(item)
     return existing
+
+
+def get_short_id(existing_short_ids: list[int], interval: range = range(1, 10000)) -> int:
+    for i in interval:
+        if i not in existing_short_ids:
+            return i
+    raise ValueError(f'No available short ID found in the given interval {interval}')
 
 
 def run_command(command: str, stdin: str = '', check: bool = False, timeout: int = 20_000) \

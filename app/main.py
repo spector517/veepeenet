@@ -57,7 +57,6 @@ def config(
 ) -> None:
     controller.check_and_install()
     controller.config(host, port, reality_host, reality_port, clean)
-    print('Configuration completed')
 
 
 @app.command(help='Show Xray service status')
@@ -101,17 +100,21 @@ def restart(_debug: Annotated[bool, Option(hidden=True)] = False) -> None:
 @app.command(help='Add clients to Xray VLESS Reality server')
 @handle_error
 def add_clients(client_names: Annotated[list[str],
-Argument(help='List of new client of Xray VLESS Reality server')],
+        Argument(help='List of new client of Xray VLESS Reality server')],
                 _debug: Annotated[bool, Option(hidden=True)] = False) -> None:
     controller.exit_if_xray_config_not_found()
     controller.check_and_install()
     controller.add_clients(client_names)
 
 
-@app.command()
+@app.command(help='Remove clients from Xray VLESS Reality server')
 @handle_error
-def remove_clients() -> None:
-    ...
+def remove_clients(client_names: Annotated[list[str],
+        Argument(help='List of clients to remove from Xray VLESS Reality server')],
+                   _debug: Annotated[bool, Option(hidden=True)] = False) -> None:
+    controller.exit_if_xray_config_not_found()
+    controller.check_and_install()
+    controller.remove_clients(client_names)
 
 
 if __name__ == "__main__":

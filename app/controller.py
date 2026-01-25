@@ -1,6 +1,8 @@
+from dataclasses import dataclass
 from os import getuid
 from pathlib import Path
 from sys import getdefaultencoding, exit as sys_exit
+from typing import Self
 from urllib.parse import urljoin
 from uuid import uuid4
 
@@ -32,11 +34,40 @@ from app.utils import (
     install_xray_service,
     detect_veepeenet_versions,
     start_xray_service,
+    restart_xray_service,
     remove_duplicates,
     get_new_items,
-    get_existing_items
+    get_existing_items,
+    get_short_id,
 )
 from app.view import ServerView, ClientView
+
+
+@dataclass
+class ClientData:
+    name: str
+    short_id: int
+    host: str
+    uuid: str
+
+    def __init__(self, name: str, short_id: int, host: str, uuid: str = '') -> None:
+        self.name = name
+        self.short_id = short_id
+        self.host = host
+        self.uuid = uuid if uuid else str(uuid4())
+
+    @classmethod
+    def from_model(cls, client: Client, host: str) -> Self:
+        name = ''.join(client.email.split('@')[0].split('.')[:-1])
+        uuid = client.id
+        short_id = int(client.email.split('@')[0].split('.')[-1])
+        return ClientData(name=name, short_id=short_id, host=host, uuid=uuid)
+
+    def to_model(self) -> Client:
+        return Client(
+            id=self.uuid,
+            email=f'{self.name}.{self.short_id:04}@{self.host}'
+        )
 
 
 def check_and_install(
@@ -85,6 +116,14 @@ def exit_if_xray_config_not_found(xray_config_path: Path = XRAY_CONFIG_PATH) -> 
         sys_exit(-1)
 
 
+def restart_service_if_running() -> None:
+    if is_xray_service_running():
+        restart_xray_service()
+        print('Xray service restarted')
+    else:
+        print('Xray service is not running, please start it manually to apply changes')
+
+
 def config(
         listen: str,
         listen_port: int,
@@ -118,11 +157,8 @@ def config(
         xray_config_path,
         xray_config.model_dump_json(by_alias=True, exclude_none=True, indent=2),
         0o644)
-    if is_xray_service_running():
-        stop_xray_service()
-        start_xray_service()
-        print('Xray service restarted')
-
+    print('Configuration completed')
+    restart_service_if_running()
 
 def confirm_host_detection(host: str) -> bool:
     answer = input(f'Auto detected public host address is {host}, is it correct? (y/N): ')
@@ -171,8 +207,8 @@ def update_config(
     return xray_config
 
 
-def status() -> ServerView:
-    xray_config = load_config(XRAY_CONFIG_PATH)
+def status(xray_config_path: Path = XRAY_CONFIG_PATH) -> ServerView:
+    xray_config = load_config(xray_config_path)
     versions = detect_veepeenet_versions()
 
     client_views: list[ClientView] = []
@@ -211,35 +247,75 @@ def start() -> None:
 
 
 def add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -> None:
-    xray_config = load_config(XRAY_CONFIG_PATH)
-    clients = xray_config.inbounds[0].settings.clients
+    xray_config = load_config(xray_config_path)
+    settings = xray_config.inbounds[0].settings
     host = xray_config.inbounds[0].listen
-    short_ids = xray_config.inbounds[0].stream_settings.reality_settings.short_ids
+    reality_settings = xray_config.inbounds[0].stream_settings.reality_settings
 
-    existing_names = remove_duplicates([client.email.split('@')[0] for client in clients])
+    existing_clients_data = [ClientData.from_model(client, host) for client in settings.clients]
+    existing_names = [client_data.name for client_data in existing_clients_data]
     new_names = get_new_items(existing_names, remove_duplicates(names))
     already_existing_names = get_existing_items(existing_names, new_names)
 
     if already_existing_names:
-        print('These clients already exist and will be skipped:',
+        print('These clients already exist and will be skipped: ',
               ', '.join(already_existing_names))
-
     if not new_names:
         print('No new clients found')
         return
+
     new_clients_string = str()
+    existing_short_ids = [client_data.short_id for client_data in existing_clients_data]
     for name in new_names:
-        clients.append(Client(id=str(uuid4()), email=f'{name}@{host}'))
-        short_ids.append(f'{len(clients):04}')
+        short_id = get_short_id(existing_short_ids)
+        existing_short_ids.append(short_id)
+        new_client_data = ClientData(name=name, short_id=short_id, host=host)
+        existing_clients_data.append(new_client_data)
         new_clients_string += f'\t{repr(ClientView(
             name=name, url=get_vless_client_url(name, xray_config)))}\n'
+
+    settings.clients = [client_data.to_model() for client_data in existing_clients_data]
+    reality_settings.short_ids = [f'{short_id:04}' for short_id in existing_short_ids]
 
     write_text_file(
         xray_config_path,
         xray_config.model_dump_json(by_alias=True, exclude_none=True, indent=2),
         0o644)
     print('Added new clients:', new_clients_string, sep='\n', end='')
-    if is_xray_service_running():
-        stop_xray_service()
-        start_xray_service()
-        print('Xray service restarted')
+    restart_service_if_running()
+
+
+def remove_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -> None:
+    xray_config = load_config(xray_config_path)
+    clients = xray_config.inbounds[0].settings.clients
+    host = xray_config.inbounds[0].listen
+    reality_settings = xray_config.inbounds[0].stream_settings.reality_settings
+    settings = xray_config.inbounds[0].settings
+
+    existing_clients_data = [ClientData.from_model(client, host) for client in clients]
+    existing_names = [client_data.name for client_data in existing_clients_data]
+    removable_names = get_existing_items(existing_names, remove_duplicates(names))
+    unknown_names = get_new_items(existing_names, names)
+
+    if unknown_names:
+        print('These clients are unknown and will be skipped: ',
+              ', '.join(unknown_names))
+    if not removable_names:
+        print('No clients found to remove')
+        return
+
+    existing_short_ids = [client_data.short_id for client_data in existing_clients_data]
+    for existing_client_data in existing_clients_data:
+        if existing_client_data.name in removable_names:
+            existing_clients_data.remove(existing_client_data)
+            existing_short_ids.remove(existing_client_data.short_id)
+
+    settings.clients = [client_data.to_model() for client_data in existing_clients_data]
+    reality_settings.short_ids = [f'{short_id:04}' for short_id in existing_short_ids]
+
+    write_text_file(
+        xray_config_path,
+        xray_config.model_dump_json(by_alias=True, exclude_none=True, indent=2),
+        0o644)
+    print('Removed clients: ', ', '.join(removable_names))
+    restart_service_if_running()
