@@ -5,8 +5,8 @@ from re import findall, MULTILINE, search
 from subprocess import run
 from sys import getdefaultencoding
 from typing import Literal
-from zipfile import ZipFile
 from urllib.parse import quote_plus as safe_url_encode
+from zipfile import ZipFile
 
 from requests import get as get_request
 

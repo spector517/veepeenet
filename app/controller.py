@@ -34,7 +34,6 @@ from app.utils import (
     install_xray_service,
     detect_veepeenet_versions,
     start_xray_service,
-    restart_xray_service,
     remove_duplicates,
     get_new_items,
     get_existing_items,
@@ -58,7 +57,7 @@ class ClientData:
 
     @classmethod
     def from_model(cls, client: Client, host: str) -> Self:
-        name = ''.join(client.email.split('@')[0].split('.')[:-1])
+        name = '.'.join(client.email.split('@')[0].split('.')[:-1])
         uuid = client.id
         short_id = int(client.email.split('@')[0].split('.')[-1])
         return ClientData(name=name, short_id=short_id, host=host, uuid=uuid)
@@ -116,14 +115,6 @@ def exit_if_xray_config_not_found(xray_config_path: Path = XRAY_CONFIG_PATH) -> 
         sys_exit(-1)
 
 
-def restart_service_if_running() -> None:
-    if is_xray_service_running():
-        restart_xray_service()
-        print('Xray service restarted')
-    else:
-        print('Xray service is not running, please start it manually to apply changes')
-
-
 def config(
         listen: str,
         listen_port: int,
@@ -158,7 +149,7 @@ def config(
         xray_config.model_dump_json(by_alias=True, exclude_none=True, indent=2),
         0o644)
     print('Configuration completed')
-    restart_service_if_running()
+
 
 def confirm_host_detection(host: str) -> bool:
     answer = input(f'Auto detected public host address is {host}, is it correct? (y/N): ')
@@ -278,8 +269,7 @@ def add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -> 
         xray_config_path,
         xray_config.model_dump_json(by_alias=True, exclude_none=True, indent=2),
         0o644)
-    print('Added new clients:',  ', '.join(new_names))
-    restart_service_if_running()
+    print('Added new clients:', ', '.join(new_names))
 
 
 def remove_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -> None:
@@ -315,4 +305,3 @@ def remove_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) 
         xray_config.model_dump_json(by_alias=True, exclude_none=True, indent=2),
         0o644)
     print('Removed clients:', ', '.join(removable_names))
-    restart_service_if_running()
