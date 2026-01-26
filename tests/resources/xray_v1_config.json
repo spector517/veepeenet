@@ -1,0 +1,45 @@
+{
+  "inbounds": [
+    {
+      "port": 443,
+      "protocol": "vless",
+      "tag": "vless-inbound",
+      "settings": {
+        "clients": [
+          {
+            "id": "cc92829e-79dd-4b8d-b456-01948c1801f0",
+            "email": "client1@0.0.0.0",
+            "flow": "xtls-rprx-vision"
+          },
+          {
+            "id": "7d623932-5967-4bf6-a692-7652fa7964cf",
+            "email": "client2.2@0.0.0.0",
+            "flow": "xtls-rprx-vision"
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "raw",
+        "security": "reality",
+        "realitySettings": {
+          "dest": "yahoo.com:443",
+          "serverNames": [
+            "yahoo.com"
+          ],
+          "privateKey": "private-key",
+          "shortIds": [
+            "0001",
+            "1245"
+          ]
+        }
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "freedom",
+      "tag": "direct-outbound"
+    }
+  ]
+}

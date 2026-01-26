@@ -1,0 +1,64 @@
+{
+  "log": {
+    "access": "/var/log/xray/access.log",
+    "error": "/var/log/xray/error.log",
+    "loglevel": "info",
+    "dnsLog": false
+  },
+  "inbounds": [
+    {
+      "listen": "126.6.6.6",
+      "port": 443,
+      "protocol": "vless",
+      "tag": "vless-inbound",
+      "settings": {
+        "clients": [
+          {
+            "email": "client1.0001@0.0.0.0",
+            "id": "cc92829e-79dd-4b8d-b456-01948c1801f0",
+            "flow": "xtls-rprx-vision"
+          },
+          {
+            "email": "client2.2.1245@0.0.0.0",
+            "id": "7d623932-5967-4bf6-a692-7652fa7964cf",
+            "flow": "xtls-rprx-vision"
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "realitySettings": {
+          "dest": "yahoo.com:443",
+          "serverNames": [
+            "yahoo.com"
+          ],
+          "privateKey": "private-key",
+          "shortIds": [
+            "0001",
+            "1245"
+          ]
+        },
+        "security": "reality"
+      },
+      "sniffing": {
+        "enabled": false,
+        "routeOnly": true,
+        "destOverride": [
+          "http",
+          "tls",
+          "quic"
+        ]
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "tag": "direct",
+      "protocol": "freedom"
+    },
+    {
+      "tag": "blackhole",
+      "protocol": "blackhole"
+    }
+  ]
+}
