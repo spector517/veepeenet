@@ -29,10 +29,10 @@ class DnsOutbound(XrayModel):
 
 
 class FreedomOutbound(XrayModel):
-    tag: Literal['direct'] = 'direct'
+    tag: Literal['direct', 'direct-outbound'] = 'direct'
     protocol: Literal['freedom'] = 'freedom'
 
 
 class BlackholeOutbound(XrayModel):
-    tag: Literal['blackhole'] = 'blackhole'
+    tag: Literal['blackhole', 'blackhole-outbound'] = 'blackhole'
     protocol: Literal['blackhole'] = 'blackhole'

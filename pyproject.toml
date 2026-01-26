@@ -25,6 +25,7 @@ dev = [
 
 [project.scripts]
 xrayctl = "app.main:app"
+xray-migrate-1-to-2 = "app.migration_1_2:main"
 
 [tool.setuptools]
 include-package-data = true

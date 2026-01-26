@@ -31,14 +31,15 @@ class StreamSettings(XrayModel):
 class Sniffing(XrayModel):
     enabled: bool = Field(default=False)
     route_only: bool = Field(default=True)
-    dest_override: list[str] = Field(default=['http', 'tls', 'quic'])
+    dest_override: list[str] = Field(
+        default_factory=lambda: ['http', 'tls', 'quic'])
 
 
 class VlessInbound(XrayModel):
-    listen: str
+    listen: str | None = Field(default=None)
     port: int
     protocol: Literal['vless'] = 'vless'
     tag: str = Field(default='vless-inbound')
-    settings: Settings = Field(default=Settings())
+    settings: Settings = Field(default_factory=Settings)
     stream_settings: StreamSettings
-    sniffing: Sniffing = Field(default=Sniffing())
+    sniffing: Sniffing = Field(default_factory=Sniffing)
