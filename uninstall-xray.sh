@@ -13,7 +13,7 @@ if [[ "$1" == "-q" ]]; then
 fi
 
 if [[ $QUIET -eq 0 ]]; then
-  read -rp "This action delete ALL your Xray configurations and Xray distributive! Are you sure? (Y/N): " confirm
+  read -rp "This action delete only VeePeeNET component and Xray distributive, WITHOUT Xray config " confirm
   if ! [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]]; then
     echo "WARN: Aborted."
     exit 0
@@ -37,9 +37,9 @@ if [[ -f '/etc/systemd/system/xray.service' ]]; then
   rm '/etc/systemd/system/xray.service'
   systemctl daemon-reload
 fi
-rm -rf /usr/local/etc/xray
 echo 'INFO: Xray service removed.'
-
+#rm -rf /usr/local/etc/xray
+#
 echo "INFO: Removing Xray distrib..."
 rm -rf /usr/local/bin/xray
 echo "INFO: Xray distrib removed"

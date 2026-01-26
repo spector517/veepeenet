@@ -2,6 +2,10 @@
 
 Install and configure personal anti-censorship service [Xray](https://github.com/xtls/xray-core)
 
+## !!! WARNING !!!
+
+### This version is deprecated and is not maintained anymore. Please use new version 2.x.x
+
 ## Requirements
 
 1. Ubuntu Server (22.04, 24.04)
@@ -20,7 +24,7 @@ Run simple command:
 rm -rf /tmp/veepeenet \
     && mkdir /tmp/veepeenet \
     && (cd /tmp/veepeenet \
-        && curl -LO https://github.com/spector517/veepeenet/releases/latest/download/veepeenet.tar.gz \
+        && curl -LO https://github.com/spector517/veepeenet/releases/download/v1.5.3/veepeenet.tar.gz \
         && tar -xf veepeenet.tar.gz && (cd veepeenet-* && sudo ./install-xray.sh)
     )
 ```
@@ -78,7 +82,7 @@ Run simple command:
 rm -rf /tmp/veepeenet \
     && mkdir /tmp/veepeenet \
     && (cd /tmp/veepeenet \
-        && curl -LO https://github.com/spector517/veepeenet/releases/latest/download/veepeenet.tar.gz \
+        && curl -LO https://github.com/spector517/veepeenet/releases/download/v1.5.3/veepeenet.tar.gz \
         && tar -xf veepeenet.tar.gz && (cd veepeenet-* && sudo ./uninstall-xray.sh)
     )
 ```
