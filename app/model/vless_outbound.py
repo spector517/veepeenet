@@ -1,13 +1,11 @@
 from typing import Literal
 
-from pydantic import Field
-
 from app.model.base import XrayModel
 
 
 class Settings(XrayModel):
     address: str
-    port: int = Field(default=443)
+    port: int
     id: str
     encryption: Literal['none'] = 'none'
     flow: Literal['xtls-rprx-vision'] = 'xtls-rprx-vision'
@@ -16,7 +14,7 @@ class Settings(XrayModel):
 class RealitySettings(XrayModel):
     server_name: str
     fingerprint: Literal['chrome'] = 'chrome'
-    public_key: str
+    password: str
     short_id: str
     spider_x: str
 

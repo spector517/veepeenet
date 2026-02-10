@@ -192,6 +192,15 @@ def get_short_id(existing_short_ids: list[int], interval: range = range(1, 10000
     raise ValueError(f'No available short ID found in the given interval {interval}')
 
 
+def set_value(obj: object, attr: str, value: object) -> bool:
+    if hasattr(obj, attr):
+        if getattr(obj, attr) != value and value is not None:
+            setattr(obj, attr, value)
+            return True
+        return False
+    raise AttributeError(f'Object {obj} has no attribute {attr}')
+
+
 def run_command(command: str, stdin: str = '', check: bool = False, timeout: int = 20_000) \
         -> tuple[int, str, str]:
     run_result = run(

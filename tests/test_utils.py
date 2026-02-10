@@ -33,6 +33,7 @@ from app.utils import (
     get_new_items,
     get_existing_items,
     get_short_id,
+    set_value,
 )
 
 
@@ -932,3 +933,187 @@ class TestGetShortId:
             get_short_id(existing_short_ids, interval=range(1, 6))
 
         assert 'No available short ID found' in str(exc_info.value)
+
+
+class TestSetValue:
+
+    def test_set_value_change_existing_attribute(self):
+        class TestObject:
+            attr = 'old_value'
+
+        obj = TestObject()
+        result = set_value(obj, 'attr', 'new_value')
+
+        assert result is True
+        assert obj.attr == 'new_value'
+
+    def test_set_value_no_change_same_value(self):
+        class TestObject:
+            attr = 'value'
+
+        obj = TestObject()
+        result = set_value(obj, 'attr', 'value')
+
+        assert result is False
+        assert obj.attr == 'value'
+
+    def test_set_value_attribute_not_found(self):
+        class TestObject:
+            pass
+
+        obj = TestObject()
+        with pytest.raises(AttributeError) as exc_info:
+            set_value(obj, 'nonexistent_attr', 'value')
+
+        assert 'has no attribute' in str(exc_info.value)
+        assert 'nonexistent_attr' in str(exc_info.value)
+
+    def test_set_value_with_int_attribute(self):
+        class TestObject:
+            count = 5
+
+        obj = TestObject()
+        result = set_value(obj, 'count', 10)
+
+        assert result is True
+        assert obj.count == 10
+
+    def test_set_value_with_int_no_change(self):
+        class TestObject:
+            count = 5
+
+        obj = TestObject()
+        result = set_value(obj, 'count', 5)
+
+        assert result is False
+        assert obj.count == 5
+
+    def test_set_value_with_none_value(self):
+        class TestObject:
+            attr = 'value'
+
+        obj = TestObject()
+        result = set_value(obj, 'attr', None)
+
+        assert result is False
+        assert obj.attr == 'value'
+
+    def test_set_value_from_none_to_value(self):
+        class TestObject:
+            attr = None
+
+        obj = TestObject()
+        result = set_value(obj, 'attr', 'new_value')
+
+        assert result is True
+        assert obj.attr == 'new_value'
+
+    def test_set_value_with_list_attribute(self):
+        class TestObject:
+            items = [1, 2, 3]
+
+        obj = TestObject()
+        result = set_value(obj, 'items', [4, 5, 6])
+
+        assert result is True
+        assert obj.items == [4, 5, 6]
+
+    def test_set_value_with_same_list(self):
+        class TestObject:
+            items = [1, 2, 3]
+
+        obj = TestObject()
+        result = set_value(obj, 'items', [1, 2, 3])
+
+        assert result is False
+        assert obj.items == [1, 2, 3]
+
+    def test_set_value_with_dict_attribute(self):
+        class TestObject:
+            config = {'key': 'value'}
+
+        obj = TestObject()
+        result = set_value(obj, 'config', {'key': 'new_value'})
+
+        assert result is True
+        assert obj.config == {'key': 'new_value'}
+
+    def test_set_value_with_boolean_attribute(self):
+        class TestObject:
+            enabled = True
+
+        obj = TestObject()
+        result = set_value(obj, 'enabled', False)
+
+        assert result is True
+        assert obj.enabled is False
+
+    def test_set_value_with_boolean_no_change(self):
+        class TestObject:
+            enabled = True
+
+        obj = TestObject()
+        result = set_value(obj, 'enabled', True)
+
+        assert result is False
+        assert obj.enabled is True
+
+    def test_set_value_with_zero_value(self):
+        class TestObject:
+            count = 5
+
+        obj = TestObject()
+        result = set_value(obj, 'count', 0)
+
+        assert result is True
+        assert obj.count == 0
+
+    def test_set_value_with_empty_string(self):
+        class TestObject:
+            name = 'John'
+
+        obj = TestObject()
+        result = set_value(obj, 'name', '')
+
+        assert result is True
+        assert obj.name == ''
+
+    def test_set_value_with_empty_string_no_change(self):
+        class TestObject:
+            name = ''
+
+        obj = TestObject()
+        result = set_value(obj, 'name', '')
+
+        assert result is False
+        assert obj.name == ''
+
+    def test_set_value_with_multiple_attributes(self):
+        class TestObject:
+            attr1 = 'value1'
+            attr2 = 'value2'
+
+        obj = TestObject()
+        result1 = set_value(obj, 'attr1', 'new_value1')
+        result2 = set_value(obj, 'attr2', 'value2')
+
+        assert result1 is True
+        assert result2 is False
+        assert obj.attr1 == 'new_value1'
+        assert obj.attr2 == 'value2'
+
+    def test_set_value_with_nested_object_attribute(self):
+        class InnerObject:
+            value = 'inner'
+
+        class TestObject:
+            inner = InnerObject()
+
+        obj = TestObject()
+        new_inner = InnerObject()
+        new_inner.value = 'new_inner'
+        result = set_value(obj, 'inner', new_inner)
+
+        assert result is True
+        assert obj.inner == new_inner
+        assert obj.inner.value == 'new_inner'

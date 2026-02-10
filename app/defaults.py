@@ -3,6 +3,8 @@ from pathlib import Path
 REALITY_HOST = 'microsoft.com'
 REALITY_PORT = 443
 VLESS_LISTEN_PORT = 443
+VLESS_OUTBOUND_PORT = 443
+VLESS_OUTBOUND_SPIDER_X = '/'
 NO_UFW = False
 
 XRAY_CONFIG_PATH = Path('/usr/local/etc/xray/config.json')

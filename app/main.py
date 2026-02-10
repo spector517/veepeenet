@@ -6,6 +6,8 @@ from typer import Typer, Option, Argument
 from app import controller
 from app.defaults import (
     VLESS_LISTEN_PORT,
+    VLESS_OUTBOUND_PORT,
+    VLESS_OUTBOUND_SPIDER_X,
     REALITY_HOST,
     REALITY_PORT,
 )
@@ -23,6 +25,7 @@ def handle_error(func: Callable[..., ...]) -> Callable[..., ...]:
             restart: 'Error restarting Xray service',
             add_clients: 'Error adding clients to Xray service',
             remove_clients: 'Error removing clients from Xray service',
+            change_outbound: 'Error changing VLESS outbound connection',
         }
         try:
             return errors[func]
@@ -115,6 +118,58 @@ def remove_clients(client_names: Annotated[list[str],
     controller.exit_if_xray_config_not_found()
     controller.check_and_install()
     controller.remove_clients(client_names)
+
+
+@app.command(help='Add new VLESS outbound VLESS Reality connection')
+@handle_error
+def add_outbound(
+        name: Annotated[str, Argument(help='Outbound name')],
+        address: Annotated[str, Option(help='Outbound address (ip or domain name)')],
+        uuid: Annotated[str, Option(help='VLESS client identifier')],
+        sni: Annotated[str, Option(help='Server name of target server')],
+        password: Annotated[str, Option(help='Public key of target server')],
+        short_id: Annotated[str, Option(help='One of short_id of target server')],
+        spider_x: Annotated[
+            str,
+            Option(help='Initial path and parameters for the spider')] = VLESS_OUTBOUND_SPIDER_X,
+        port: Annotated[
+            int | None,
+            Option(help='VLESS outbound port')] = VLESS_OUTBOUND_PORT,
+        _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+    controller.exit_if_xray_config_not_found()
+    controller.check_and_install()
+    controller.add_vless_outbound(name, address, port, uuid, sni, password, short_id, spider_x)
+
+
+@app.command(help='Remove VLESS outbound connection')
+@handle_error
+def remove_outbound(
+        name: Annotated[str, Argument(help='Outbound name')],
+        _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+    controller.exit_if_xray_config_not_found()
+    controller.check_and_install()
+    controller.remove_vless_outbound(name)
+
+
+@app.command(help='Change VLESS outbound connection parameters')
+@handle_error
+def change_outbound(
+        name: Annotated[str, Argument(help='Outbound name')],
+        address: Annotated[str | None, Option(help='Outbound address (ip or domain name)')] = None,
+        uuid: Annotated[str | None, Option(help='VLESS client identifier')] = None,
+        sni: Annotated[str | None, Option(help='Server name of target server')] = None,
+        password: Annotated[str | None, Option(help='Public key of target server')] = None,
+        short_id: Annotated[str | None, Option(help='One of short_id of target server')] = None,
+        spider_x: Annotated[
+            str | None,
+            Option(help='Initial path and parameters for the spider')] = None,
+        port: Annotated[
+            int | None,
+            Option(help='VLESS outbound port')] = None,
+        _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+    controller.exit_if_xray_config_not_found()
+    controller.check_and_install()
+    controller.change_vless_outbound(name, address, port, uuid, sni, password, short_id, spider_x)
 
 
 if __name__ == "__main__":
