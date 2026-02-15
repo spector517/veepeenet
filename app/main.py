@@ -96,8 +96,7 @@ def stop(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> Non
 def restart(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     controller.exit_if_xray_config_not_found()
     controller.check_and_install()
-    controller.stop()
-    controller.start()
+    controller.restart()
 
 
 @app.command(help='Add clients to Xray VLESS Reality server')

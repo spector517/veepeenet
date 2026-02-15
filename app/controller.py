@@ -237,6 +237,8 @@ def stop() -> None:
         print('Xray service is not running')
         return
     stop_xray_service()
+    if is_xray_service_enabled():
+        disable_xray_service()
     print('Xray service stopped')
 
 
@@ -245,7 +247,16 @@ def start() -> None:
         print('Xray service is already running')
         return
     start_xray_service()
+    if not is_xray_service_enabled():
+        enable_xray_service()
     print('Xray service started')
+
+
+def restart() -> None:
+    if is_xray_service_running():
+        stop_xray_service()
+    start_xray_service()
+    print('Xray service restarted')
 
 
 def add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -> None:
