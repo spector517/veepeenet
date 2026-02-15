@@ -3,7 +3,7 @@ from typing import Annotated, Callable, Any
 
 from typer import Typer, Option, Argument
 
-from app import controller
+from app.controller import configure, state, clients, outbound, common
 from app.defaults import (
     VLESS_LISTEN_PORT,
     VLESS_OUTBOUND_PORT,
@@ -58,17 +58,17 @@ def config(
         clean: Annotated[bool, Option(help='Override current configuration')] = False,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False
 ) -> None:
-    controller.check_and_install()
-    controller.config(host, port, reality_host, reality_port, clean)
+    common.check_and_install()
+    configure.config(host, port, reality_host, reality_port, clean)
 
 
 @app.command(help='Show Xray service status')
 @handle_error
 def status(json: Annotated[bool, Option(help='Show in JSON-format')] = False,
            _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
-    controller.exit_if_xray_config_not_found()
-    controller.check_and_install()
-    server_view = controller.status()
+    common.exit_if_xray_config_not_found()
+    common.check_and_install()
+    server_view = state.status()
     if json:
         print(server_view.model_dump_json(exclude_none=True, indent=2))
     else:
@@ -78,25 +78,25 @@ def status(json: Annotated[bool, Option(help='Show in JSON-format')] = False,
 @app.command(help='Start Xray service')
 @handle_error
 def start(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
-    controller.exit_if_xray_config_not_found()
-    controller.check_and_install()
-    controller.start()
+    common.exit_if_xray_config_not_found()
+    common.check_and_install()
+    state.start()
 
 
 @app.command(help='Stop Xray service')
 @handle_error
 def stop(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
-    controller.exit_if_xray_config_not_found()
-    controller.check_and_install()
-    controller.stop()
+    common.exit_if_xray_config_not_found()
+    common.check_and_install()
+    state.stop()
 
 
 @app.command(help='Restart Xray service')
 @handle_error
 def restart(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
-    controller.exit_if_xray_config_not_found()
-    controller.check_and_install()
-    controller.restart()
+    common.exit_if_xray_config_not_found()
+    common.check_and_install()
+    state.restart()
 
 
 @app.command(help='Add clients to Xray VLESS Reality server')
@@ -104,9 +104,9 @@ def restart(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> 
 def add_clients(client_names: Annotated[list[str],
         Argument(help='List of new client of Xray VLESS Reality server')],
                     _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
-    controller.exit_if_xray_config_not_found()
-    controller.check_and_install()
-    controller.add_clients(client_names)
+    common.exit_if_xray_config_not_found()
+    common.check_and_install()
+    clients.add_clients(client_names)
 
 
 @app.command(help='Remove clients from Xray VLESS Reality server')
@@ -114,9 +114,9 @@ def add_clients(client_names: Annotated[list[str],
 def remove_clients(client_names: Annotated[list[str],
         Argument(help='List of clients to remove from Xray VLESS Reality server')],
                     _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
-    controller.exit_if_xray_config_not_found()
-    controller.check_and_install()
-    controller.remove_clients(client_names)
+    common.exit_if_xray_config_not_found()
+    common.check_and_install()
+    clients.remove_clients(client_names)
 
 
 @app.command(help='Add new VLESS outbound VLESS Reality connection')
@@ -135,9 +135,9 @@ def add_outbound(
             int | None,
             Option(help='VLESS outbound port')] = VLESS_OUTBOUND_PORT,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
-    controller.exit_if_xray_config_not_found()
-    controller.check_and_install()
-    controller.add_vless_outbound(name, address, port, uuid, sni, password, short_id, spider_x)
+    common.exit_if_xray_config_not_found()
+    common.check_and_install()
+    outbound.add_vless_outbound(name, address, port, uuid, sni, password, short_id, spider_x)
 
 
 @app.command(help='Remove VLESS outbound connection')
@@ -145,9 +145,9 @@ def add_outbound(
 def remove_outbound(
         name: Annotated[str, Argument(help='Outbound name')],
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
-    controller.exit_if_xray_config_not_found()
-    controller.check_and_install()
-    controller.remove_vless_outbound(name)
+    common.exit_if_xray_config_not_found()
+    common.check_and_install()
+    outbound.remove_vless_outbound(name)
 
 
 @app.command(help='Change VLESS outbound connection parameters')
@@ -166,9 +166,9 @@ def change_outbound(
             int | None,
             Option(help='VLESS outbound port')] = None,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
-    controller.exit_if_xray_config_not_found()
-    controller.check_and_install()
-    controller.change_vless_outbound(name, address, port, uuid, sni, password, short_id, spider_x)
+    common.exit_if_xray_config_not_found()
+    common.check_and_install()
+    outbound.change_vless_outbound(name, address, port, uuid, sni, password, short_id, spider_x)
 
 
 if __name__ == "__main__":
