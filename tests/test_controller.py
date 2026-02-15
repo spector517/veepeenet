@@ -46,7 +46,8 @@ class TestLoadConfig:
 class TestCreateConfig:
 
     def test_create_config(self, initial_config_path: Path, mocker: MockFixture):
-        mocker.patch('app.controller.config.gen_xray_private_key', return_value='very-secret-key')
+        mocker.patch(
+            'app.controller.configure.gen_xray_private_key', return_value='very-secret-key')
         with open(initial_config_path, 'rt', encoding=getdefaultencoding()) as config_file:
             expected_xray_config_content = config_file.read()
 
