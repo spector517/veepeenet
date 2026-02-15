@@ -90,7 +90,7 @@
           "serverName": "yahoo.com",
           "fingerprint": "chrome",
           "shortId": "0001",
-          "publicKey": "public-key",
+          "password": "public-key",
           "spiderX": "/cobalt"
         }
       }
