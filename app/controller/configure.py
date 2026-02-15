@@ -17,6 +17,7 @@ def config(
         listen_port: int,
         reality_host: str,
         reality_port: int,
+        reality_names: list[str],
         clean: bool,
         xray_config_path: Path = XRAY_CONFIG_PATH
 ) -> None:
@@ -35,8 +36,7 @@ def config(
             if not answer:
                 print('Aborted')
                 sys_exit(0)
-
-        xray_config = create_config(listen, listen_port, reality_host, reality_port)
+        xray_config = create_config(listen, listen_port, reality_host, reality_port, reality_names)
     else:
         xray_config = load_config(XRAY_CONFIG_PATH)
         xray_config = update_config(xray_config, listen, listen_port, reality_host, reality_port)
@@ -59,14 +59,15 @@ def confirm_config_rewriting() -> bool:
     return answer.lower() == 'y'
 
 
-def create_config(listen: str, listen_port: int, reality_host: str, reality_port: int) -> Xray:
+def create_config(listen: str, listen_port: int,
+                  reality_host: str, reality_port: int, reality_names: list[str]) -> Xray:
     vless_inbound = VlessInbound(
         listen=listen,
         port=listen_port,
         stream_settings=InboundStreamSettings(
             reality_settings=InboundRealitySettings(
                 dest=f'{reality_host}:{reality_port}',
-                server_names=[reality_host],
+                server_names=reality_names,
                 private_key=gen_xray_private_key(),
                 short_ids=[])))
     return Xray(inbounds=[vless_inbound])

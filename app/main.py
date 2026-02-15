@@ -57,11 +57,16 @@ def config(
         port: Annotated[int, Option(help='Inbound port.')] = VLESS_LISTEN_PORT,
         reality_host: Annotated[str, Option(help='Reality host.')] = REALITY_HOST,
         reality_port: Annotated[int, Option(help='Reality port.')] = REALITY_PORT,
+        reality_names: Annotated[
+            list[str],
+            Option(help='Available Reality server names.',
+                   show_default='Reality host')] = None,
         clean: Annotated[bool, Option(help='Override current configuration')] = False,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False
 ) -> None:
     common.check_and_install()
-    configure.config(host, port, reality_host, reality_port, clean)
+    configure.config(
+        host, port, reality_host, reality_port, reality_names or [REALITY_HOST], clean)
 
 
 @app.command(help='Show Xray service status')
