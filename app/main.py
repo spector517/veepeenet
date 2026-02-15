@@ -25,7 +25,9 @@ def handle_error(func: Callable[..., ...]) -> Callable[..., ...]:
             restart: 'Error restarting Xray service',
             add_clients: 'Error adding clients to Xray service',
             remove_clients: 'Error removing clients from Xray service',
+            add_outbound: 'Error adding outbound clients to Xray service',
             change_outbound: 'Error changing VLESS outbound connection',
+            remove_outbound: 'Error removing VLESS outbound connection',
         }
         try:
             return errors[func]
