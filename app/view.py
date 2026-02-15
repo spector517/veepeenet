@@ -19,6 +19,7 @@ class ServerView(BaseModel):
     server_host: str
     server_port: int
     reality_address: str
+    reality_names: list[str]
     clients: list[ClientView]
 
     def __repr__(self):
@@ -32,6 +33,7 @@ class ServerView(BaseModel):
         f'\tstatus: {self.server_status}\n'
         f'\taddress: {self.server_host}:{self.server_port}\n'
         f'\treality_address: {self.reality_address}\n'
+        f'\treality_names: {", ".join(self.reality_names)}\n'
         f'\tclients:\n'
         f'{clients_repr}\n'
         '---------------------------------------------------')

@@ -34,6 +34,7 @@ def status(xray_config_path: Path = XRAY_CONFIG_PATH) -> ServerView:
         server_host=xray_config.inbounds[0].listen,
         server_port=xray_config.inbounds[0].port,
         reality_address=xray_config.inbounds[0].stream_settings.reality_settings.dest,
+        reality_names=xray_config.inbounds[0].stream_settings.reality_settings.server_names,
         clients=client_views)
 
 
