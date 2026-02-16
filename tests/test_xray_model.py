@@ -12,7 +12,7 @@ class TestLog:
         expected_map = {
             'access': '/var/log/xray/access.log',
             'error': '/var/log/xray/error.log',
-            'loglevel': 'info',
+            'loglevel': 'off',
             'dnsLog': False,
         }
 

@@ -6,7 +6,7 @@ from pytest import fixture, raises
 from pytest_mock import MockFixture
 
 from app.controller.common import load_config
-from app.controller.configure import create_config
+from app.controller.commands.configure import config
 
 
 @fixture(name='valid_config_path')
@@ -47,12 +47,17 @@ class TestCreateConfig:
 
     def test_create_config(self, initial_config_path: Path, mocker: MockFixture):
         mocker.patch(
-            'app.controller.configure.gen_xray_private_key', return_value='very-secret-key')
+            'app.controller.commands.configure.gen_xray_private_key',
+            return_value='very-secret-key')
+        write_text_file_mock = mocker.patch('app.controller.commands.configure.write_text_file')
+        mocker.patch('app.controller.commands.configure.check_and_install')
+
         with open(initial_config_path, 'rt', encoding=getdefaultencoding()) as config_file:
             expected_xray_config_content = config_file.read()
 
-        actual_xray_config = create_config('0.0.0.0', 8443, 'example.com', 443)
-        actual_xray_config_content = actual_xray_config.model_dump_json(
-            by_alias=True, indent=2, exclude_none=True)
+        config('0.0.0.0', 8443, 'example.com', 443)
+
+        write_text_file_mock.assert_called_once()
+        actual_xray_config_content = write_text_file_mock.call_args[0][1]
 
         assert actual_xray_config_content == expected_xray_config_content

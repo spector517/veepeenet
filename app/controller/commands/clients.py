@@ -1,16 +1,47 @@
 from pathlib import Path
+from typing import Annotated
+from typer import Argument, Option
 
-from app.controller.common import load_config, ClientData
+from app.app import app
+from app.controller.common import (
+    error_handler,
+    load_config,
+    exit_if_xray_config_not_found,
+    check_and_install,
+    ClientData,
+)
 from app.defaults import XRAY_CONFIG_PATH
-from app.utils import(
+from app.utils import (
     get_new_items,
     remove_duplicates,
     get_existing_items,
-    get_short_id, write_text_file
+    get_short_id,
+    write_text_file
 )
 
 
-def add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -> None:
+@app.command(help='Add clients to Xray VLESS Reality server')
+@error_handler(default_message='Error adding clients to Xray service')
+def add_clients(client_names: Annotated[list[str],
+        Argument(help='List of new client of Xray VLESS Reality server')],
+                _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+    exit_if_xray_config_not_found()
+    check_and_install()
+    __add_clients(client_names)
+
+
+@app.command(help='Remove clients from Xray VLESS Reality server')
+@error_handler(default_message='Error removing clients from Xray service')
+def remove_clients(client_names: Annotated[list[str],
+        Argument(help='List of clients to remove from Xray VLESS Reality server')],
+                   _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+    exit_if_xray_config_not_found()
+    check_and_install()
+    __remove_clients(client_names)
+
+
+
+def __add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -> None:
     xray_config = load_config(xray_config_path)
     settings = xray_config.inbounds[0].settings
     host = xray_config.inbounds[0].listen
@@ -45,7 +76,7 @@ def add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -> 
     print('Added new clients:', ', '.join(new_names))
 
 
-def remove_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -> None:
+def __remove_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -> None:
     xray_config = load_config(xray_config_path)
     clients = xray_config.inbounds[0].settings.clients
     host = xray_config.inbounds[0].listen

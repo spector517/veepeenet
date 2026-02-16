@@ -1,8 +1,9 @@
 from dataclasses import dataclass
+from functools import wraps
 from os import getuid
 from pathlib import Path
 from sys import exit as sys_exit, getdefaultencoding
-from typing import Self
+from typing import Self, Callable, Any
 from urllib.parse import urljoin
 from uuid import uuid4
 
@@ -58,6 +59,25 @@ class ClientData:
             id=self.uuid,
             email=f'{self.name}.{self.short_id:04}@{self.host}'
         )
+
+
+def error_handler(default_message: str | None = None) -> Callable[..., ...]:
+
+    def wrapper_func(func: Callable[..., ...]) -> Callable[..., ...]:
+
+        @wraps(func)
+        def wrapper(*args, **kwargs) -> Any | None:
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                if '_debug' in kwargs and kwargs['_debug']:
+                    raise
+                print(f'{default_message or "Unknown error"}: {e}')
+                return None
+
+        return wrapper
+
+    return wrapper_func
 
 
 def check_and_install(
