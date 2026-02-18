@@ -20,18 +20,18 @@ from app.utils import (
 )
 
 
-@app.command(help='Add clients to Xray VLESS Reality server')
-@error_handler(default_message='Error adding clients to Xray service')
+@app.command(help='Register clients to service')
+@error_handler(default_message='Error adding clients to service')
 def add_clients(client_names: Annotated[list[str],
-        Argument(help='List of new client of Xray VLESS Reality server')],
+        Argument(help='List of new client of server')],
                 _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     exit_if_xray_config_not_found()
     check_and_install()
     __add_clients(client_names)
 
 
-@app.command(help='Remove clients from Xray VLESS Reality server')
-@error_handler(default_message='Error removing clients from Xray service')
+@app.command(help='Remove clients from service')
+@error_handler(default_message='Error removing clients from service')
 def remove_clients(client_names: Annotated[list[str],
         Argument(help='List of clients to remove from Xray VLESS Reality server')],
                    _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:

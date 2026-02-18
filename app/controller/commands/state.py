@@ -23,9 +23,9 @@ from app.utils import (
 from app.view import ServerView, ClientView
 
 
-@app.command(help='Show Xray service status')
-@error_handler(default_message='Error retrieving status of Xray service')
-def status(json: Annotated[bool, Option(help='Show in JSON-format')] = False,
+@app.command(help='Show service status')
+@error_handler(default_message='Error retrieving service status')
+def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = False,
            _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     exit_if_xray_config_not_found()
     check_and_install()
@@ -57,38 +57,38 @@ def status(json: Annotated[bool, Option(help='Show in JSON-format')] = False,
         print(repr(server_view))
 
 
-@app.command(help='Start Xray service')
-@error_handler(default_message='Error starting Xray service')
+@app.command(help='Start service')
+@error_handler(default_message='Error starting service')
 def start(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     exit_if_xray_config_not_found()
     check_and_install()
 
     if is_xray_service_running():
-        print('Xray service is already running')
+        print('Service is already running')
         return
     start_xray_service()
     if not is_xray_service_enabled():
         enable_xray_service()
-    print('Xray service started')
+    print('Service started')
 
 
-@app.command(help='Stop Xray service')
-@error_handler(default_message='Error stopping Xray service')
+@app.command(help='Stop service')
+@error_handler(default_message='Error stopping service')
 def stop(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     exit_if_xray_config_not_found()
     check_and_install()
 
     if not is_xray_service_running():
-        print('Xray service is not running')
+        print('Service is not running')
         return
     stop_xray_service()
     if is_xray_service_enabled():
         disable_xray_service()
-    print('Xray service stopped')
+    print('Service stopped')
 
 
-@app.command(help='Restart Xray service')
-@error_handler(default_message='Error restarting Xray service')
+@app.command(help='Restart service')
+@error_handler(default_message='Error restarting service')
 def restart(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     exit_if_xray_config_not_found()
     check_and_install()
@@ -96,4 +96,4 @@ def restart(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> 
     if is_xray_service_running():
         stop_xray_service()
     start_xray_service()
-    print('Xray service restarted')
+    print('Service restarted')

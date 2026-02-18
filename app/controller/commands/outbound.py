@@ -20,8 +20,8 @@ from app.model.vless_outbound import (
 from app.utils import write_text_file, set_value
 
 
-@app.command(help='Add new VLESS outbound VLESS Reality connection')
-@error_handler(default_message='Error adding outbound clients to Xray service')
+@app.command(help='Add new VLESS outbound to service')
+@error_handler(default_message='Error adding VLESS outbound connection')
 def add_outbound(
         name: Annotated[str, Argument(help='Outbound name')],
         address: Annotated[str, Option(help='Outbound address (ip or domain name)')],
@@ -42,7 +42,7 @@ def add_outbound(
     xray_config = load_config(XRAY_CONFIG_PATH)
     for outbound in xray_config.outbounds:
         if outbound.tag == name:
-            print(f'Outbound with tag {name} already exists')
+            print(f'Outbound "{name}" already exists')
             return
 
     settings = OutboundSettings(address=address, id=uuid, port=port)
@@ -68,10 +68,10 @@ def add_outbound(
         XRAY_CONFIG_PATH,
         xray_config.model_dump_json(by_alias=True, exclude_none=True, indent=2),
         0o644)
-    print('Added new VLESS outbound with tag', name)
+    print(f'Added new outbound "{name}"')
 
 
-@app.command(help='Remove VLESS outbound connection')
+@app.command(help='Remove VLESS outbound from service')
 @error_handler(default_message='Error removing VLESS outbound connection')
 def remove_outbound(
         name: Annotated[str, Argument(help='Outbound name')],
@@ -87,13 +87,13 @@ def remove_outbound(
                 XRAY_CONFIG_PATH,
                 xray_config.model_dump_json(by_alias=True, exclude_none=True, indent=2),
                 0o644)
-            print('Removed VLESS outbound with tag:', name)
+            print(f'Removed outbound "{name}"')
             return
-    print(f'VLESS outbound {name} not found')
+    print(f'Outbound "{name}" not found')
     sys_exit(-1)
 
 
-@app.command(help='Change VLESS outbound connection parameters')
+@app.command(help='Change VLESS outbound')
 @error_handler(default_message='Error changing VLESS outbound connection')
 def change_outbound(
         name: Annotated[str, Argument(help='Outbound name')],
@@ -118,7 +118,7 @@ def change_outbound(
         if outbound.tag == name and outbound.protocol == 'vless':
             target_outbound = outbound
     if not target_outbound:
-        print(f'VLESS outbound {name} not found')
+        print(f'Outbound {name} not found')
         sys_exit(-1)
 
     results = [set_value(target_outbound.settings, 'address', address),
@@ -130,11 +130,11 @@ def change_outbound(
                set_value(target_outbound.stream_settings.reality_settings, 'short_id', short_id),
                set_value(target_outbound.stream_settings.reality_settings, 'spider_x', spider_x)]
     if not any(results):
-        print('No changes found')
+        print(f'No changes found for outbound "{name}"')
         sys_exit(-1)
 
     write_text_file(
         XRAY_CONFIG_PATH,
         xray_config.model_dump_json(by_alias=True, exclude_none=True, indent=2),
         0o644)
-    print('Changed VLESS outbound with tag:', name)
+    print(f'Changed outbound {name}')

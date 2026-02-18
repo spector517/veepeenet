@@ -15,8 +15,8 @@ from app.model.xray import Xray
 from app.utils import detect_current_ipv4, write_text_file, gen_xray_private_key
 
 
-@app.command(help='Initialize VLESS Reality server')
-@error_handler(default_message='Error during configuration Xray service')
+@app.command(help='Configure VLESS Reality Xray service')
+@error_handler(default_message='Error during configuration service')
 def config(
         host: Annotated[str, Option(
             help=('Public interface of server.'
@@ -39,7 +39,7 @@ def config(
                                ' Please specify it manually via --host option')
         detect_host_address_answer = __confirm_host_detection(host)
         if not detect_host_address_answer:
-            print('Please specify it manually via --host option')
+            print('Please specify public host address manually via --host option')
             sys_exit(-1)
 
     if not XRAY_CONFIG_PATH.exists() or clean:
@@ -58,7 +58,7 @@ def config(
         XRAY_CONFIG_PATH,
         xray_config.model_dump_json(by_alias=True, exclude_none=True, indent=2),
         0o644)
-    print('Configuration completed')
+    print('Server configuration is done')
 
 
 def __confirm_host_detection(host: str) -> bool:
