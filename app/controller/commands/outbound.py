@@ -1,5 +1,6 @@
 from sys import exit as sys_exit
-from typing import Annotated
+from typing import Annotated, get_args, cast
+from urllib.parse import urlparse, parse_qs, unquote
 
 from typer import Argument, Option
 
@@ -10,14 +11,20 @@ from app.controller.common import (
     exit_if_xray_config_not_found,
     check_and_install
 )
-from app.defaults import XRAY_CONFIG_PATH, VLESS_OUTBOUND_SPIDER_X, VLESS_OUTBOUND_PORT
+from app.defaults import(
+    XRAY_CONFIG_PATH,
+    VLESS_OUTBOUND_SPIDER_X,
+    VLESS_OUTBOUND_FINGERPRINT,
+    VLESS_OUTBOUND_PORT,
+)
 from app.model.vless_outbound import (
     Settings as OutboundSettings,
     RealitySettings as OutboundRealitySettings,
     VlessOutbound,
     StreamSettings as OutboundStreamSettings
 )
-from app.utils import write_text_file, set_value
+from app.utils import write_text_file, set_value, is_valid_vless_client_url
+from app.model.types import FingerprintType
 
 
 @app.command(help='Add new VLESS outbound to service')
@@ -27,14 +34,17 @@ def add_outbound(
         address: Annotated[str, Option(help='Outbound address (ip or domain name)')],
         uuid: Annotated[str, Option(help='VLESS client identifier')],
         sni: Annotated[str, Option(help='Server name of target server')],
-        password: Annotated[str, Option(help='Public key of target server')],
         short_id: Annotated[str, Option(help='One of short_id of target server')],
+        password: Annotated[str, Option(help='Public key of target server')] = '',
         spider_x: Annotated[
             str,
             Option(help='Initial path and parameters for the spider')] = VLESS_OUTBOUND_SPIDER_X,
         port: Annotated[
             int | None,
             Option(help='VLESS outbound port')] = VLESS_OUTBOUND_PORT,
+        fingerprint: Annotated[
+            FingerprintType,
+            Option(help='Fingerprint of target server')] = VLESS_OUTBOUND_FINGERPRINT,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     exit_if_xray_config_not_found()
     check_and_install()
@@ -50,7 +60,7 @@ def add_outbound(
         settings.port = port
     reality_settings = OutboundRealitySettings(
         server_name=sni,
-        fingerprint='chrome',
+        fingerprint=fingerprint,
         password=password,
         short_id=short_id,
         spider_x=spider_x
@@ -69,6 +79,44 @@ def add_outbound(
         xray_config.model_dump_json(by_alias=True, exclude_none=True, indent=2),
         0o644)
     print(f'Added new outbound "{name}"')
+
+
+@app.command(help='Add new VLESS outbound to service by URL')
+@error_handler(default_message='Error adding VLESS outbound connection by URL')
+def add_outbound_url(
+        url: Annotated[str, Argument(help='Outbound URL')],
+        name: Annotated[str, Option(help='Outbound name')] = None,
+        _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+    if not is_valid_vless_client_url(url):
+        print('Unsupported VLESS client URL')
+        sys_exit(-1)
+
+    parsed_url = urlparse(url)
+    query_params = parse_qs(parsed_url.query)
+
+    address = parsed_url.hostname
+    port = parsed_url.port
+    uuid = parsed_url.username
+    sni = query_params.get('sni')[0]
+    password = query_params.get('pbk')[0]
+    short_id = query_params.get('sid', [''])[0]
+    spider_x = unquote(query_params.get('spx')[0])
+    fingerprint = query_params.get('fp')[0]
+    outbound_name = name or parsed_url.fragment
+
+    if fingerprint not in get_args(FingerprintType):
+        print(f'Unsupported fingerprint: {fingerprint}')
+        sys_exit(-1)
+    fingerprint = cast(FingerprintType, fingerprint)
+
+    if len(short_id) % 2 != 0:
+        print('Invalid sid (short_id): length must be even')
+        sys_exit(-1)
+
+    add_outbound(name=outbound_name, address=address, uuid=uuid, sni=sni, password=password,
+                 short_id=short_id, spider_x=spider_x, port=port,
+                 fingerprint=fingerprint, _debug=_debug)
+
 
 
 @app.command(help='Remove VLESS outbound from service')

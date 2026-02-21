@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 from pathlib import Path
 from sys import getdefaultencoding
 from tempfile import TemporaryDirectory
@@ -16,6 +17,7 @@ from app.utils import (
     enable_xray_service,
     disable_xray_service,
     get_vless_client_url,
+    is_valid_vless_client_url,
     ufw_open_port,
     detect_ssh_port,
     detect_current_ipv4,
@@ -200,6 +202,134 @@ class TestGetVlessClientUrl:
             'nonexistent_client', Xray.model_validate_json(xray_config_content))
 
         assert actual_url is None
+
+
+class TestIsValidVlessClientUrl:
+
+    def test_is_valid_vless_client_url_valid(self):
+        valid_url = (
+            'vless://550e8400-e29b-41d4-a716-446655440000@example.com:443'
+            '?flow=xtls-rprx-vision&type=raw&security=reality&fp=chrome'
+            '&sni=yahoo.com&pbk=abcdefghijklmnopqrstuvwxyz0123456789abcdef='
+            '&sid=0001&spx=%2Fclient%2Fpath#client@domain.com'
+        )
+
+        result = is_valid_vless_client_url(valid_url)
+
+        assert result is True
+
+    def test_is_valid_vless_client_url_valid_long_sid(self):
+        valid_url = (
+            'vless://aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee@192.168.1.1:8443'
+            '?flow=xtls-rprx-vision&type=raw&security=reality&fp=chrome'
+            '&sni=example.com&pbk=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+            '&sid=abcdef0123456789&spx=%2Ftest#test@example.com'
+        )
+
+        result = is_valid_vless_client_url(valid_url)
+
+        assert result is True
+
+    def test_is_valid_vless_client_url_missing_flow_param(self):
+        invalid_url = (
+            'vless://550e8400-e29b-41d4-a716-446655440000@example.com:443'
+            '?type=raw&security=reality&fp=chrome'
+            '&sni=yahoo.com&pbk=abcdefghijklmnopqrstuvwxyz0123456789abcd='
+            '&sid=0001&spx=%2Fclient#client@domain.com'
+        )
+
+        result = is_valid_vless_client_url(invalid_url)
+
+        assert result is False
+
+    def test_is_valid_vless_client_url_missing_security_param(self):
+        invalid_url = (
+            'vless://550e8400-e29b-41d4-a716-446655440000@example.com:443'
+            '?flow=xtls-rprx-vision&type=raw&fp=chrome'
+            '&sni=yahoo.com&pbk=abcdefghijklmnopqrstuvwxyz0123456789abcd='
+            '&sid=0001&spx=%2Fclient#client@domain.com'
+        )
+
+        result = is_valid_vless_client_url(invalid_url)
+
+        assert result is False
+
+    def test_is_valid_vless_client_url_invalid_uuid(self):
+        invalid_url = (
+            'vless://not-a-valid-uuid@example.com:443'
+            '?flow=xtls-rprx-vision&type=raw&security=reality&fp=chrome'
+            '&sni=yahoo.com&pbk=abcdefghijklmnopqrstuvwxyz0123456789abcd='
+            '&sid=0001&spx=%2Fclient#client@domain.com'
+        )
+
+        result = is_valid_vless_client_url(invalid_url)
+
+        assert result is False
+
+    def test_is_valid_vless_client_url_invalid_port(self):
+        invalid_url = (
+            'vless://550e8400-e29b-41d4-a716-446655440000@example.com:99999'
+            '?flow=xtls-rprx-vision&type=raw&security=reality&fp=chrome'
+            '&sni=yahoo.com&pbk=abcdefghijklmnopqrstuvwxyz0123456789abcd='
+            '&sid=0001&spx=%2Fclient#client@domain.com'
+        )
+
+        result = is_valid_vless_client_url(invalid_url)
+
+        assert result is False
+
+    def test_is_valid_vless_client_url_short_pbk(self):
+        invalid_url = (
+            'vless://550e8400-e29b-41d4-a716-446655440000@example.com:443'
+            '?flow=xtls-rprx-vision&type=raw&security=reality&fp=chrome'
+            '&sni=yahoo.com&pbk=short'
+            '&sid=0001&spx=%2Fclient#client@domain.com'
+        )
+
+        result = is_valid_vless_client_url(invalid_url)
+
+        assert result is False
+
+    def test_is_valid_vless_client_url_missing_sid(self):
+        valid_url = (
+            'vless://550e8400-e29b-41d4-a716-446655440000@example.com:443'
+            '?flow=xtls-rprx-vision&type=raw&security=reality&fp=chrome'
+            '&sni=yahoo.com&pbk=abcdefghijklmnopqrstuvwxyz0123456789abdfcd='
+            '&spx=%2Fclient#client@domain.com'
+        )
+
+        result = is_valid_vless_client_url(valid_url)
+
+        assert result is True
+
+    def test_is_valid_vless_client_url_empty_string(self):
+        result = is_valid_vless_client_url('')
+
+        assert result is False
+
+    def test_is_valid_vless_client_url_missing_fragment(self):
+        invalid_url = (
+            'vless://550e8400-e29b-41d4-a716-446655440000@example.com:443'
+            '?flow=xtls-rprx-vision&type=raw&security=reality&fp=chrome'
+            '&sni=yahoo.com&pbk=abcdefghijklmnopqrstuvwxyz0123456789abcd='
+            '&sid=0001&spx=%2Fclient'
+        )
+
+        result = is_valid_vless_client_url(invalid_url)
+
+        assert result is False
+
+    def test_is_valid_vless_client_url_pbk_with_padding(self):
+        valid_url = (
+            'vless://550e8400-e29b-41d4-a716-446655440000@10.0.0.1:443'
+            '?flow=xtls-rprx-vision&type=raw&security=reality&fp=chrome'
+            '&sni=test.com&pbk=aaaabbbbccccddddeeeeffffgggghhhh123456acefg='
+            '&sid=abcd&spx=%2Fpath#name@host.com'
+        )
+
+        result = is_valid_vless_client_url(valid_url)
+
+        assert result is True
 
 
 class TestUfwOpenPort:

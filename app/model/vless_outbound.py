@@ -1,6 +1,7 @@
 from typing import Literal
 
 from app.model.base import XrayModel
+from app.model.types import FingerprintType
 
 
 class Settings(XrayModel):
@@ -13,7 +14,7 @@ class Settings(XrayModel):
 
 class RealitySettings(XrayModel):
     server_name: str
-    fingerprint: Literal['chrome'] = 'chrome'
+    fingerprint: FingerprintType
     password: str
     short_id: str
     spider_x: str

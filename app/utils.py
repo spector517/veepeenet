@@ -1,7 +1,7 @@
 from importlib.resources import files
 from io import BytesIO
 from pathlib import Path
-from re import findall, MULTILINE, search
+from re import findall, MULTILINE, search, fullmatch
 from subprocess import run
 from sys import getdefaultencoding
 from typing import Literal
@@ -124,6 +124,14 @@ def get_vless_client_url(client_name: str, xray_config: Xray) -> str | None:
                     f'&spx={spx}'
                     f'#{client_name}@{client.email.split('@')[-1]}')
     return None
+
+
+def is_valid_vless_client_url(url: str) -> bool:
+    return fullmatch(
+        r'vless://[a-f0-9-]{36}@[\w.-]+:\d{1,5}'
+        r'\?flow=xtls-rprx-vision&type=raw&security=reality&fp=[^&]+'
+        r'&sni=[^&]+&pbk=[^&]{43}=?(?:&sid=[0-9a-f]{0,16})?'
+        r'&spx=[^&]+#[^&]+', url) is not None
 
 
 def ufw_open_port(
