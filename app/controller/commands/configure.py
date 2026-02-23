@@ -5,14 +5,28 @@ from typer import Option
 
 from app.app import app
 from app.controller.common import load_config, check_and_install, error_handler
-from app.defaults import VLESS_LISTEN_PORT, REALITY_HOST, REALITY_PORT, XRAY_CONFIG_PATH
+from app.defaults import (
+    VLESS_LISTEN_PORT,
+    REALITY_HOST,
+    REALITY_PORT,
+    XRAY_CONFIG_PATH,
+    GEO_IP_URL,
+    GEO_SITE_URL,
+    XRAY_GEO_IP_DATA_PATH,
+    XRAY_GEO_SITE_DATA_PATH,
+)
 from app.model.vless_inbound import (
     VlessInbound,
     StreamSettings as InboundStreamSettings,
     RealitySettings as InboundRealitySettings
 )
 from app.model.xray import Xray
-from app.utils import detect_current_ipv4, write_text_file, gen_xray_private_key
+from app.utils import (
+    detect_current_ipv4,
+    write_text_file,
+    gen_xray_private_key,
+    install_geo_data,
+)
 
 
 @app.command(help='Configure VLESS Reality Xray service')
@@ -59,6 +73,16 @@ def config(
         xray_config.model_dump_json(by_alias=True, exclude_none=True, indent=2),
         0o644)
     print('Server configuration is done')
+
+
+@app.command(help='Update geodata (geoip.dat and geosite.dat) for Xray')
+@error_handler(default_message='Error during geodata updating')
+def update_geodata() -> None:
+    check_and_install()
+
+    install_geo_data(GEO_IP_URL, XRAY_GEO_IP_DATA_PATH)
+    install_geo_data(GEO_SITE_URL, XRAY_GEO_SITE_DATA_PATH)
+    print('Geodata updated')
 
 
 def __confirm_host_detection(host: str) -> bool:

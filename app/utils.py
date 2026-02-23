@@ -25,10 +25,6 @@ def is_xray_distrib_installed(version: str) -> bool:
 
 
 def install_xray_distrib(zip_url: str, bin_path: Path) -> None:
-    try:
-        bin_path.unlink()
-    except FileNotFoundError:
-        ...
     bin_path.parent.mkdir(parents=True, mode=0o755, exist_ok=True)
 
     distrib_bytes = get_request(zip_url, timeout=20_000).content
@@ -36,6 +32,14 @@ def install_xray_distrib(zip_url: str, bin_path: Path) -> None:
         with zip_file.open('xray') as xray_file:
             bin_path.write_bytes(xray_file.read())
             bin_path.chmod(0o744)
+
+
+def install_geo_data(geo_data_url: str, geo_data_path: Path) -> None:
+    geo_data_path.parent.mkdir(parents=True, mode=0o755, exist_ok=True)
+
+    geo_data_bytes = get_request(geo_data_url, timeout=20_000).content
+    geo_data_path.write_bytes(geo_data_bytes)
+    geo_data_path.chmod(0o655)
 
 
 def is_xray_service_installed(unit_path: Path) -> bool:

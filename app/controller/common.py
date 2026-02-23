@@ -18,6 +18,8 @@ from app.defaults import (
 )
 from app.model.vless_inbound import Client
 from app.model.xray import Xray
+from app.model.routing import Rule
+from app.model.types import RuleProtocolType
 from app.utils import (
     detect_veepeenet_versions,
     is_xray_distrib_installed,
@@ -60,6 +62,38 @@ class ClientData:
             email=f'{self.name}.{self.short_id:04}@{self.host}'
         )
 
+
+@dataclass
+class RuleData:
+    name: str
+    outbound_name: str
+    protocols: list[RuleProtocolType] | None
+    ports: str | None
+    domains: list[str] | None
+    ips: list[str] | None
+    priority: int
+
+    @classmethod
+    def from_model(cls, rule: Rule, number: int = 0) -> Self:
+        split_name = rule.tag.split('.')
+        try:
+            priority = int(split_name[-1])
+            name = '.'.join(split_name[:-1])
+        except ValueError:
+            priority = (number + 1) * 10
+            name = rule.tag
+        return RuleData(name=name, outbound_name=rule.outbound_tag, protocols=rule.protocol,
+                        ports=rule.port, domains=rule.domain, ips=rule.ip, priority=priority)
+
+    def to_model(self) -> Rule:
+        return Rule(
+            tag=f'{self.name}.{self.priority}',
+            outbound_tag=self.outbound_name,
+            protocol=self.protocols,
+            port=self.ports,
+            domain=self.domains,
+            ip=self.ips
+        )
 
 def error_handler(default_message: str | None = None) -> Callable[..., ...]:
 

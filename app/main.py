@@ -8,6 +8,8 @@ import app.controller.commands.configure
 import app.controller.commands.outbound
 # noinspection PyUnusedImports
 import app.controller.commands.state
+# noinspection PyUnusedImports
+import app.controller.commands.routing
 
 from app.app import app as typer_app
 

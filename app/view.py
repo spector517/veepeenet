@@ -1,13 +1,13 @@
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ClientView(BaseModel):
     name: str
     url: str
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'{self.name}: {self.url}'
 
 
@@ -22,21 +22,73 @@ class ServerView(BaseModel):
     reality_names: list[str]
     clients: list[ClientView]
 
-    def __repr__(self):
-        clients_repr = '\n'.join([f'\t\t{repr(client)}' for client in self.clients]) \
-            if self.clients else '\t\tServer has no clients'
-        return ('----------- '
+    def __repr__(self) -> str:
+        padding = ' ' * 2
+
+        clients_repr = '\n'.join([f'{padding * 2}{repr(client)}' for client in self.clients]) \
+            if self.clients else f'{padding * 2}Server has no clients'
+        return ('=========== '
         f'VeePeeNET {self.veepeenet_version} build {self.veepeenet_build}'
-        ' -----------\n'
+        ' ===========\n'
         'Xray server info:\n'
-        f'\tversion: {self.xray_version}\n'
-        f'\tstatus: {self.server_status}\n'
-        f'\taddress: {self.server_host}:{self.server_port}\n'
-        f'\treality_address: {self.reality_address}\n'
-        f'\treality_names: {", ".join(self.reality_names)}\n'
-        f'\tclients:\n'
+        f'{padding}version: {self.xray_version}\n'
+        f'{padding}status: {self.server_status}\n'
+        f'{padding}address: {self.server_host}:{self.server_port}\n'
+        f'{padding}reality_address: {self.reality_address}\n'
+        f'{padding}reality_names: {", ".join(self.reality_names)}\n'
+        f'{padding}clients:\n'
         f'{clients_repr}\n'
-        '---------------------------------------------------')
+        '=======================================================')
+
+
+class RuleView(BaseModel):
+    name: str
+    domains: list[str] | None = Field(default=None)
+    ips: list[str] | None = Field(default=None)
+    ports: str | None = Field(default=None)
+    protocols: list[str] | None = Field(default=None)
+    outbound_name: str
+    priority: int
+
+    def __repr__(self):
+        padding = ' ' * 2
+        rule_str = f'#{self.priority} {self.name}: --> {self.outbound_name}\n'
+
+        if self.domains:
+            rule_str += f'{padding}Domains: {", ".join(self.domains)}\n'
+        if self.ips:
+            rule_str += f'{padding}IPs: {", ".join(self.ips)}\n'
+        if self.ports:
+            rule_str += f'{padding}Ports: {self.ports}\n'
+        if self.protocols:
+            rule_str += f'{padding}Protocols: {", ".join(self.protocols)}\n'
+
+        return rule_str
+
+class RoutingView(BaseModel):
+    domain_strategy: str | None = Field(default=None)
+    rules: list[RuleView] = Field(default=None)
+
+    def __repr__(self):
+        padding = ' ' * 2
+
+        routing_str = '==================== Xray routing  ====================\n'
+
+        if not self.domain_strategy and not self.rules:
+            routing_str += f'{padding}No routing rules configured\n'
+            return routing_str
+
+        routing_str += f'{padding}Domain strategy: {self.domain_strategy}\n'
+        rule_block_breaker = '-------------------------------------------------------\n'
+        for rule in self.rules:
+            routing_str += rule_block_breaker
+            rule_str = '\n'.join(
+                [f'{padding * 2}{rule_str}' for rule_str in repr(rule).splitlines()])
+            routing_str += f'{rule_str}\n'
+            routing_str += rule_block_breaker
+        routing_str += '======================================================='
+        return routing_str
+
 
 class VersionsView(BaseModel):
     veepeenet_version: str

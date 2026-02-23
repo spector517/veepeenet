@@ -24,6 +24,7 @@ from app.utils import (
     write_text_file,
     is_xray_distrib_installed,
     install_xray_distrib,
+    install_geo_data,
     is_xray_service_installed,
     install_xray_service,
     stop_xray_service,
@@ -78,13 +79,13 @@ class TestGenXrayPassword:
 
     def test_gen_xray_password_success(self, mocker):
         private_key = 'aAbBcCdDeEfF123456789gGhHiIjJkKlL=='
-        expected_password = 'xXyYzZ987654321aBcDeFgHiJkLmNoOpP=='
+        expected_pass = 'xXyYzZ987654321aBcDeFgHiJkLmNoOpP=='
         mock_run_command = mocker.patch(
-            'app.utils.run_command', return_value=(0, f'Password: {expected_password}', ''))
+            'app.utils.run_command', return_value=(0, f'Password: {expected_pass}', ''))
 
         result = gen_xray_password(private_key)
 
-        assert result == expected_password
+        assert result == expected_pass
         mock_run_command.assert_called_once_with(f'xray x25519 -i {private_key}')
 
     def test_gen_xray_password_command_failure(self, mocker):
@@ -580,7 +581,6 @@ class TestInstallXrayDistrib:
 
         install_xray_distrib('http://example.com/xray.zip', mock_bin_path)
 
-        mock_bin_path.unlink.assert_called_once()
         mock_bin_path.parent.mkdir.assert_called_once_with(parents=True, mode=0o755, exist_ok=True)
         mock_bin_path.write_bytes.assert_called_once_with(b'xray_binary')
         mock_bin_path.chmod.assert_called_once_with(0o744)
@@ -608,10 +608,143 @@ class TestInstallXrayDistrib:
 
         install_xray_distrib('http://example.com/xray.zip', mock_bin_path)
 
-        mock_bin_path.unlink.assert_called_once()
         mock_bin_path.parent.mkdir.assert_called_once_with(parents=True, mode=0o755, exist_ok=True)
         mock_bin_path.write_bytes.assert_called_once_with(b'xray_binary')
         mock_bin_path.chmod.assert_called_once_with(0o744)
+
+
+class TestInstallGeoData:
+
+    def test_install_geo_data_success(self, mocker):
+        mock_geo_data_path = MagicMock(spec=Path)
+        mock_geo_data_path.parent.mkdir = MagicMock()
+        mock_geo_data_path.write_bytes = MagicMock()
+        mock_geo_data_path.chmod = MagicMock()
+
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_response = MagicMock()
+        mock_response.content = b'geodata_content'
+        mock_get.return_value = mock_response
+
+        install_geo_data('http://example.com/geoip.dat', mock_geo_data_path)
+
+        mock_geo_data_path.parent.mkdir.assert_called_once_with(
+            parents=True, mode=0o755, exist_ok=True)
+        mock_get.assert_called_once_with('http://example.com/geoip.dat', timeout=20_000)
+        mock_geo_data_path.write_bytes.assert_called_once_with(b'geodata_content')
+        mock_geo_data_path.chmod.assert_called_once_with(0o655)
+
+    def test_install_geo_data_creates_parent_directory(self, mocker):
+        mock_geo_data_path = MagicMock(spec=Path)
+        mock_geo_data_path.parent.mkdir = MagicMock()
+        mock_geo_data_path.write_bytes = MagicMock()
+        mock_geo_data_path.chmod = MagicMock()
+
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_response = MagicMock()
+        mock_response.content = b'geodata'
+        mock_get.return_value = mock_response
+
+        install_geo_data('http://example.com/geosite.dat', mock_geo_data_path)
+
+        mock_geo_data_path.parent.mkdir.assert_called_once_with(
+            parents=True, mode=0o755, exist_ok=True)
+
+    def test_install_geo_data_with_real_path(self, mocker):
+        with TemporaryDirectory() as temp_dir:
+            geo_data_path = Path(temp_dir) / 'geodata' / 'geoip.dat'
+
+            mock_get = mocker.patch('app.utils.get_request')
+            mock_response = MagicMock()
+            test_content = b'test_geodata_content'
+            mock_response.content = test_content
+            mock_get.return_value = mock_response
+
+            install_geo_data('http://example.com/geoip.dat', geo_data_path)
+
+            assert geo_data_path.exists()
+            assert geo_data_path.read_bytes() == test_content
+            assert geo_data_path.parent.exists()
+
+    def test_install_geo_data_sets_correct_permissions(self, mocker):
+        with TemporaryDirectory() as temp_dir:
+            geo_data_path = Path(temp_dir) / 'geoip.dat'
+
+            mock_get = mocker.patch('app.utils.get_request')
+            mock_response = MagicMock()
+            mock_response.content = b'geodata'
+            mock_get.return_value = mock_response
+
+            install_geo_data('http://example.com/geoip.dat', geo_data_path)
+
+            file_mode = geo_data_path.stat().st_mode & 0o777
+            assert file_mode == 0o655
+
+    def test_install_geo_data_url_parameter(self, mocker):
+        mock_geo_data_path = MagicMock(spec=Path)
+        mock_geo_data_path.parent.mkdir = MagicMock()
+        mock_geo_data_path.write_bytes = MagicMock()
+        mock_geo_data_path.chmod = MagicMock()
+
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_response = MagicMock()
+        mock_response.content = b'geodata'
+        mock_get.return_value = mock_response
+
+        test_url = 'http://example.com/custom_geodata.dat'
+        install_geo_data(test_url, mock_geo_data_path)
+
+        mock_get.assert_called_once_with(test_url, timeout=20_000)
+
+    def test_install_geo_data_overwrites_existing_file(self, mocker):
+        with TemporaryDirectory() as temp_dir:
+            geo_data_path = Path(temp_dir) / 'geoip.dat'
+
+            # Create an existing file
+            old_content = b'old_geodata'
+            geo_data_path.write_bytes(old_content)
+
+            mock_get = mocker.patch('app.utils.get_request')
+            mock_response = MagicMock()
+            new_content = b'new_geodata_content'
+            mock_response.content = new_content
+            mock_get.return_value = mock_response
+
+            install_geo_data('http://example.com/geoip.dat', geo_data_path)
+
+            assert geo_data_path.read_bytes() == new_content
+
+    def test_install_geo_data_with_empty_content(self, mocker):
+        mock_geo_data_path = MagicMock(spec=Path)
+        mock_geo_data_path.parent.mkdir = MagicMock()
+        mock_geo_data_path.write_bytes = MagicMock()
+        mock_geo_data_path.chmod = MagicMock()
+
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_response = MagicMock()
+        mock_response.content = b''
+        mock_get.return_value = mock_response
+
+        install_geo_data('http://example.com/geoip.dat', mock_geo_data_path)
+
+        mock_geo_data_path.write_bytes.assert_called_once_with(b'')
+        mock_geo_data_path.chmod.assert_called_once_with(0o655)
+
+    def test_install_geo_data_large_content(self, mocker):
+        mock_geo_data_path = MagicMock(spec=Path)
+        mock_geo_data_path.parent.mkdir = MagicMock()
+        mock_geo_data_path.write_bytes = MagicMock()
+        mock_geo_data_path.chmod = MagicMock()
+
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_response = MagicMock()
+        large_content = b'x' * (10 * 1024 * 1024)  # 10 MB
+        mock_response.content = large_content
+        mock_get.return_value = mock_response
+
+        install_geo_data('http://example.com/geoip.dat', mock_geo_data_path)
+
+        mock_geo_data_path.write_bytes.assert_called_once_with(large_content)
 
 
 class TestIsXrayServiceInstalled:

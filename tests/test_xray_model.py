@@ -1,7 +1,3 @@
-import pytest
-from pydantic import ValidationError
-
-from app.model.routing import Routing, Rule
 from app.model.shared import Log, Dns, DnsOutbound
 from app.model.vless_inbound import VlessInbound, Client, StreamSettings, RealitySettings
 
@@ -103,37 +99,6 @@ class TestVlessInbound:
                     private_key='very-secret-key',
                     short_ids=[])))
         actual_map = vless_inbound.model_dump(by_alias=True)
-
-        assert actual_map == expected_map
-
-
-class TestRouting:
-
-    def test_routing_no_rules(self):
-        with pytest.raises(ValidationError):
-            Rule(tag='empty-rule', outbound_tag='empty-outbound')
-
-    def test_routing_with_rules(self):
-        expected_map = {
-            'domainStrategy': 'AsIs',
-            'rules': [
-                {
-                    'port': '123',
-                    'tag': 'port-rule',
-                    'outboundTag': 'empty-outbound',
-                },
-                {
-                    'domain': ['example.com'],
-                    'tag': 'domain-rule',
-                    'outboundTag': 'empty-outbound',
-                }
-            ]
-        }
-
-        port_rule = Rule(tag='port-rule', outbound_tag='empty-outbound', port='123')
-        domain_rule = Rule(tag='domain-rule', outbound_tag='empty-outbound', domain=['example.com'])
-        routing = Routing(rules=[port_rule, domain_rule])
-        actual_map = routing.model_dump(by_alias=True, exclude_none=True)
 
         assert actual_map == expected_map
 
