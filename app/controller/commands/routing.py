@@ -299,6 +299,7 @@ def __save_rules(xray_config: Xray, rules: list[RuleData] | None = None) -> None
         if xray_config.routing is None:
             xray_config.routing = Routing()
         xray_config.routing.rules = model_rules
+        xray_config.inbounds[0].sniffing.enabled = True
 
         all_geo_ip_rules = [ip
                              for rule in rules if rule.ips
@@ -317,6 +318,7 @@ def __save_rules(xray_config: Xray, rules: list[RuleData] | None = None) -> None
             print('Geosite data installed')
     else:
         xray_config.routing = None
+        xray_config.inbounds[0].sniffing.enabled = False
 
     write_text_file(
         XRAY_CONFIG_PATH,
