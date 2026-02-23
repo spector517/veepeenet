@@ -20,13 +20,14 @@ class ServerView(BaseModel):
     server_port: int
     reality_address: str
     reality_names: list[str]
-    clients: list[ClientView]
+    clients: list[str]
+    outbounds: list[str]
 
     def __repr__(self) -> str:
         padding = ' ' * 2
 
-        clients_repr = '\n'.join([f'{padding * 2}{repr(client)}' for client in self.clients]) \
-            if self.clients else f'{padding * 2}Server has no clients'
+        clients_str = ', '.join(self.clients) \
+            if self.clients else 'server has no clients'
         return ('=========== '
         f'VeePeeNET {self.veepeenet_version} build {self.veepeenet_build}'
         ' ===========\n'
@@ -36,8 +37,8 @@ class ServerView(BaseModel):
         f'{padding}address: {self.server_host}:{self.server_port}\n'
         f'{padding}reality_address: {self.reality_address}\n'
         f'{padding}reality_names: {", ".join(self.reality_names)}\n'
-        f'{padding}clients:\n'
-        f'{clients_repr}\n'
+        f'{padding}clients: {clients_str}\n'
+        f'{padding}Outbounds: {", ".join(self.outbounds)}\n'
         '=======================================================')
 
 
