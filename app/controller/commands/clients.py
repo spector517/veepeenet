@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Annotated
 from typer import Argument, Option
 
-from app.app import app
+from app.app import clients
 from app.controller.common import (
     error_handler,
     load_config,
@@ -20,21 +20,21 @@ from app.utils import (
 )
 
 
-@app.command(help='Register clients to service')
+@clients.command(help='Register clients to service')
 @error_handler(default_message='Error adding clients to service')
-def add_clients(client_names: Annotated[list[str],
+def add(client_names: Annotated[list[str],
         Argument(help='List of new client of server')],
-                _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+        _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     exit_if_xray_config_not_found()
     check_and_install()
     __add_clients(client_names)
 
 
-@app.command(help='Remove clients from service')
+@clients.command(help='Remove clients from service')
 @error_handler(default_message='Error removing clients from service')
-def remove_clients(client_names: Annotated[list[str],
+def remove(client_names: Annotated[list[str],
         Argument(help='List of clients to remove from Xray VLESS Reality server')],
-                   _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+           _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     exit_if_xray_config_not_found()
     check_and_install()
     __remove_clients(client_names)
@@ -78,12 +78,12 @@ def __add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -
 
 def __remove_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -> None:
     xray_config = load_config(xray_config_path)
-    clients = xray_config.inbounds[0].settings.clients
+    existing_clients = xray_config.inbounds[0].settings.clients
     host = xray_config.inbounds[0].listen
     reality_settings = xray_config.inbounds[0].stream_settings.reality_settings
     settings = xray_config.inbounds[0].settings
 
-    existing_clients_data = [ClientData.from_model(client, host) for client in clients]
+    existing_clients_data = [ClientData.from_model(client, host) for client in existing_clients]
     existing_names = [client_data.name for client_data in existing_clients_data]
     removable_names = get_existing_items(existing_names, remove_duplicates(names))
     unknown_names = get_new_items(existing_names, names)

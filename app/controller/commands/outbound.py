@@ -4,7 +4,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 
 from typer import Argument, Option
 
-from app.app import app
+from app.app import outbounds
 from app.controller.common import (
     error_handler,
     load_config,
@@ -27,9 +27,9 @@ from app.utils import write_text_file, set_value, is_valid_vless_client_url
 from app.model.types import FingerprintType
 
 
-@app.command(help='Add new VLESS outbound to service')
+@outbounds.command(help='Add new VLESS outbound to service')
 @error_handler(default_message='Error adding VLESS outbound connection')
-def add_outbound(
+def add(
         name: Annotated[str, Argument(help='Outbound name')],
         address: Annotated[str, Option(help='Outbound address (ip or domain name)')],
         uuid: Annotated[str, Option(help='VLESS client identifier')],
@@ -81,9 +81,9 @@ def add_outbound(
     print(f'Added new outbound "{name}"')
 
 
-@app.command(help='Add new VLESS outbound to service by URL')
-@error_handler(default_message='Error adding VLESS outbound connection by URL')
-def add_outbound_url(
+@outbounds.command(help='Add new VLESS outbound to service from URL')
+@error_handler(default_message='Error adding VLESS outbound connection from URL')
+def add_from_url(
         url: Annotated[str, Argument(help='Outbound URL')],
         name: Annotated[str, Option(help='Outbound name')] = None,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
@@ -113,15 +113,15 @@ def add_outbound_url(
         print('Invalid sid (short_id): length must be even')
         sys_exit(-1)
 
-    add_outbound(name=outbound_name, address=address, uuid=uuid, sni=sni, password=password,
-                 short_id=short_id, spider_x=spider_x, port=port,
-                 fingerprint=fingerprint, _debug=_debug)
+    add(name=outbound_name, address=address, uuid=uuid, sni=sni, password=password,
+        short_id=short_id, spider_x=spider_x, port=port,
+        fingerprint=fingerprint, _debug=_debug)
 
 
 
-@app.command(help='Remove VLESS outbound from service')
+@outbounds.command(help='Remove VLESS outbound from service')
 @error_handler(default_message='Error removing VLESS outbound connection')
-def remove_outbound(
+def remove(
         name: Annotated[str, Argument(help='Outbound name')],
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     exit_if_xray_config_not_found()
@@ -141,9 +141,9 @@ def remove_outbound(
     sys_exit(-1)
 
 
-@app.command(help='Change VLESS outbound')
+@outbounds.command(help='Change VLESS outbound')
 @error_handler(default_message='Error changing VLESS outbound connection')
-def change_outbound(
+def change(
         name: Annotated[str, Argument(help='Outbound name')],
         address: Annotated[str | None, Option(help='Outbound address (ip or domain name)')] = None,
         uuid: Annotated[str | None, Option(help='VLESS client identifier')] = None,
@@ -156,6 +156,7 @@ def change_outbound(
         port: Annotated[
             int | None,
             Option(help='VLESS outbound port')] = None,
+        new_name: Annotated[str | None, Option(help='New outbound name')] = None,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     exit_if_xray_config_not_found()
     check_and_install()
@@ -169,7 +170,8 @@ def change_outbound(
         print(f'Outbound {name} not found')
         sys_exit(-1)
 
-    results = [set_value(target_outbound.settings, 'address', address),
+    results = [set_value(target_outbound, 'tag', new_name),
+               set_value(target_outbound.settings, 'address', address),
                set_value(target_outbound.settings, 'address', address),
                set_value(target_outbound.settings, 'port', port),
                set_value(target_outbound.settings, 'id', uuid),
