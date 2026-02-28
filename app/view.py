@@ -74,7 +74,7 @@ class RuleView(BaseModel):
     outbound_name: str
     priority: int
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         padding = ' ' * 2
         rule_str = f'#{self.priority} {self.name}: --> {self.outbound_name}\n'
 
@@ -91,9 +91,9 @@ class RuleView(BaseModel):
 
 class RoutingView(BaseModel):
     domain_strategy: str | None = Field(default=None)
-    rules: list[RuleView] = Field(default=None)
+    rules: list[RuleView] | None = Field(default=None)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         padding = ' ' * 2
 
         routing_str = '==================== Xray routing  ====================\n'
@@ -106,9 +106,9 @@ class RoutingView(BaseModel):
         rule_block_breaker = '-------------------------------------------------------\n'
         for rule in self.rules:
             routing_str += rule_block_breaker
-            rule_str = '\n'.join(
-                [f'{padding * 2}{rule_str}' for rule_str in repr(rule).splitlines()])
-            routing_str += f'{rule_str}\n'
+            rule_repr = '\n'.join(
+                [f'{padding * 2}{line}' for line in repr(rule).splitlines()])
+            routing_str += f'{rule_repr}\n'
             routing_str += rule_block_breaker
         routing_str += '======================================================='
         return routing_str

@@ -172,7 +172,6 @@ def change(
 
     results = [set_value(target_outbound, 'tag', new_name),
                set_value(target_outbound.settings, 'address', address),
-               set_value(target_outbound.settings, 'address', address),
                set_value(target_outbound.settings, 'port', port),
                set_value(target_outbound.settings, 'id', uuid),
                set_value(target_outbound.stream_settings.reality_settings, 'server_name', sni),

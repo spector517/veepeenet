@@ -169,7 +169,7 @@ def set_rule_priority(
         print(f'Rule "{name}" not found')
         sys_exit(-1)
 
-    if rule_to_update == priority:
+    if rule_to_update.priority == priority:
         print(f'Rule "{name}" already has priority {priority}')
         sys_exit(-1)
     rule_to_update.priority = priority
@@ -260,7 +260,7 @@ def __is_outbound_exists(xray_config: Xray, outbound_name: str):
 def __is_correct_ports_format(ports: str) -> bool:
     if not ports:
         return True
-    return fullmatch(r'^\d{1,5}(?:-\d{1,5})?(?:,\d{1,5}(?:-\d{1,5})?)*$', ports) is not None
+    return fullmatch(r'\d{1,5}(?:-\d{1,5})?(?:,\d{1,5}(?:-\d{1,5})?)*', ports) is not None
 
 def __is_correct_protocols(protocols: list[str]) -> bool:
     if not protocols:

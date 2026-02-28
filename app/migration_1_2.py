@@ -1,5 +1,4 @@
 from pathlib import Path
-from sys import getdefaultencoding
 from typing import Annotated
 
 from typer import run, Argument
@@ -18,7 +17,7 @@ def migrate_xray_config(
         dest_xray_config_path: Path = XRAY_CONFIG_PATH
 ) -> None:
     try:
-        xray_config_content = source_xray_config_path.read_text(getdefaultencoding())
+        xray_config_content = source_xray_config_path.read_text('utf-8')
         xray = Xray.model_validate_json(xray_config_content)
         clients = xray.inbounds[0].settings.clients
         short_ids = xray.inbounds[0].stream_settings.reality_settings.short_ids

@@ -1,6 +1,5 @@
 from json import dumps as json_dump
 from pathlib import Path
-from sys import getdefaultencoding
 
 from pytest import fixture, raises
 
@@ -31,12 +30,12 @@ class TestMigration12:
             xray_v1_config_migrated_config_path: Path,
             tmp_result_path: Path
     ):
-        expected_content = xray_v1_config_migrated_config_path.read_text(getdefaultencoding())
+        expected_content = xray_v1_config_migrated_config_path.read_text('utf-8')
 
         try:
             tmp_result_path.unlink(missing_ok=True)
             migrate_xray_config('126.6.6.6', xray_v1_config_path, tmp_result_path)
-            actual_content = tmp_result_path.read_text(getdefaultencoding())
+            actual_content = tmp_result_path.read_text('utf-8')
         finally:
             tmp_result_path.unlink(missing_ok=True)
 
@@ -106,7 +105,7 @@ class TestMigration12:
         }
 
         try:
-            tmp_config.write_text(json_dump(mismatch_config), encoding=getdefaultencoding())
+            tmp_config.write_text(json_dump(mismatch_config), encoding='utf-8')
             tmp_result_path.unlink(missing_ok=True)
 
             with raises(ValueError, match="Number of clients does not match number of short IDs"):

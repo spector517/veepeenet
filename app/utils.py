@@ -3,7 +3,6 @@ from io import BytesIO
 from pathlib import Path
 from re import findall, MULTILINE, search, fullmatch
 from subprocess import run
-from sys import getdefaultencoding
 from typing import Literal, TypeVar
 from urllib.parse import quote_plus as safe_url_encode
 from zipfile import ZipFile
@@ -46,7 +45,7 @@ def install_geo_data(geo_data_url: str, geo_data_path: Path) -> None:
 
 def is_xray_service_installed(unit_path: Path) -> bool:
     try:
-        actual_unit_content = unit_path.read_text(encoding=getdefaultencoding())
+        actual_unit_content = unit_path.read_text(encoding='utf-8')
         expected_unit_content = app_resources.joinpath('xray.service').read_text()
         return expected_unit_content == actual_unit_content
     except FileNotFoundError:
@@ -149,7 +148,7 @@ def ufw_open_port(
 
 
 def detect_ssh_port(sshd_config_path: Path) -> int | None:
-    for line in sshd_config_path.read_text(encoding=getdefaultencoding()).splitlines():
+    for line in sshd_config_path.read_text(encoding='utf-8').splitlines():
         stripped = line.strip()
         if stripped.startswith('#'):
             continue
@@ -166,12 +165,12 @@ def detect_current_ipv4() -> str | None:
 
 def write_text_file(file_path: Path, text: str, mode: int = 0) -> None:
     try:
-        content = file_path.read_text(encoding=getdefaultencoding())
+        content = file_path.read_text(encoding='utf-8')
         if content != text:
-            file_path.write_text(text, encoding=getdefaultencoding())
+            file_path.write_text(text, encoding='utf-8')
     except FileNotFoundError:
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        file_path.write_text(text, encoding=getdefaultencoding())
+        file_path.write_text(text, encoding='utf-8')
     if mode:
         file_path.chmod(mode)
 
@@ -208,17 +207,17 @@ def run_command(command: str, stdin: str = '', check: bool = False, timeout: int
         -> tuple[int, str, str]:
     run_result = run(
         command,
-        input=stdin.encode(getdefaultencoding()),
+        input=stdin.encode('utf-8'),
         capture_output=True,
         check=check,
         timeout=timeout,
         shell=True
     )
     return (run_result.returncode,
-            run_result.stdout.decode(getdefaultencoding()).strip(),
-            run_result.stderr.decode(getdefaultencoding()).strip())
+            run_result.stdout.decode('utf-8').strip(),
+            run_result.stderr.decode('utf-8').strip())
 
 
 def detect_veepeenet_versions() -> VersionsView:
-    content = app_resources.joinpath('versions.json').read_text(getdefaultencoding())
+    content = app_resources.joinpath('versions.json').read_text('utf-8')
     return VersionsView.model_validate_json(content)

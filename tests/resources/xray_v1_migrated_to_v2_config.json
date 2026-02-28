@@ -38,7 +38,8 @@
             "1245"
           ]
         },
-        "security": "reality"
+        "security": "reality",
+        "network": "raw"
       },
       "sniffing": {
         "enabled": false,

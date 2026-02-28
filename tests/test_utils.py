@@ -1,7 +1,6 @@
 # pylint: disable=too-many-lines
 from io import BytesIO
 from pathlib import Path
-from sys import getdefaultencoding
 from time import sleep
 from unittest.mock import MagicMock
 from zipfile import ZipFile
@@ -198,7 +197,7 @@ class TestGetVlessClientUrl:
             '#c1.client@0.0.0.0'
         )
         xray_config_content = valid_xray_config_with_clients_path.read_text(
-            encoding=getdefaultencoding())
+            encoding='utf-8')
 
         actual_url = get_vless_client_url(
             'c1.client', Xray.model_validate_json(xray_config_content))
@@ -207,7 +206,7 @@ class TestGetVlessClientUrl:
 
     def test_get_vless_client_url_not_found(self, valid_xray_config_with_clients_path: Path):
         xray_config_content = valid_xray_config_with_clients_path.read_text(
-            encoding=getdefaultencoding())
+            encoding='utf-8')
 
         actual_url = get_vless_client_url(
             'nonexistent_client', Xray.model_validate_json(xray_config_content))
@@ -382,7 +381,7 @@ class TestDetectSshPort:
         sshd_config = tmp_path / 'sshd_config'
         sshd_config.write_text(
             '# This is a comment\nPort 2222\nPermitRootLogin no\n',
-            encoding=getdefaultencoding(),
+            encoding='utf-8',
         )
 
         result = detect_ssh_port(sshd_config)
@@ -393,7 +392,7 @@ class TestDetectSshPort:
         sshd_config = tmp_path / 'sshd_config'
         sshd_config.write_text(
             '# This is a comment\nPort 22\nPermitRootLogin no\n',
-            encoding=getdefaultencoding(),
+            encoding='utf-8',
         )
 
         result = detect_ssh_port(sshd_config)
@@ -404,7 +403,7 @@ class TestDetectSshPort:
         sshd_config = tmp_path / 'sshd_config'
         sshd_config.write_text(
             '# This is a comment\nPermitRootLogin no\nPasswordAuthentication no\n',
-            encoding=getdefaultencoding(),
+            encoding='utf-8',
         )
 
         result = detect_ssh_port(sshd_config)
@@ -415,7 +414,7 @@ class TestDetectSshPort:
         sshd_config = tmp_path / 'sshd_config'
         sshd_config.write_text(
             '# Port 2222\nPort 22\n',
-            encoding=getdefaultencoding(),
+            encoding='utf-8',
         )
 
         result = detect_ssh_port(sshd_config)
@@ -426,7 +425,7 @@ class TestDetectSshPort:
         sshd_config = tmp_path / 'sshd_config'
         sshd_config.write_text(
             'AllowTcpForwarding yes\nPermitTunnel no\nPort 2222\n',
-            encoding=getdefaultencoding(),
+            encoding='utf-8',
         )
 
         result = detect_ssh_port(sshd_config)
@@ -468,26 +467,26 @@ class TestWriteTextFile:
         write_text_file(file_path, 'test content')
 
         assert file_path.exists()
-        assert file_path.read_text(encoding=getdefaultencoding()) == 'test content'
+        assert file_path.read_text(encoding='utf-8') == 'test content'
 
     def test_write_text_file_existing_same_content(self, tmp_path: Path):
         file_path = tmp_path / 'test.txt'
-        file_path.write_text('test content', encoding=getdefaultencoding())
+        file_path.write_text('test content', encoding='utf-8')
         original_mtime = file_path.stat().st_mtime
 
         sleep(0.01)
         write_text_file(file_path, 'test content')
 
         assert file_path.stat().st_mtime == original_mtime
-        assert file_path.read_text(encoding=getdefaultencoding()) == 'test content'
+        assert file_path.read_text(encoding='utf-8') == 'test content'
 
     def test_write_text_file_existing_different_content(self, tmp_path: Path):
         file_path = tmp_path / 'test.txt'
-        file_path.write_text('old content', encoding=getdefaultencoding())
+        file_path.write_text('old content', encoding='utf-8')
 
         write_text_file(file_path, 'new content')
 
-        assert file_path.read_text(encoding=getdefaultencoding()) == 'new content'
+        assert file_path.read_text(encoding='utf-8') == 'new content'
 
     def test_write_text_file_with_chmod(self, tmp_path: Path):
         file_path = tmp_path / 'test.txt'
@@ -504,7 +503,7 @@ class TestWriteTextFile:
 
         assert file_path.exists()
         assert file_path.parent.exists()
-        assert file_path.read_text(encoding=getdefaultencoding()) == 'content'
+        assert file_path.read_text(encoding='utf-8') == 'content'
 
     def test_write_text_file_with_nested_directory_and_chmod(self, tmp_path: Path):
         file_path = tmp_path / 'nested' / 'dir' / 'test.txt'
@@ -513,7 +512,7 @@ class TestWriteTextFile:
 
         assert file_path.exists()
         assert file_path.stat().st_mode & 0o777 == 0o755
-        assert file_path.read_text(encoding=getdefaultencoding()) == 'content'
+        assert file_path.read_text(encoding='utf-8') == 'content'
 
 
 class TestIsXrayDistribInstalled:
@@ -720,7 +719,7 @@ class TestIsXrayServiceInstalled:
     def test_is_xray_service_installed_true(self, mocker, tmp_path: Path):
         service_content = '[Unit]\nDescription=Xray Service\n'
         unit_path = tmp_path / 'xray.service'
-        unit_path.write_text(service_content, encoding=getdefaultencoding())
+        unit_path.write_text(service_content, encoding='utf-8')
         mocker.patch(
             'app.utils.app_resources.joinpath'
         ).return_value.read_text.return_value = service_content
@@ -740,7 +739,7 @@ class TestIsXrayServiceInstalled:
         expected_content = '[Unit]\nDescription=Xray Service\n'
         actual_content = '[Unit]\nDescription=Different Service\n'
         unit_path = tmp_path / 'xray.service'
-        unit_path.write_text(actual_content, encoding=getdefaultencoding())
+        unit_path.write_text(actual_content, encoding='utf-8')
         mocker.patch(
             'app.utils.app_resources.joinpath'
         ).return_value.read_text.return_value = expected_content
@@ -763,7 +762,7 @@ class TestInstallXrayService:
         install_xray_service(unit_path)
 
         assert unit_path.exists()
-        assert unit_path.read_text(encoding=getdefaultencoding()) == service_content
+        assert unit_path.read_text(encoding='utf-8') == service_content
         assert unit_path.stat().st_mode & 0o777 == 0o644
         mock_run_command.assert_called_once_with('systemctl daemon-reload', check=True)
 

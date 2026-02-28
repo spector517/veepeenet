@@ -121,14 +121,11 @@ def __remove_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH
         print('No clients found to remove')
         return
 
-    existing_short_ids = [client_data.short_id for client_data in existing_clients_data]
-    for existing_client_data in existing_clients_data:
-        if existing_client_data.name in removable_names:
-            existing_clients_data.remove(existing_client_data)
-            existing_short_ids.remove(existing_client_data.short_id)
+    remaining_clients_data = [cd for cd in existing_clients_data if cd.name not in removable_names]
+    remaining_short_ids = [cd.short_id for cd in remaining_clients_data]
 
-    settings.clients = [client_data.to_model() for client_data in existing_clients_data]
-    reality_settings.short_ids = [f'{short_id:04}' for short_id in existing_short_ids]
+    settings.clients = [client_data.to_model() for client_data in remaining_clients_data]
+    reality_settings.short_ids = [f'{short_id:04}' for short_id in remaining_short_ids]
 
     write_text_file(
         xray_config_path,

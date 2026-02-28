@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from functools import wraps
 from os import getuid
 from pathlib import Path
-from sys import exit as sys_exit, getdefaultencoding
+from sys import exit as sys_exit
 from typing import Self, Callable, Any
 from urllib.parse import urljoin
 from uuid import uuid4
@@ -95,9 +95,9 @@ class RuleData:
             ip=self.ips
         )
 
-def error_handler(default_message: str | None = None) -> Callable[..., ...]:
+def error_handler(default_message: str | None = None) -> Callable[..., Any]:
 
-    def wrapper_func(func: Callable[..., ...]) -> Callable[..., ...]:
+    def wrapper_func(func: Callable[..., Any]) -> Callable[..., Any]:
 
         @wraps(func)
         def wrapper(*args, **kwargs) -> Any | None:
@@ -162,7 +162,7 @@ def exit_if_xray_config_not_found(xray_config_path: Path = XRAY_CONFIG_PATH) -> 
 
 def load_config(xray_config_path: Path) -> Xray:
     try:
-        config_content = xray_config_path.read_text(getdefaultencoding())
+        config_content = xray_config_path.read_text('utf-8')
     except FileNotFoundError:
         print('Config file not found')
         raise

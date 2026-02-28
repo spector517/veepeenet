@@ -1,4 +1,3 @@
-from sys import getdefaultencoding
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -52,7 +51,7 @@ class TestCreateConfig:
         write_text_file_mock = mocker.patch('app.controller.commands.configure.write_text_file')
         mocker.patch('app.controller.commands.configure.check_and_install')
 
-        with open(initial_config_path, 'rt', encoding=getdefaultencoding()) as config_file:
+        with open(initial_config_path, 'rt', encoding='utf-8') as config_file:
             expected_xray_config_content = config_file.read()
 
         config('0.0.0.0', 8443, 'example.com', 443)
