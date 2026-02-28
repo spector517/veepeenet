@@ -61,7 +61,7 @@ class ServerView(BaseModel):
         f'{padding}reality_address: {self.reality_address}\n'
         f'{padding}reality_names: {", ".join(self.reality_names)}\n'
         f'{padding}clients: {clients_str}\n'
-        f'{padding}Outbounds: {", ".join(self.outbounds)}\n'
+        f'{padding}outbounds: {", ".join(self.outbounds)}\n'
         '=======================================================')
 
 
