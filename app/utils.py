@@ -4,7 +4,7 @@ from pathlib import Path
 from re import findall, MULTILINE, search, fullmatch
 from subprocess import run
 from sys import getdefaultencoding
-from typing import Literal
+from typing import Literal, TypeVar
 from urllib.parse import quote_plus as safe_url_encode
 from zipfile import ZipFile
 
@@ -12,6 +12,8 @@ from requests import get as get_request
 
 from app.model.xray import Xray
 from app.view import VersionsView
+
+_T = TypeVar('_T')
 
 app_resources = files('app.resources')
 
@@ -27,19 +29,19 @@ def is_xray_distrib_installed(version: str) -> bool:
 def install_xray_distrib(zip_url: str, bin_path: Path) -> None:
     bin_path.parent.mkdir(parents=True, mode=0o755, exist_ok=True)
 
-    distrib_bytes = get_request(zip_url, timeout=20_000).content
+    distrib_bytes = get_request(zip_url, timeout=20).content
     with ZipFile(BytesIO(distrib_bytes)) as zip_file:
         with zip_file.open('xray') as xray_file:
             bin_path.write_bytes(xray_file.read())
-            bin_path.chmod(0o744)
+    bin_path.chmod(0o744)
 
 
 def install_geo_data(geo_data_url: str, geo_data_path: Path) -> None:
     geo_data_path.parent.mkdir(parents=True, mode=0o755, exist_ok=True)
 
-    geo_data_bytes = get_request(geo_data_url, timeout=20_000).content
+    geo_data_bytes = get_request(geo_data_url, timeout=20).content
     geo_data_path.write_bytes(geo_data_bytes)
-    geo_data_path.chmod(0o655)
+    geo_data_path.chmod(0o644)
 
 
 def is_xray_service_installed(unit_path: Path) -> bool:
@@ -61,7 +63,7 @@ def gen_xray_private_key() -> str:
     gen_result = run_command('xray x25519')
     if gen_result[0] != 0:
         raise RuntimeError(
-            'Error generating private key.',
+            f'Error generating private key.'
             f' code:{gen_result[0]}, stdout:{gen_result[1]}, stderr:{gen_result[2]}')
     private_key = findall(r'(?<=PrivateKey: ).+$', gen_result[1], MULTILINE)
     if not private_key:
@@ -73,7 +75,7 @@ def gen_xray_password(private_key: str) -> str:
     gen_result = run_command(f'xray x25519 -i {private_key}')
     if gen_result[0] != 0:
         raise RuntimeError(
-            'Error generating password.',
+            f'Error generating password.'
             f' code:{gen_result[0]}, stdout:{gen_result[1]}, stderr:{gen_result[2]}')
     password = findall(r'(?<=Password: ).+$', gen_result[1], MULTILINE)
     if not password:
@@ -148,10 +150,11 @@ def ufw_open_port(
 
 def detect_ssh_port(sshd_config_path: Path) -> int | None:
     for line in sshd_config_path.read_text(encoding=getdefaultencoding()).splitlines():
-        if line.strip().startswith('#'):
+        stripped = line.strip()
+        if stripped.startswith('#'):
             continue
-        if line.strip().startswith('Port'):
-            return int(line.strip().split(' ')[-1])
+        if stripped.startswith('Port'):
+            return int(stripped.split(' ')[-1])
     return None
 
 
@@ -173,28 +176,16 @@ def write_text_file(file_path: Path, text: str, mode: int = 0) -> None:
         file_path.chmod(mode)
 
 
-def remove_duplicates(source: list) -> list:
-    result = []
-    for item in source:
-        if item not in result:
-            result.append(item)
-    return result
+def remove_duplicates(source: list[_T]) -> list[_T]:
+    return list(dict.fromkeys(source))
 
 
-def get_new_items(old: list, new: list) -> list:
-    new_items = []
-    for item in new:
-        if item not in old:
-            new_items.append(item)
-    return new_items
+def get_new_items(old: list[_T], new: list[_T]) -> list[_T]:
+    return [item for item in new if item not in old]
 
 
-def get_existing_items(old: list, new: list) -> list:
-    existing = []
-    for item in new:
-        if item in old:
-            existing.append(item)
-    return existing
+def get_existing_items(old: list[_T], new: list[_T]) -> list[_T]:
+    return [item for item in new if item in old]
 
 
 def get_short_id(existing_short_ids: list[int], interval: range = range(1, 10000)) -> int:
@@ -213,7 +204,7 @@ def set_value(obj: object, attr: str, value: object) -> bool:
     raise AttributeError(f'Object {obj} has no attribute {attr}')
 
 
-def run_command(command: str, stdin: str = '', check: bool = False, timeout: int = 20_000) \
+def run_command(command: str, stdin: str = '', check: bool = False, timeout: int = 20) \
         -> tuple[int, str, str]:
     run_result = run(
         command,

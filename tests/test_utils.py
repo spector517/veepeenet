@@ -1,9 +1,10 @@
 # pylint: disable=too-many-lines
+from io import BytesIO
 from pathlib import Path
 from sys import getdefaultencoding
-from tempfile import TemporaryDirectory
 from time import sleep
 from unittest.mock import MagicMock
+from zipfile import ZipFile
 
 import pytest
 from pytest_mock import MockFixture
@@ -45,6 +46,13 @@ def fixture_valid_xray_config_with_clients_path() -> Path:
     return Path('tests/resources/valid_xray_config_with_clients.json')
 
 
+def _make_xray_zip(xray_binary: bytes) -> bytes:
+    buf = BytesIO()
+    with ZipFile(buf, mode='w') as zf:
+        zf.writestr('xray', xray_binary)
+    return buf.getvalue()
+
+
 class TestGenXrayPrivateKey:
 
     def test_gen_xray_private_key_success(self, mocker):
@@ -60,11 +68,12 @@ class TestGenXrayPrivateKey:
     def test_gen_xray_private_key_command_failure(self, mocker):
         mocker.patch('app.utils.run_command', return_value=(1, '', 'Error message'))
 
-        with pytest.raises(RuntimeError) as exc_info:
+        with pytest.raises(RuntimeError, match='Error generating private key') as exc_info:
             gen_xray_private_key()
 
-        assert 'Error generating private key' in str(exc_info.value)
-        assert 'code:1' in str(exc_info.value)
+        error_text = str(exc_info.value)
+        assert 'code:1' in error_text
+        assert 'Error message' in error_text
 
     def test_gen_xray_private_key_unexpected_output(self, mocker):
         mocker.patch('app.utils.run_command', return_value=(0, 'Unexpected output', ''))
@@ -91,10 +100,11 @@ class TestGenXrayPassword:
     def test_gen_xray_password_command_failure(self, mocker):
         mocker.patch('app.utils.run_command', return_value=(1, '', 'Error message'))
 
-        with pytest.raises(RuntimeError) as exc_info:
+        with pytest.raises(RuntimeError, match='Error generating password') as exc_info:
             gen_xray_password('test_key')
 
-        assert 'Error generating password' in str(exc_info.value)
+        error_text = str(exc_info.value)
+        assert 'Error message' in error_text
 
     def test_gen_xray_password_unexpected_output(self, mocker):
         mocker.patch('app.utils.run_command', return_value=(0, 'Unexpected output', ''))
@@ -163,7 +173,7 @@ class TestEnableXrayService:
 
 class TestDisableXrayService:
 
-    def test_enable_xray_service_success(self, mocker):
+    def test_disable_xray_service_success(self, mocker):
         mock_run_command = mocker.patch('app.utils.run_command', return_value=(0, '', ''))
 
         disable_xray_service()
@@ -187,8 +197,8 @@ class TestGetVlessClientUrl:
             '&spx=%2Fc1.client'
             '#c1.client@0.0.0.0'
         )
-        with open(valid_xray_config_with_clients_path, 'rt', encoding=getdefaultencoding()) as f:
-            xray_config_content = f.read()
+        xray_config_content = valid_xray_config_with_clients_path.read_text(
+            encoding=getdefaultencoding())
 
         actual_url = get_vless_client_url(
             'c1.client', Xray.model_validate_json(xray_config_content))
@@ -196,8 +206,8 @@ class TestGetVlessClientUrl:
         assert actual_url == expected_client_url
 
     def test_get_vless_client_url_not_found(self, valid_xray_config_with_clients_path: Path):
-        with open(valid_xray_config_with_clients_path, 'rt', encoding=getdefaultencoding()) as f:
-            xray_config_content = f.read()
+        xray_config_content = valid_xray_config_with_clients_path.read_text(
+            encoding=getdefaultencoding())
 
         actual_url = get_vless_client_url(
             'nonexistent_client', Xray.model_validate_json(xray_config_content))
@@ -368,57 +378,60 @@ class TestUfwOpenPort:
 
 class TestDetectSshPort:
 
-    def test_detect_ssh_port_found(self):
-        sshd_config_content = (
-            '# This is a comment\n'
-            'Port 2222\n'
-            'PermitRootLogin no\n'
+    def test_detect_ssh_port_found(self, tmp_path: Path):
+        sshd_config = tmp_path / 'sshd_config'
+        sshd_config.write_text(
+            '# This is a comment\nPort 2222\nPermitRootLogin no\n',
+            encoding=getdefaultencoding(),
         )
-        mock_path = MagicMock(spec=Path)
-        mock_path.read_text.return_value = sshd_config_content
 
-        result = detect_ssh_port(mock_path)
+        result = detect_ssh_port(sshd_config)
 
         assert result == 2222
-        mock_path.read_text.assert_called_once_with(encoding=getdefaultencoding())
 
-    def test_detect_ssh_port_default_port(self):
-        sshd_config_content = (
-            '# This is a comment\n'
-            'Port 22\n'
-            'PermitRootLogin no\n'
+    def test_detect_ssh_port_default_port(self, tmp_path: Path):
+        sshd_config = tmp_path / 'sshd_config'
+        sshd_config.write_text(
+            '# This is a comment\nPort 22\nPermitRootLogin no\n',
+            encoding=getdefaultencoding(),
         )
-        mock_path = MagicMock(spec=Path)
-        mock_path.read_text.return_value = sshd_config_content
 
-        result = detect_ssh_port(mock_path)
+        result = detect_ssh_port(sshd_config)
 
         assert result == 22
 
-    def test_detect_ssh_port_not_found(self):
-        sshd_config_content = (
-            '# This is a comment\n'
-            'PermitRootLogin no\n'
-            'PasswordAuthentication no\n'
+    def test_detect_ssh_port_not_found(self, tmp_path: Path):
+        sshd_config = tmp_path / 'sshd_config'
+        sshd_config.write_text(
+            '# This is a comment\nPermitRootLogin no\nPasswordAuthentication no\n',
+            encoding=getdefaultencoding(),
         )
-        mock_path = MagicMock(spec=Path)
-        mock_path.read_text.return_value = sshd_config_content
 
-        result = detect_ssh_port(mock_path)
+        result = detect_ssh_port(sshd_config)
 
         assert result is None
 
-    def test_detect_ssh_port_commented_line(self):
-        sshd_config_content = (
-            '# Port 2222\n'
-            'Port 22\n'
+    def test_detect_ssh_port_commented_line(self, tmp_path: Path):
+        sshd_config = tmp_path / 'sshd_config'
+        sshd_config.write_text(
+            '# Port 2222\nPort 22\n',
+            encoding=getdefaultencoding(),
         )
-        mock_path = MagicMock(spec=Path)
-        mock_path.read_text.return_value = sshd_config_content
 
-        result = detect_ssh_port(mock_path)
+        result = detect_ssh_port(sshd_config)
 
         assert result == 22
+
+    def test_detect_ssh_port_not_confused_by_port_forwarding(self, tmp_path: Path):
+        sshd_config = tmp_path / 'sshd_config'
+        sshd_config.write_text(
+            'AllowTcpForwarding yes\nPermitTunnel no\nPort 2222\n',
+            encoding=getdefaultencoding(),
+        )
+
+        result = detect_ssh_port(sshd_config)
+
+        assert result == 2222
 
 
 class TestDetectCurrentIpv4:
@@ -449,68 +462,58 @@ class TestDetectCurrentIpv4:
 
 class TestWriteTextFile:
 
-    def test_write_text_file_new_file(self):
-        with TemporaryDirectory() as temp_dir:
-            file_path = Path(temp_dir) / 'test.txt'
+    def test_write_text_file_new_file(self, tmp_path: Path):
+        file_path = tmp_path / 'test.txt'
 
-            write_text_file(file_path, 'test content')
+        write_text_file(file_path, 'test content')
 
-            assert file_path.exists()
-            assert file_path.read_text(encoding=getdefaultencoding()) == 'test content'
+        assert file_path.exists()
+        assert file_path.read_text(encoding=getdefaultencoding()) == 'test content'
 
-    def test_write_text_file_existing_same_content(self):
-        with TemporaryDirectory() as temp_dir:
-            file_path = Path(temp_dir) / 'test.txt'
-            file_path.write_text('test content', encoding=getdefaultencoding())
-            original_stat = file_path.stat()
+    def test_write_text_file_existing_same_content(self, tmp_path: Path):
+        file_path = tmp_path / 'test.txt'
+        file_path.write_text('test content', encoding=getdefaultencoding())
+        original_mtime = file_path.stat().st_mtime
 
-            sleep(0.01)
+        sleep(0.01)
+        write_text_file(file_path, 'test content')
 
-            write_text_file(file_path, 'test content')
+        assert file_path.stat().st_mtime == original_mtime
+        assert file_path.read_text(encoding=getdefaultencoding()) == 'test content'
 
-            new_stat = file_path.stat()
-            assert original_stat.st_mtime == new_stat.st_mtime
-            assert file_path.read_text(encoding=getdefaultencoding()) == 'test content'
+    def test_write_text_file_existing_different_content(self, tmp_path: Path):
+        file_path = tmp_path / 'test.txt'
+        file_path.write_text('old content', encoding=getdefaultencoding())
 
-    def test_write_text_file_existing_different_content(self):
-        with TemporaryDirectory() as temp_dir:
-            file_path = Path(temp_dir) / 'test.txt'
-            file_path.write_text('old content', encoding=getdefaultencoding())
+        write_text_file(file_path, 'new content')
 
-            write_text_file(file_path, 'new content')
+        assert file_path.read_text(encoding=getdefaultencoding()) == 'new content'
 
-            assert file_path.read_text(encoding=getdefaultencoding()) == 'new content'
+    def test_write_text_file_with_chmod(self, tmp_path: Path):
+        file_path = tmp_path / 'test.txt'
 
-    def test_write_text_file_with_chmod(self):
-        with TemporaryDirectory() as temp_dir:
-            file_path = Path(temp_dir) / 'test.txt'
+        write_text_file(file_path, 'test content', mode=0o644)
 
-            write_text_file(file_path, 'test content', mode=0o644)
+        assert file_path.exists()
+        assert file_path.stat().st_mode & 0o777 == 0o644
 
-            assert file_path.exists()
-            file_mode = file_path.stat().st_mode & 0o777
-            assert file_mode == 0o644
+    def test_write_text_file_with_directory_creation(self, tmp_path: Path):
+        file_path = tmp_path / 'nested' / 'dir' / 'test.txt'
 
-    def test_write_text_file_with_directory_creation(self):
-        with TemporaryDirectory() as temp_dir:
-            file_path = Path(temp_dir) / 'nested' / 'dir' / 'test.txt'
+        write_text_file(file_path, 'content')
 
-            write_text_file(file_path, 'content')
+        assert file_path.exists()
+        assert file_path.parent.exists()
+        assert file_path.read_text(encoding=getdefaultencoding()) == 'content'
 
-            assert file_path.exists()
-            assert file_path.parent.exists()
-            assert file_path.read_text(encoding=getdefaultencoding()) == 'content'
+    def test_write_text_file_with_nested_directory_and_chmod(self, tmp_path: Path):
+        file_path = tmp_path / 'nested' / 'dir' / 'test.txt'
 
-    def test_write_text_file_with_nested_directory_and_chmod(self):
-        with TemporaryDirectory() as temp_dir:
-            file_path = Path(temp_dir) / 'nested' / 'dir' / 'test.txt'
+        write_text_file(file_path, 'content', mode=0o755)
 
-            write_text_file(file_path, 'content', mode=0o755)
-
-            assert file_path.exists()
-            file_mode = file_path.stat().st_mode & 0o777
-            assert file_mode == 0o755
-            assert file_path.read_text(encoding=getdefaultencoding()) == 'content'
+        assert file_path.exists()
+        assert file_path.stat().st_mode & 0o777 == 0o755
+        assert file_path.read_text(encoding=getdefaultencoding()) == 'content'
 
 
 class TestIsXrayDistribInstalled:
@@ -559,251 +562,209 @@ class TestIsXrayDistribInstalled:
 
 class TestInstallXrayDistrib:
 
-    def test_install_xray_distrib_new_file(self, mocker):
-        mock_bin_path = MagicMock(spec=Path)
-        mock_bin_path.unlink.side_effect = FileNotFoundError()
-        mock_bin_path.parent.mkdir = MagicMock()
-        mock_bin_path.write_bytes = MagicMock()
-        mock_bin_path.chmod = MagicMock()
+    def test_install_xray_distrib_creates_binary(self, mocker, tmp_path: Path):
+        bin_path = tmp_path / 'usr' / 'local' / 'bin' / 'xray'
+        xray_binary = b'xray_binary_content'
 
         mock_get = mocker.patch('app.utils.get_request')
         mock_response = MagicMock()
-        mock_response.content = b'zip_content'
+        mock_response.content = _make_xray_zip(xray_binary)
         mock_get.return_value = mock_response
 
-        mock_xray_file = MagicMock()
-        mock_xray_file.read.return_value = b'xray_binary'
-        mock_zipfile = mocker.patch('app.utils.ZipFile')
-        mock_zip_instance = MagicMock()
-        open_return_value = mock_zip_instance.__enter__.return_value.open.return_value.__enter__
-        open_return_value.return_value = mock_xray_file
-        mock_zipfile.return_value = mock_zip_instance
+        install_xray_distrib('http://example.com/xray.zip', bin_path)
 
-        install_xray_distrib('http://example.com/xray.zip', mock_bin_path)
+        assert bin_path.exists()
+        assert bin_path.read_bytes() == xray_binary
+        assert bin_path.stat().st_mode & 0o777 == 0o744
+        mock_get.assert_called_once_with('http://example.com/xray.zip', timeout=20)
 
-        mock_bin_path.parent.mkdir.assert_called_once_with(parents=True, mode=0o755, exist_ok=True)
-        mock_bin_path.write_bytes.assert_called_once_with(b'xray_binary')
-        mock_bin_path.chmod.assert_called_once_with(0o744)
-        mock_get.assert_called_once_with('http://example.com/xray.zip', timeout=20_000)
-
-    def test_install_xray_distrib_existing_file(self, mocker):
-        mock_bin_path = MagicMock(spec=Path)
-        mock_bin_path.unlink = MagicMock()
-        mock_bin_path.parent.mkdir = MagicMock()
-        mock_bin_path.write_bytes = MagicMock()
-        mock_bin_path.chmod = MagicMock()
+    def test_install_xray_distrib_creates_parent_directories(self, mocker, tmp_path: Path):
+        bin_path = tmp_path / 'deep' / 'nested' / 'xray'
 
         mock_get = mocker.patch('app.utils.get_request')
         mock_response = MagicMock()
-        mock_response.content = b'zip_content'
+        mock_response.content = _make_xray_zip(b'binary')
         mock_get.return_value = mock_response
 
-        mock_xray_file = MagicMock()
-        mock_xray_file.read.return_value = b'xray_binary'
-        mock_zipfile = mocker.patch('app.utils.ZipFile')
-        mock_zip_instance = MagicMock()
-        open_return_value = mock_zip_instance.__enter__.return_value.open.return_value.__enter__
-        open_return_value.return_value = mock_xray_file
-        mock_zipfile.return_value = mock_zip_instance
+        install_xray_distrib('http://example.com/xray.zip', bin_path)
 
-        install_xray_distrib('http://example.com/xray.zip', mock_bin_path)
+        assert bin_path.parent.exists()
 
-        mock_bin_path.parent.mkdir.assert_called_once_with(parents=True, mode=0o755, exist_ok=True)
-        mock_bin_path.write_bytes.assert_called_once_with(b'xray_binary')
-        mock_bin_path.chmod.assert_called_once_with(0o744)
+    def test_install_xray_distrib_overwrites_existing_binary(self, mocker, tmp_path: Path):
+        bin_path = tmp_path / 'xray'
+        bin_path.write_bytes(b'old_binary')
+        new_binary = b'new_xray_binary'
+
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_response = MagicMock()
+        mock_response.content = _make_xray_zip(new_binary)
+        mock_get.return_value = mock_response
+
+        install_xray_distrib('http://example.com/xray.zip', bin_path)
+
+        assert bin_path.read_bytes() == new_binary
 
 
 class TestInstallGeoData:
 
-    def test_install_geo_data_success(self, mocker):
-        mock_geo_data_path = MagicMock(spec=Path)
-        mock_geo_data_path.parent.mkdir = MagicMock()
-        mock_geo_data_path.write_bytes = MagicMock()
-        mock_geo_data_path.chmod = MagicMock()
+    def test_install_geo_data_success(self, mocker, tmp_path: Path):
+        geo_data_path = tmp_path / 'geoip.dat'
+        test_content = b'geodata_content'
 
         mock_get = mocker.patch('app.utils.get_request')
         mock_response = MagicMock()
-        mock_response.content = b'geodata_content'
+        mock_response.content = test_content
         mock_get.return_value = mock_response
 
-        install_geo_data('http://example.com/geoip.dat', mock_geo_data_path)
+        install_geo_data('http://example.com/geoip.dat', geo_data_path)
 
-        mock_geo_data_path.parent.mkdir.assert_called_once_with(
-            parents=True, mode=0o755, exist_ok=True)
-        mock_get.assert_called_once_with('http://example.com/geoip.dat', timeout=20_000)
-        mock_geo_data_path.write_bytes.assert_called_once_with(b'geodata_content')
-        mock_geo_data_path.chmod.assert_called_once_with(0o655)
+        assert geo_data_path.exists()
+        assert geo_data_path.read_bytes() == test_content
+        mock_get.assert_called_once_with('http://example.com/geoip.dat', timeout=20)
+        assert geo_data_path.stat().st_mode & 0o777 == 0o644
 
-    def test_install_geo_data_creates_parent_directory(self, mocker):
-        mock_geo_data_path = MagicMock(spec=Path)
-        mock_geo_data_path.parent.mkdir = MagicMock()
-        mock_geo_data_path.write_bytes = MagicMock()
-        mock_geo_data_path.chmod = MagicMock()
+    def test_install_geo_data_creates_parent_directory(self, mocker, tmp_path: Path):
+        geo_data_path = tmp_path / 'new_dir' / 'geoip.dat'
 
         mock_get = mocker.patch('app.utils.get_request')
         mock_response = MagicMock()
         mock_response.content = b'geodata'
         mock_get.return_value = mock_response
 
-        install_geo_data('http://example.com/geosite.dat', mock_geo_data_path)
+        install_geo_data('http://example.com/geoip.dat', geo_data_path)
 
-        mock_geo_data_path.parent.mkdir.assert_called_once_with(
-            parents=True, mode=0o755, exist_ok=True)
+        assert geo_data_path.parent.exists()
 
-    def test_install_geo_data_with_real_path(self, mocker):
-        with TemporaryDirectory() as temp_dir:
-            geo_data_path = Path(temp_dir) / 'geodata' / 'geoip.dat'
+    def test_install_geo_data_with_real_path(self, mocker, tmp_path: Path):
+        geo_data_path = tmp_path / 'geodata' / 'geoip.dat'
+        test_content = b'test_geodata_content'
 
-            mock_get = mocker.patch('app.utils.get_request')
-            mock_response = MagicMock()
-            test_content = b'test_geodata_content'
-            mock_response.content = test_content
-            mock_get.return_value = mock_response
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_response = MagicMock()
+        mock_response.content = test_content
+        mock_get.return_value = mock_response
 
-            install_geo_data('http://example.com/geoip.dat', geo_data_path)
+        install_geo_data('http://example.com/geoip.dat', geo_data_path)
 
-            assert geo_data_path.exists()
-            assert geo_data_path.read_bytes() == test_content
-            assert geo_data_path.parent.exists()
+        assert geo_data_path.exists()
+        assert geo_data_path.read_bytes() == test_content
+        assert geo_data_path.parent.exists()
 
-    def test_install_geo_data_sets_correct_permissions(self, mocker):
-        with TemporaryDirectory() as temp_dir:
-            geo_data_path = Path(temp_dir) / 'geoip.dat'
-
-            mock_get = mocker.patch('app.utils.get_request')
-            mock_response = MagicMock()
-            mock_response.content = b'geodata'
-            mock_get.return_value = mock_response
-
-            install_geo_data('http://example.com/geoip.dat', geo_data_path)
-
-            file_mode = geo_data_path.stat().st_mode & 0o777
-            assert file_mode == 0o655
-
-    def test_install_geo_data_url_parameter(self, mocker):
-        mock_geo_data_path = MagicMock(spec=Path)
-        mock_geo_data_path.parent.mkdir = MagicMock()
-        mock_geo_data_path.write_bytes = MagicMock()
-        mock_geo_data_path.chmod = MagicMock()
+    def test_install_geo_data_sets_correct_permissions(self, mocker, tmp_path: Path):
+        geo_data_path = tmp_path / 'geoip.dat'
 
         mock_get = mocker.patch('app.utils.get_request')
         mock_response = MagicMock()
         mock_response.content = b'geodata'
         mock_get.return_value = mock_response
 
+        install_geo_data('http://example.com/geoip.dat', geo_data_path)
+
+        assert geo_data_path.stat().st_mode & 0o777 == 0o644
+
+    def test_install_geo_data_url_parameter(self, mocker, tmp_path: Path):
+        geo_data_path = tmp_path / 'custom.dat'
         test_url = 'http://example.com/custom_geodata.dat'
-        install_geo_data(test_url, mock_geo_data_path)
 
-        mock_get.assert_called_once_with(test_url, timeout=20_000)
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_response = MagicMock()
+        mock_response.content = b'geodata'
+        mock_get.return_value = mock_response
 
-    def test_install_geo_data_overwrites_existing_file(self, mocker):
-        with TemporaryDirectory() as temp_dir:
-            geo_data_path = Path(temp_dir) / 'geoip.dat'
+        install_geo_data(test_url, geo_data_path)
 
-            # Create an existing file
-            old_content = b'old_geodata'
-            geo_data_path.write_bytes(old_content)
+        mock_get.assert_called_once_with(test_url, timeout=20)
 
-            mock_get = mocker.patch('app.utils.get_request')
-            mock_response = MagicMock()
-            new_content = b'new_geodata_content'
-            mock_response.content = new_content
-            mock_get.return_value = mock_response
+    def test_install_geo_data_overwrites_existing_file(self, mocker, tmp_path: Path):
+        geo_data_path = tmp_path / 'geoip.dat'
+        geo_data_path.write_bytes(b'old_geodata')
+        new_content = b'new_geodata_content'
 
-            install_geo_data('http://example.com/geoip.dat', geo_data_path)
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_response = MagicMock()
+        mock_response.content = new_content
+        mock_get.return_value = mock_response
 
-            assert geo_data_path.read_bytes() == new_content
+        install_geo_data('http://example.com/geoip.dat', geo_data_path)
 
-    def test_install_geo_data_with_empty_content(self, mocker):
-        mock_geo_data_path = MagicMock(spec=Path)
-        mock_geo_data_path.parent.mkdir = MagicMock()
-        mock_geo_data_path.write_bytes = MagicMock()
-        mock_geo_data_path.chmod = MagicMock()
+        assert geo_data_path.read_bytes() == new_content
+
+    def test_install_geo_data_with_empty_content(self, mocker, tmp_path: Path):
+        geo_data_path = tmp_path / 'geoip.dat'
 
         mock_get = mocker.patch('app.utils.get_request')
         mock_response = MagicMock()
         mock_response.content = b''
         mock_get.return_value = mock_response
 
-        install_geo_data('http://example.com/geoip.dat', mock_geo_data_path)
+        install_geo_data('http://example.com/geoip.dat', geo_data_path)
 
-        mock_geo_data_path.write_bytes.assert_called_once_with(b'')
-        mock_geo_data_path.chmod.assert_called_once_with(0o655)
+        assert geo_data_path.read_bytes() == b''
 
-    def test_install_geo_data_large_content(self, mocker):
-        mock_geo_data_path = MagicMock(spec=Path)
-        mock_geo_data_path.parent.mkdir = MagicMock()
-        mock_geo_data_path.write_bytes = MagicMock()
-        mock_geo_data_path.chmod = MagicMock()
+    def test_install_geo_data_large_content(self, mocker, tmp_path: Path):
+        geo_data_path = tmp_path / 'geoip.dat'
+        large_content = b'x' * (10 * 1024 * 1024)  # 10 MB
 
         mock_get = mocker.patch('app.utils.get_request')
         mock_response = MagicMock()
-        large_content = b'x' * (10 * 1024 * 1024)  # 10 MB
         mock_response.content = large_content
         mock_get.return_value = mock_response
 
-        install_geo_data('http://example.com/geoip.dat', mock_geo_data_path)
+        install_geo_data('http://example.com/geoip.dat', geo_data_path)
 
-        mock_geo_data_path.write_bytes.assert_called_once_with(large_content)
+        assert geo_data_path.read_bytes() == large_content
 
 
 class TestIsXrayServiceInstalled:
 
-    def test_is_xray_service_installed_true(self, mocker):
-        expected_content = '[Unit]\nDescription=Xray Service\n'
-        mock_path = MagicMock(spec=Path)
-        mock_path.read_text.return_value = expected_content
-        mock_app_resources = mocker.patch(
+    def test_is_xray_service_installed_true(self, mocker, tmp_path: Path):
+        service_content = '[Unit]\nDescription=Xray Service\n'
+        unit_path = tmp_path / 'xray.service'
+        unit_path.write_text(service_content, encoding=getdefaultencoding())
+        mocker.patch(
             'app.utils.app_resources.joinpath'
-        ).return_value
-        mock_app_resources.read_text.return_value = expected_content
+        ).return_value.read_text.return_value = service_content
 
-        result = is_xray_service_installed(mock_path)
+        result = is_xray_service_installed(unit_path)
 
         assert result is True
-        mock_path.read_text.assert_called_once_with(encoding=getdefaultencoding())
 
-    def test_is_xray_service_installed_file_not_exists(self):
-        mock_path = MagicMock(spec=Path)
-        mock_path.read_text.side_effect = FileNotFoundError()
+    def test_is_xray_service_installed_file_not_exists(self, tmp_path: Path):
+        unit_path = tmp_path / 'nonexistent.service'
 
-        result = is_xray_service_installed(mock_path)
+        result = is_xray_service_installed(unit_path)
 
         assert result is False
 
-    def test_is_xray_service_installed_different_content(self, mocker):
+    def test_is_xray_service_installed_different_content(self, mocker, tmp_path: Path):
         expected_content = '[Unit]\nDescription=Xray Service\n'
         actual_content = '[Unit]\nDescription=Different Service\n'
-        mock_path = MagicMock(spec=Path)
-        mock_path.read_text.return_value = actual_content
-        mock_app_resources = mocker.patch(
+        unit_path = tmp_path / 'xray.service'
+        unit_path.write_text(actual_content, encoding=getdefaultencoding())
+        mocker.patch(
             'app.utils.app_resources.joinpath'
-        ).return_value
-        mock_app_resources.read_text.return_value = expected_content
+        ).return_value.read_text.return_value = expected_content
 
-        result = is_xray_service_installed(mock_path)
+        result = is_xray_service_installed(unit_path)
 
         assert result is False
 
 
 class TestInstallXrayService:
-    def test_install_xray_service_success(self, mocker):
+
+    def test_install_xray_service_success(self, mocker, tmp_path: Path):
         service_content = '[Unit]\nDescription=Xray Service\n'
-        mock_path = MagicMock(spec=Path)
-        mock_app_resources = mocker.patch(
+        unit_path = tmp_path / 'xray.service'
+        mocker.patch(
             'app.utils.app_resources.joinpath'
-        ).return_value
-        mock_app_resources.read_text.return_value = service_content
-        mock_write_text_file = mocker.patch('app.utils.write_text_file')
+        ).return_value.read_text.return_value = service_content
         mock_run_command = mocker.patch('app.utils.run_command', return_value=(0, '', ''))
 
-        install_xray_service(mock_path)
+        install_xray_service(unit_path)
 
-        mock_write_text_file.assert_called_once_with(
-            mock_path,
-            service_content,
-            mode=0o644
-        )
+        assert unit_path.exists()
+        assert unit_path.read_text(encoding=getdefaultencoding()) == service_content
+        assert unit_path.stat().st_mode & 0o777 == 0o644
         mock_run_command.assert_called_once_with('systemctl daemon-reload', check=True)
 
 
