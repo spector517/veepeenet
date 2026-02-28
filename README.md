@@ -18,8 +18,8 @@ Install and configure personal anti-censorship service [Xray](https://github.com
 - Geodata updates for geoip/geosite based routing
 
 ## Installation
-Run simple command:
-```commandline
+Run a simple command:
+```text
 rm -rf /tmp/veepeenet \
     && mkdir /tmp/veepeenet \
     && (cd /tmp/veepeenet \
@@ -37,13 +37,13 @@ Configure XRAY server on host **my.domain.com**:
 sudo xrayctl config --host my.domain.com
 ```
 
-Create client configurations:
-**my_client1** and **my_client2** and print share links
+Create client configurations
+**my_client1** and **my_client2** and print share links:
 ```commandline
 sudo xrayctl clients add my_client1 my_client2
 ```
 
-Start Xray service first time:
+Start Xray service for the first time:
 ```commandline
 sudo xrayctl start
 ```
@@ -188,7 +188,7 @@ xrayctl clients remove CLIENT_NAMES...
 ```
 
 #### List clients
-```commandline
+```text
 xrayctl clients list [OPTIONS]
 ```
 
@@ -201,13 +201,13 @@ xrayctl clients list [OPTIONS]
 ### Outbounds management
 
 #### Add VLESS outbound
-```commandline
+```text
 xrayctl outbounds add NAME [OPTIONS]
 ```
 
 | Option        | Type    | Description                                             |
 |---------------|---------|---------------------------------------------------------|
-| --address     | TEXT    | Outbound address (ip or domain name) **(required)**     |
+| --address     | TEXT    | Outbound address (IP or domain name) **(required)**     |
 | --uuid        | TEXT    | VLESS client identifier **(required)**                  |
 | --sni         | TEXT    | Server name of target server **(required)**             |
 | --short-id    | TEXT    | One of short_id of target server **(required)**         |
@@ -217,7 +217,7 @@ xrayctl outbounds add NAME [OPTIONS]
 | --fingerprint | TEXT    | Fingerprint of target server [default: chrome]          |
 
 #### Add VLESS outbound from URL
-```commandline
+```text
 xrayctl outbounds add-from-url URL [OPTIONS]
 ```
 
@@ -231,13 +231,13 @@ xrayctl outbounds remove NAME
 ```
 
 #### Change VLESS outbound
-```commandline
+```text
 xrayctl outbounds change NAME [OPTIONS]
 ```
 
 | Option        | Type    | Description                                   |
 |---------------|---------|-----------------------------------------------|
-| --address     | TEXT    | Outbound address (ip or domain name)          |
+| --address     | TEXT    | Outbound address (IP or domain name)          |
 | --uuid        | TEXT    | VLESS client identifier                       |
 | --sni         | TEXT    | Server name of target server                  |
 | --password    | TEXT    | Public key of target server                   |
@@ -251,7 +251,7 @@ xrayctl outbounds change NAME [OPTIONS]
 ### Routing management
 
 #### List routing rules
-```commandline
+```text
 xrayctl routing list [OPTIONS]
 ```
 
@@ -279,7 +279,7 @@ xrayctl routing list
 ```
 
 #### Add routing rule
-```commandline
+```text
 xrayctl routing add-rule NAME [OPTIONS]
 ```
 
@@ -310,7 +310,7 @@ xrayctl routing set-priority NAME --priority VALUE
 ```
 
 #### Change rule conditions
-```commandline
+```text
 xrayctl routing change-rule NAME ACTION [OPTIONS]
 ```
 
@@ -331,8 +331,8 @@ Where `STRATEGY` is one of the available routing domain strategy values (e.g. `A
 
 ## Removing
 
-Run simple command:
-```commandline
+Run a simple command:
+```text
 rm -rf /tmp/veepeenet \
     && mkdir /tmp/veepeenet \
     && (cd /tmp/veepeenet \
