@@ -110,12 +110,11 @@ class TestDnsOutbound:
             'tag': 'dns',
             'protocol': 'dns',
             'settings': {
-                'network': 'tcp',
                 'nonIPQuery': 'skip'
             },
         }
 
         dns_outbound = DnsOutbound()
-        actual_map = dns_outbound.model_dump(by_alias=True)
+        actual_map = dns_outbound.model_dump(by_alias=True, exclude_none=True)
 
         assert actual_map == expected_map

@@ -24,9 +24,9 @@ class DnsOutbound(XrayModel):
         non_ip_query: Literal['skip', 'drop', 'reject'] | None = Field(
             default='skip', alias='nonIPQuery')
 
+    tag: str | None = 'dns'
     protocol: Literal['dns'] = 'dns'
     settings: Settings | None = Field(default_factory=Settings)
-    tag: str | None = 'dns'
 
 
 class FreedomOutbound(XrayModel):
