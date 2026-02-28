@@ -9,7 +9,7 @@ from app.defaults import XRAY_ACCESS_LOG_PATH, XRAY_ERROR_LOG_PATH
 class Log(XrayModel):
     access: str = Field(default=str(XRAY_ACCESS_LOG_PATH))
     error: str = Field(default=str(XRAY_ERROR_LOG_PATH))
-    loglevel: Literal['off', 'error', 'info', 'debug'] = Field(default='off')
+    loglevel: Literal['off', 'error', 'info', 'warning', 'debug'] = Field(default='off')
     dns_log: bool = Field(default=False)
 
 
