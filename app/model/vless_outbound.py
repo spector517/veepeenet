@@ -1,5 +1,7 @@
 from typing import Literal
 
+from pydantic import Field
+
 from app.model.base import XrayModel
 from app.model.types import FingerprintType
 
@@ -17,7 +19,7 @@ class RealitySettings(XrayModel):
     fingerprint: FingerprintType
     password: str
     short_id: str
-    spider_x: str
+    spider_x: str = Field(default_factory=lambda: '/')
 
 
 class StreamSettings(XrayModel):
@@ -26,7 +28,7 @@ class StreamSettings(XrayModel):
 
 
 class VlessOutbound(XrayModel):
-    tag: str
+    tag: str | None = Field(default=None)
     protocol: Literal['vless'] = 'vless'
     settings: Settings
     stream_settings: StreamSettings

@@ -14,9 +14,9 @@ Outbound = Annotated[
 
 
 class Xray(XrayModel):
-    log: Log = Field(default_factory=Log)
+    log: Log | None = Field(default_factory=Log)
     dns: Dns | None = Field(default=None)
-    inbounds: list[VlessInbound]
+    inbounds: list[VlessInbound] | list[dict] | None = Field(default=None)
     routing: Routing | None = Field(default=None)
-    outbounds: list[Outbound] = Field(
-        default_factory=lambda: [FreedomOutbound(), BlackholeOutbound()])
+    outbounds: list[Outbound] | list[dict] | None = Field(
+        default_factory=lambda: [FreedomOutbound(), BlackholeOutbound(), DnsOutbound()])

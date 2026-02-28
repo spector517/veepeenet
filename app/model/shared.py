@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Any
 
 from pydantic import Field
 
@@ -14,25 +14,26 @@ class Log(XrayModel):
 
 
 class Dns(XrayModel):
-    servers: list[str] = Field(
+    servers: list[str] | list[dict[str, Any]]  | None = Field(
         default_factory=lambda: ['1.1.1.1', '1.0.0.1', '8.8.8.8', '8.8.4.4'])
 
 
 class DnsOutbound(XrayModel):
     class Settings(XrayModel):
-        network: Literal['tcp'] = 'tcp'
-        non_ip_query: Literal['skip'] = Field(default='skip', alias='nonIPQuery')
+        network: Literal['tcp', 'udp'] | None = Field(default=None)
+        non_ip_query: Literal['skip', 'drop', 'reject'] | None = Field(
+            default='skip', alias='nonIPQuery')
 
     protocol: Literal['dns'] = 'dns'
-    settings: Settings = Field(default_factory=Settings)
-    tag: Literal['dns'] = 'dns'
+    settings: Settings | None = Field(default_factory=Settings)
+    tag: str | None = 'dns'
 
 
 class FreedomOutbound(XrayModel):
-    tag: Literal['direct', 'direct-outbound'] = 'direct'
+    tag: str | None = 'direct'
     protocol: Literal['freedom'] = 'freedom'
 
 
 class BlackholeOutbound(XrayModel):
-    tag: Literal['blackhole', 'blackhole-outbound'] = 'blackhole'
+    tag: str | None = 'blackhole'
     protocol: Literal['blackhole'] = 'blackhole'

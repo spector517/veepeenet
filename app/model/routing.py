@@ -6,7 +6,7 @@ from app.model.types import RuleProtocolType
 
 
 class Rule(XrayModel):
-    tag: str
+    tag: str | None = Field(default=None)
     outbound_tag: str
     protocol: list[RuleProtocolType] | None = Field(default=None)
     port: str | None = Field(default=None)
@@ -16,4 +16,4 @@ class Rule(XrayModel):
 
 class Routing(XrayModel):
     domain_strategy: RoutingDomainStrategyType | None = Field(default=None)
-    rules: list[Rule] = Field(default_factory=list)
+    rules: list[Rule] | None = Field(default_factory=list)

@@ -6,7 +6,7 @@ from app.model.base import XrayModel
 
 
 class Client(XrayModel):
-    email: str
+    email: str | None = Field(default=None)
     id: str
     flow: Literal['xtls-rprx-vision'] = 'xtls-rprx-vision'
 
@@ -19,7 +19,7 @@ class RealitySettings(XrayModel):
 
 
 class Settings(XrayModel):
-    clients: list[Client] = Field(default_factory=list)
+    clients: list[Client] | None = Field(default_factory=list)
     decryption: Literal['none'] = 'none'
 
 
@@ -31,15 +31,15 @@ class StreamSettings(XrayModel):
 class Sniffing(XrayModel):
     enabled: bool = Field(default=False)
     route_only: bool = Field(default=True)
-    dest_override: list[str] = Field(
+    dest_override: list[str] | None = Field(
         default_factory=lambda: ['http', 'tls', 'quic'])
 
 
 class VlessInbound(XrayModel):
     listen: str | None = Field(default=None)
-    port: int
+    port: int | str
     protocol: Literal['vless'] = 'vless'
-    tag: str = Field(default='vless-inbound')
+    tag: str | None = Field(default='vless-inbound')
     settings: Settings = Field(default_factory=Settings)
     stream_settings: StreamSettings
     sniffing: Sniffing = Field(default_factory=Sniffing)
