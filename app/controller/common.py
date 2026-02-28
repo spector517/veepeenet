@@ -156,7 +156,7 @@ def check_and_install(
 
 def exit_if_xray_config_not_found(xray_config_path: Path = XRAY_CONFIG_PATH) -> None:
     if not xray_config_path.exists():
-        print('Xray config file not found, please run the `config` command first')
+        print('Xray config file not found, please run the `xrayctl config` command first')
         sys_exit(-1)
 
 

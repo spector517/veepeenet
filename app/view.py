@@ -11,6 +11,29 @@ class ClientView(BaseModel):
         return f'{self.name}: {self.url}'
 
 
+class ClientsView(BaseModel):
+    clients: list[ClientView]
+
+    def __repr__(self) -> str:
+        padding = ' ' * 2
+
+        clients_str = '==================== Xray clients  ====================\n'
+
+        if not self.clients:
+            clients_str += f'{padding}Server has no clients\n'
+            return clients_str
+
+        client_block_breaker = '-------------------------------------------------------\n'
+        for client in self.clients:
+            clients_str += client_block_breaker
+            client_repr = '\n'.join(
+                [f'{padding * 2}{line}' for line in repr(client).splitlines()])
+            clients_str += f'{client_repr}\n'
+            clients_str += client_block_breaker
+        clients_str += '======================================================='
+        return clients_str
+
+
 class ServerView(BaseModel):
     veepeenet_version: str
     veepeenet_build: int
@@ -27,7 +50,7 @@ class ServerView(BaseModel):
         padding = ' ' * 2
 
         clients_str = ', '.join(self.clients) \
-            if self.clients else 'server has no clients'
+            if self.clients else 'Server has no clients'
         return ('=========== '
         f'VeePeeNET {self.veepeenet_version} build {self.veepeenet_build}'
         ' ===========\n'

@@ -13,11 +13,13 @@ from app.controller.common import (
 from app.defaults import XRAY_CONFIG_PATH
 from app.utils import (
     get_new_items,
+    get_vless_client_url,
     remove_duplicates,
     get_existing_items,
     get_short_id,
     write_text_file
 )
+from app.view import ClientsView, ClientView
 
 
 @clients.command(help='Register clients to service')
@@ -39,6 +41,30 @@ def remove(client_names: Annotated[list[str],
     check_and_install()
     __remove_clients(client_names)
 
+
+@clients.command(help='List clients of service', name='list')
+@error_handler(default_message='Error listing clients of service')
+def show(
+        json: Annotated[bool, Option(help='Show JSON formatted info')] = False,
+        _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+    exit_if_xray_config_not_found()
+    check_and_install()
+
+    xray_config = load_config(XRAY_CONFIG_PATH)
+    settings = xray_config.inbounds[0].settings
+    host = xray_config.inbounds[0].listen
+
+    clients_data = [ClientData.from_model(client, host) for client in settings.clients]
+    clients_views = [ClientView(
+        name=client_data.name,
+        url=get_vless_client_url(client_data.name, xray_config))
+                     for client_data in clients_data]
+    view = ClientsView(clients=clients_views)
+
+    if json:
+        print(view.model_dump_json(exclude_none=True, indent=2))
+    else:
+        print(repr(view))
 
 
 def __add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -> None:

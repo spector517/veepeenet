@@ -26,7 +26,7 @@ from app.utils import write_text_file, install_geo_data
 from app.view import RoutingView, RuleView
 
 
-@routing.command(help='Show routing settings')
+@routing.command(help='Show routing settings', name='list')
 @error_handler(default_message='Error showing routing settings')
 def show(
         json: Annotated[bool, Option(help='Show JSON formatted info')] = False,
