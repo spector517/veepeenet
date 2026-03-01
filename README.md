@@ -95,7 +95,7 @@ sudo xrayctl --help
 
 ### Configure Xray VLESS server with Reality
 ```
-xrayctl config [OPTIONS]
+sudo xrayctl config [OPTIONS]
 ```
 
 #### Options
@@ -110,13 +110,13 @@ xrayctl config [OPTIONS]
 
 ### Update geodata
 ```
-xrayctl update-geodata
+sudo xrayctl update-geodata
 ```
 Updates `geoip.dat` and `geosite.dat` files used for geo-based routing rules.
 
 ### Show Xray service status
 ```
-xrayctl status [OPTIONS]
+sudo xrayctl status [OPTIONS]
 ```
 
 #### Options
@@ -127,7 +127,7 @@ xrayctl status [OPTIONS]
 
 #### Examples
 ```commandline
-xrayctl status
+sudo xrayctl status
 ```
 ```
 =========== VeePeeNET v2.1.0 build 0 ===========
@@ -143,7 +143,7 @@ Xray server info:
 ```
 
 ```commandline
-xrayctl status --json
+sudo xrayctl status --json
 ```
 ```json
 {
@@ -162,13 +162,13 @@ xrayctl status --json
 
 ### Start, stop or restart Xray server
 ```commandline
-xrayctl start
+sudo xrayctl start
 ```
 ```commandline
-xrayctl stop
+sudo xrayctl stop
 ```
 ```commandline
-xrayctl restart
+sudo xrayctl restart
 ```
 
 ---
@@ -177,19 +177,19 @@ xrayctl restart
 
 #### Add clients
 ```commandline
-xrayctl clients add CLIENT_NAMES...
+sudo xrayctl clients add CLIENT_NAMES...
 ```
 If a client with the same name already exists, it will be ignored.
 
 #### Remove clients
 Clients with names that do not exist on the server will be ignored.
 ```commandline
-xrayctl clients remove CLIENT_NAMES...
+sudo xrayctl clients remove CLIENT_NAMES...
 ```
 
 #### List clients
 ```text
-xrayctl clients list [OPTIONS]
+sudo xrayctl clients list [OPTIONS]
 ```
 
 | Option | Type | Description         |
@@ -202,7 +202,7 @@ xrayctl clients list [OPTIONS]
 
 #### Add VLESS outbound
 ```text
-xrayctl outbounds add NAME [OPTIONS]
+sudo xrayctl outbounds add NAME [OPTIONS]
 ```
 
 | Option        | Type    | Description                                             |
@@ -218,7 +218,7 @@ xrayctl outbounds add NAME [OPTIONS]
 
 #### Add VLESS outbound from URL
 ```text
-xrayctl outbounds add-from-url URL [OPTIONS]
+sudo xrayctl outbounds add-from-url 'URL' [OPTIONS]
 ```
 
 | Option | Type | Description                                        |
@@ -227,12 +227,12 @@ xrayctl outbounds add-from-url URL [OPTIONS]
 
 #### Remove VLESS outbound
 ```commandline
-xrayctl outbounds remove NAME
+sudo xrayctl outbounds remove NAME
 ```
 
 #### Change VLESS outbound
 ```text
-xrayctl outbounds change NAME [OPTIONS]
+sudo xrayctl outbounds change NAME [OPTIONS]
 ```
 
 | Option        | Type    | Description                                   |
@@ -252,7 +252,7 @@ xrayctl outbounds change NAME [OPTIONS]
 
 #### List routing rules
 ```text
-xrayctl routing list [OPTIONS]
+sudo xrayctl routing list [OPTIONS]
 ```
 
 | Option | Type | Description         |
@@ -296,22 +296,22 @@ At least one condition (`--domain`, `--ip`, `--ports`, `--protocol`) must be spe
 
 #### Remove routing rule
 ```commandline
-xrayctl routing remove-rule NAME
+sudo xrayctl routing remove-rule NAME
 ```
 
 #### Rename routing rule
 ```commandline
-xrayctl routing rename-rule NAME --new-name NEW_NAME
+sudo xrayctl routing rename-rule NAME --new-name NEW_NAME
 ```
 
 #### Change rule priority
 ```commandline
-xrayctl routing set-priority NAME --priority VALUE
+sudo xrayctl routing set-priority NAME --priority VALUE
 ```
 
 #### Change rule conditions
 ```text
-xrayctl routing change-rule NAME ACTION [OPTIONS]
+sudo xrayctl routing change-rule NAME ACTION [OPTIONS]
 ```
 
 Where `ACTION` is either `put` (add values) or `del` (remove values).
@@ -325,7 +325,7 @@ Where `ACTION` is either `put` (add values) or `del` (remove values).
 
 #### Set domain strategy
 ```commandline
-xrayctl routing set-domain-strategy STRATEGY
+sudo xrayctl routing set-domain-strategy STRATEGY
 ```
 Where `STRATEGY` is one of the available routing domain strategy values (e.g. `AsIs`, `IPIfNonMatch`, `IPOnDemand`).
 

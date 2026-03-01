@@ -167,7 +167,7 @@ def change(
         echo(f'Outbound {name} not found', err=True)
         raise Exit(code=45)
 
-    if len(short_id) % 2 != 0:
+    if short_id and len(short_id) % 2 != 0:
         echo('Invalid sid (short_id): length must be even', err=True)
         raise Exit(code=42)
 
