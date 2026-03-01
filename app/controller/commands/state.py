@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from typer import Option
+from typer import Option, echo, Exit
 
 from app.app import app
 from app.controller.common import (
@@ -11,6 +11,7 @@ from app.controller.common import (
     ClientData
 )
 from app.defaults import XRAY_CONFIG_PATH
+from app.model.vless_outbound import VlessOutbound
 from app.utils import (
     detect_veepeenet_versions,
     is_xray_service_running, stop_xray_service,
@@ -19,12 +20,11 @@ from app.utils import (
     start_xray_service,
     enable_xray_service
 )
-from app.model.vless_outbound import VlessOutbound
 from app.view import ServerView
 
 
 @app.command(help='Show service status')
-@error_handler(default_message='Error retrieving service status')
+@error_handler(default_message='Error retrieving service status', default_code=30)
 def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = False,
            _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     exit_if_xray_config_not_found()
@@ -58,43 +58,50 @@ def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = Fals
         clients=client_names,
         outbounds=outbounds)
     if json:
-        print(server_view.model_dump_json(exclude_none=True, indent=2))
+        echo(server_view.model_dump_json(exclude_none=True, indent=2))
     else:
-        print(repr(server_view))
+        echo(repr(server_view))
 
 
 @app.command(help='Start service')
-@error_handler(default_message='Error starting service')
+@error_handler(default_message='Error starting service', default_code=30)
 def start(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     exit_if_xray_config_not_found()
     check_and_install()
 
     if is_xray_service_running():
-        print('Service is already running')
+        echo('Service is already running')
         return
     start_xray_service()
     if not is_xray_service_enabled():
         enable_xray_service()
-    print('Service started')
+    if is_xray_service_running():
+        echo('Service started')
+    else:
+        echo('Failed to start service', err=True)
+        raise Exit(code=31)
 
 
 @app.command(help='Stop service')
-@error_handler(default_message='Error stopping service')
+@error_handler(default_message='Error stopping service', default_code=30)
 def stop(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     exit_if_xray_config_not_found()
     check_and_install()
 
     if not is_xray_service_running():
-        print('Service is not running')
+        echo('Service is not running')
         return
     stop_xray_service()
+    if is_xray_service_running():
+        echo('Failed to stop service', err=True)
+        raise Exit(code=32)
     if is_xray_service_enabled():
         disable_xray_service()
-    print('Service stopped')
+    echo('Service stopped')
 
 
 @app.command(help='Restart service')
-@error_handler(default_message='Error restarting service')
+@error_handler(default_message='Error restarting service',default_code=30)
 def restart(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     exit_if_xray_config_not_found()
     check_and_install()
@@ -102,4 +109,8 @@ def restart(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> 
     if is_xray_service_running():
         stop_xray_service()
     start_xray_service()
-    print('Service restarted')
+    if is_xray_service_running():
+        echo('Service restarted')
+    else:
+        echo('Failed to restart service', err=True)
+        raise Exit(code=33)

@@ -1,7 +1,6 @@
-from sys import exit as sys_exit
 from typing import Annotated
 
-from typer import Option
+from typer import Option, echo, Exit
 
 from app.app import app
 from app.controller.common import load_config, check_and_install, error_handler
@@ -30,9 +29,9 @@ from app.utils import (
 
 
 @app.command(help='Configure VLESS Reality Xray service')
-@error_handler(default_message='Error during configuration service')
+@error_handler(default_message='Error during configuration service', default_code=10)
 def config(
-        host: Annotated[str, Option(
+        host: Annotated[str | None, Option(
             help=('Public interface of server.'
                   ' Using `hostname -i` if not specified.'
                   ' It is recommended to specify manually.'))] = None,
@@ -49,54 +48,57 @@ def config(
     if not host:
         host = detect_current_ipv4()
         if not host:
-            raise RuntimeError('Cannot auto detect public host address.'
-                               ' Please specify it manually via --host option')
-        detect_host_address_answer = __confirm_host_detection(host)
+            echo('Cannot auto detect public host address.'
+                 ' Please specify it manually via --host option',
+                 err=True)
+            raise Exit(code=11)
+        detect_host_address_answer = _confirm_host_detection(host)
         if not detect_host_address_answer:
-            print('Please specify public host address manually via --host option')
-            sys_exit(-1)
+            echo('Please specify public host address manually via --host option', err=True)
+            raise Exit(code=12)
 
     if not XRAY_CONFIG_PATH.exists() or clean:
         if clean:
-            answer = __confirm_config_rewriting()
+            answer = _confirm_config_rewriting()
             if not answer:
-                print('Aborted')
-                sys_exit(0)
-        xray_config = __create_config(
+                echo('Aborted')
+                return
+        xray_config = _create_config(
             host, port, reality_host, reality_port, reality_names or [reality_host])
     else:
         xray_config = load_config(XRAY_CONFIG_PATH)
-        xray_config = __update_config(xray_config, host, port, reality_host, reality_port)
+        xray_config = _update_config(
+            xray_config, host, port, reality_host, reality_port, reality_names or [reality_host])
 
     write_text_file(
         XRAY_CONFIG_PATH,
         xray_config.model_dump_json(by_alias=True, exclude_none=True, indent=2),
         0o644)
-    print('Server configuration is done')
+    echo('Server configuration is done')
 
 
 @app.command(help='Update geodata (geoip.dat and geosite.dat) for Xray')
-@error_handler(default_message='Error during geodata updating')
+@error_handler(default_message='Error during geodata updating', default_code=10)
 def update_geodata() -> None:
     check_and_install()
 
     install_geo_data(GEO_IP_URL, XRAY_GEO_IP_DATA_PATH)
     install_geo_data(GEO_SITE_URL, XRAY_GEO_SITE_DATA_PATH)
-    print('Geodata updated')
+    echo('Geodata updated')
 
 
-def __confirm_host_detection(host: str) -> bool:
+def _confirm_host_detection(host: str) -> bool:
     answer = input(f'Auto detected public host address is {host}, is it correct? (y/N): ')
     return answer.lower() == 'y'
 
 
-def __confirm_config_rewriting() -> bool:
-    answer = input('ATTENTION!!!'
+def _confirm_config_rewriting() -> bool:
+    answer = input('ATTENTION!!! '
                    'Xray config file already exists, are you sure to overwrite it? (y/N): ')
     return answer.lower() == 'y'
 
 
-def __create_config(listen: str, listen_port: int,
+def _create_config(listen: str, listen_port: int,
                     reality_host: str, reality_port: int, reality_names: list[str]) -> Xray:
     vless_inbound = VlessInbound(
         listen=listen,
@@ -110,15 +112,16 @@ def __create_config(listen: str, listen_port: int,
     return Xray(inbounds=[vless_inbound])
 
 
-def __update_config(
+def _update_config(
         xray_config: Xray,
         listen: str,
         listen_port: int,
         reality_host: str,
-        reality_port: int
+        reality_port: int,
+        reality_names: list[str]
 ) -> Xray:
     xray_config.inbounds[0].listen = listen
     xray_config.inbounds[0].port = listen_port
     xray_config.inbounds[0].stream_settings.reality_settings.dest = f'{reality_host}:{reality_port}'
-    xray_config.inbounds[0].stream_settings.reality_settings.server_names[0] = reality_host
+    xray_config.inbounds[0].stream_settings.reality_settings.server_names = reality_names
     return xray_config

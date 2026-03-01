@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Annotated
-from typer import Argument, Option
+
+from typer import Argument, Option, echo
 
 from app.app import clients
 from app.controller.common import (
@@ -23,27 +24,27 @@ from app.view import ClientsView, ClientView
 
 
 @clients.command(help='Register clients to service')
-@error_handler(default_message='Error adding clients to service')
+@error_handler(default_message='Error adding clients to service', default_code=20)
 def add(client_names: Annotated[list[str],
         Argument(help='List of new client of server')],
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     exit_if_xray_config_not_found()
     check_and_install()
-    __add_clients(client_names)
+    _add_clients(client_names)
 
 
 @clients.command(help='Remove clients from service')
-@error_handler(default_message='Error removing clients from service')
+@error_handler(default_message='Error removing clients from service', default_code=20)
 def remove(client_names: Annotated[list[str],
         Argument(help='List of clients to remove from Xray VLESS Reality server')],
            _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     exit_if_xray_config_not_found()
     check_and_install()
-    __remove_clients(client_names)
+    _remove_clients(client_names)
 
 
 @clients.command(help='List clients of service', name='list')
-@error_handler(default_message='Error listing clients of service')
+@error_handler(default_message='Error listing clients of service', default_code=20)
 def show(
         json: Annotated[bool, Option(help='Show JSON formatted info')] = False,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
@@ -62,12 +63,12 @@ def show(
     view = ClientsView(clients=clients_views)
 
     if json:
-        print(view.model_dump_json(exclude_none=True, indent=2))
+        echo(view.model_dump_json(exclude_none=True, indent=2))
     else:
-        print(repr(view))
+        echo(repr(view))
 
 
-def __add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -> None:
+def _add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -> None:
     xray_config = load_config(xray_config_path)
     settings = xray_config.inbounds[0].settings
     host = xray_config.inbounds[0].listen
@@ -79,10 +80,10 @@ def __add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -
     already_existing_names = get_existing_items(existing_names, names)
 
     if already_existing_names:
-        print('These clients already exist and will be skipped:',
-              ', '.join(already_existing_names))
+        echo('These clients already exist and will be skipped: '
+                   + ', '.join(already_existing_names))
     if not new_names:
-        print('No new clients found')
+        echo('No new clients found')
         return
 
     existing_short_ids = [client_data.short_id for client_data in existing_clients_data]
@@ -99,10 +100,10 @@ def __add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -
         xray_config_path,
         xray_config.model_dump_json(by_alias=True, exclude_none=True, indent=2),
         0o644)
-    print('Added new clients:', ', '.join(new_names))
+    echo('Added new clients: ' + ', '.join(new_names))
 
 
-def __remove_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -> None:
+def _remove_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -> None:
     xray_config = load_config(xray_config_path)
     existing_clients = xray_config.inbounds[0].settings.clients
     host = xray_config.inbounds[0].listen
@@ -115,10 +116,10 @@ def __remove_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH
     unknown_names = get_new_items(existing_names, names)
 
     if unknown_names:
-        print('These clients are unknown and will be skipped:',
-              ', '.join(unknown_names))
+        echo('These clients are unknown and will be skipped: '
+                   + ', '.join(unknown_names))
     if not removable_names:
-        print('No clients found to remove')
+        echo('No clients found to remove')
         return
 
     remaining_clients_data = [cd for cd in existing_clients_data if cd.name not in removable_names]
@@ -131,4 +132,4 @@ def __remove_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH
         xray_config_path,
         xray_config.model_dump_json(by_alias=True, exclude_none=True, indent=2),
         0o644)
-    print('Removed clients:', ', '.join(removable_names))
+    echo('Removed clients: ' + ', '.join(removable_names))

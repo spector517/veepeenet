@@ -14,7 +14,7 @@ class Log(XrayModel):
 
 
 class Dns(XrayModel):
-    servers: list[str] | list[dict[str, Any]]  | None = Field(
+    servers: list[str] | list[dict[str, Any]] | None = Field(
         default_factory=lambda: ['1.1.1.1', '1.0.0.1', '8.8.8.8', '8.8.4.4'])
 
 

@@ -103,6 +103,8 @@ class RoutingView(BaseModel):
             return routing_str
 
         routing_str += f'{padding}Domain strategy: {self.domain_strategy}\n'
+        if not self.rules:
+            return routing_str
         rule_block_breaker = '-------------------------------------------------------\n'
         for rule in self.rules:
             routing_str += rule_block_breaker

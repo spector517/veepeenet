@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Annotated
 
+import typer
 from typer import run, Argument
 
 from app.model.xray import Xray, FreedomOutbound, BlackholeOutbound
@@ -40,7 +41,7 @@ def migrate_xray_config(
         )
 
     except Exception as e:
-        print("Failed to migrate Xray config:", e)
+        typer.echo(f"Failed to migrate Xray config: {e}", err=True)
         raise
 
 
