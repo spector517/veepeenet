@@ -52,6 +52,15 @@ def _make_xray_zip(xray_binary: bytes) -> bytes:
     return buf.getvalue()
 
 
+def _make_streaming_mock(data: bytes, chunk_size: int = 1024 * 1024) -> MagicMock:
+    chunks = [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)] or [b'']
+    mock_response = MagicMock()
+    mock_response.iter_content.return_value = iter(chunks)
+    mock_response.__enter__ = MagicMock(return_value=mock_response)
+    mock_response.__exit__ = MagicMock(return_value=False)
+    return mock_response
+
+
 class TestGenXrayPrivateKey:
 
     def test_gen_xray_private_key_success(self, mocker):
@@ -566,24 +575,20 @@ class TestInstallXrayDistrib:
         xray_binary = b'xray_binary_content'
 
         mock_get = mocker.patch('app.utils.get_request')
-        mock_response = MagicMock()
-        mock_response.content = _make_xray_zip(xray_binary)
-        mock_get.return_value = mock_response
+        mock_get.return_value = _make_streaming_mock(_make_xray_zip(xray_binary))
 
         install_xray_distrib('http://example.com/xray.zip', bin_path)
 
         assert bin_path.exists()
         assert bin_path.read_bytes() == xray_binary
         assert bin_path.stat().st_mode & 0o777 == 0o744
-        mock_get.assert_called_once_with('http://example.com/xray.zip', timeout=20)
+        mock_get.assert_called_once_with('http://example.com/xray.zip', timeout=20, stream=True)
 
     def test_install_xray_distrib_creates_parent_directories(self, mocker, tmp_path: Path):
         bin_path = tmp_path / 'deep' / 'nested' / 'xray'
 
         mock_get = mocker.patch('app.utils.get_request')
-        mock_response = MagicMock()
-        mock_response.content = _make_xray_zip(b'binary')
-        mock_get.return_value = mock_response
+        mock_get.return_value = _make_streaming_mock(_make_xray_zip(b'binary'))
 
         install_xray_distrib('http://example.com/xray.zip', bin_path)
 
@@ -595,9 +600,7 @@ class TestInstallXrayDistrib:
         new_binary = b'new_xray_binary'
 
         mock_get = mocker.patch('app.utils.get_request')
-        mock_response = MagicMock()
-        mock_response.content = _make_xray_zip(new_binary)
-        mock_get.return_value = mock_response
+        mock_get.return_value = _make_streaming_mock(_make_xray_zip(new_binary))
 
         install_xray_distrib('http://example.com/xray.zip', bin_path)
 
@@ -611,24 +614,20 @@ class TestInstallGeoData:
         test_content = b'geodata_content'
 
         mock_get = mocker.patch('app.utils.get_request')
-        mock_response = MagicMock()
-        mock_response.content = test_content
-        mock_get.return_value = mock_response
+        mock_get.return_value = _make_streaming_mock(test_content)
 
         install_geo_data('http://example.com/geoip.dat', geo_data_path)
 
         assert geo_data_path.exists()
         assert geo_data_path.read_bytes() == test_content
-        mock_get.assert_called_once_with('http://example.com/geoip.dat', timeout=20)
+        mock_get.assert_called_once_with('http://example.com/geoip.dat', timeout=20, stream=True)
         assert geo_data_path.stat().st_mode & 0o777 == 0o644
 
     def test_install_geo_data_creates_parent_directory(self, mocker, tmp_path: Path):
         geo_data_path = tmp_path / 'new_dir' / 'geoip.dat'
 
         mock_get = mocker.patch('app.utils.get_request')
-        mock_response = MagicMock()
-        mock_response.content = b'geodata'
-        mock_get.return_value = mock_response
+        mock_get.return_value = _make_streaming_mock(b'geodata')
 
         install_geo_data('http://example.com/geoip.dat', geo_data_path)
 
@@ -639,9 +638,7 @@ class TestInstallGeoData:
         test_content = b'test_geodata_content'
 
         mock_get = mocker.patch('app.utils.get_request')
-        mock_response = MagicMock()
-        mock_response.content = test_content
-        mock_get.return_value = mock_response
+        mock_get.return_value = _make_streaming_mock(test_content)
 
         install_geo_data('http://example.com/geoip.dat', geo_data_path)
 
@@ -653,9 +650,7 @@ class TestInstallGeoData:
         geo_data_path = tmp_path / 'geoip.dat'
 
         mock_get = mocker.patch('app.utils.get_request')
-        mock_response = MagicMock()
-        mock_response.content = b'geodata'
-        mock_get.return_value = mock_response
+        mock_get.return_value = _make_streaming_mock(b'geodata')
 
         install_geo_data('http://example.com/geoip.dat', geo_data_path)
 
@@ -666,13 +661,11 @@ class TestInstallGeoData:
         test_url = 'http://example.com/custom_geodata.dat'
 
         mock_get = mocker.patch('app.utils.get_request')
-        mock_response = MagicMock()
-        mock_response.content = b'geodata'
-        mock_get.return_value = mock_response
+        mock_get.return_value = _make_streaming_mock(b'geodata')
 
         install_geo_data(test_url, geo_data_path)
 
-        mock_get.assert_called_once_with(test_url, timeout=20)
+        mock_get.assert_called_once_with(test_url, timeout=20, stream=True)
 
     def test_install_geo_data_overwrites_existing_file(self, mocker, tmp_path: Path):
         geo_data_path = tmp_path / 'geoip.dat'
@@ -680,9 +673,7 @@ class TestInstallGeoData:
         new_content = b'new_geodata_content'
 
         mock_get = mocker.patch('app.utils.get_request')
-        mock_response = MagicMock()
-        mock_response.content = new_content
-        mock_get.return_value = mock_response
+        mock_get.return_value = _make_streaming_mock(new_content)
 
         install_geo_data('http://example.com/geoip.dat', geo_data_path)
 
@@ -692,9 +683,7 @@ class TestInstallGeoData:
         geo_data_path = tmp_path / 'geoip.dat'
 
         mock_get = mocker.patch('app.utils.get_request')
-        mock_response = MagicMock()
-        mock_response.content = b''
-        mock_get.return_value = mock_response
+        mock_get.return_value = _make_streaming_mock(b'')
 
         install_geo_data('http://example.com/geoip.dat', geo_data_path)
 
@@ -705,9 +694,7 @@ class TestInstallGeoData:
         large_content = b'x' * (10 * 1024 * 1024)  # 10 MB
 
         mock_get = mocker.patch('app.utils.get_request')
-        mock_response = MagicMock()
-        mock_response.content = large_content
-        mock_get.return_value = mock_response
+        mock_get.return_value = _make_streaming_mock(large_content)
 
         install_geo_data('http://example.com/geoip.dat', geo_data_path)
 

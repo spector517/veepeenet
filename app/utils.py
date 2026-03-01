@@ -1,8 +1,8 @@
 from importlib.resources import files
-from io import BytesIO
 from pathlib import Path
 from re import findall, MULTILINE, search, fullmatch
 from subprocess import run
+from tempfile import NamedTemporaryFile
 from typing import Literal, TypeVar
 from urllib.parse import quote_plus as safe_url_encode
 from zipfile import ZipFile
@@ -13,6 +13,8 @@ from app.model.xray import Xray
 from app.view import VersionsView
 
 _T = TypeVar('_T')
+
+_CHUNK_SIZE = 1024 * 1024  # 1 MB
 
 app_resources = files('app.resources')
 
@@ -28,18 +30,34 @@ def is_xray_distrib_installed(version: str) -> bool:
 def install_xray_distrib(zip_url: str, bin_path: Path) -> None:
     bin_path.parent.mkdir(parents=True, mode=0o755, exist_ok=True)
 
-    distrib_bytes = get_request(zip_url, timeout=20).content
-    with ZipFile(BytesIO(distrib_bytes)) as zip_file:
-        with zip_file.open('xray') as xray_file:
-            bin_path.write_bytes(xray_file.read())
+    with NamedTemporaryFile(delete=False, suffix='.zip') as tmp_zip:
+        tmp_zip_path = Path(tmp_zip.name)
+
+    try:
+        with get_request(zip_url, timeout=20, stream=True) as response:
+            with open(tmp_zip_path, 'wb') as tmp_zip_file:
+                for chunk in response.iter_content(chunk_size=_CHUNK_SIZE):
+                    tmp_zip_file.write(chunk)
+
+        with ZipFile(tmp_zip_path) as zip_file:
+            with zip_file.open('xray') as xray_file:
+                with open(bin_path, 'wb') as out_file:
+                    for chunk in iter(lambda: xray_file.read(_CHUNK_SIZE), b''):
+                        out_file.write(chunk)
+    finally:
+        tmp_zip_path.unlink(missing_ok=True)
+
     bin_path.chmod(0o744)
 
 
 def install_geo_data(geo_data_url: str, geo_data_path: Path) -> None:
     geo_data_path.parent.mkdir(parents=True, mode=0o755, exist_ok=True)
 
-    geo_data_bytes = get_request(geo_data_url, timeout=20).content
-    geo_data_path.write_bytes(geo_data_bytes)
+    with get_request(geo_data_url, timeout=20, stream=True) as response:
+        with open(geo_data_path, 'wb') as out_file:
+            for chunk in response.iter_content(chunk_size=_CHUNK_SIZE):
+                out_file.write(chunk)
+
     geo_data_path.chmod(0o644)
 
 
