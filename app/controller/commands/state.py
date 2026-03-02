@@ -1,4 +1,5 @@
 from typing import Annotated
+from time import sleep
 
 from typer import Option, echo, Exit
 
@@ -14,7 +15,9 @@ from app.defaults import XRAY_CONFIG_PATH
 from app.model.vless_outbound import VlessOutbound
 from app.utils import (
     detect_veepeenet_versions,
-    is_xray_service_running, stop_xray_service,
+    is_xray_service_running,
+    stop_xray_service,
+    restart_xray_service,
     is_xray_service_enabled,
     disable_xray_service,
     start_xray_service,
@@ -73,6 +76,7 @@ def start(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> No
         echo('Service is already running')
         return
     start_xray_service()
+    sleep(2)
     if not is_xray_service_enabled():
         enable_xray_service()
     if is_xray_service_running():
@@ -92,6 +96,7 @@ def stop(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> Non
         echo('Service is not running')
         return
     stop_xray_service()
+    sleep(2)
     if is_xray_service_running():
         echo('Failed to stop service', err=True)
         raise Exit(code=32)
@@ -106,10 +111,11 @@ def restart(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> 
     exit_if_xray_config_not_found()
     check_and_install()
 
+    restart_xray_service()
+    sleep(2)
     if is_xray_service_running():
-        stop_xray_service()
-    start_xray_service()
-    if is_xray_service_running():
+        if not is_xray_service_enabled():
+            enable_xray_service()
         echo('Service restarted')
     else:
         echo('Failed to restart service', err=True)
