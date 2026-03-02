@@ -21,6 +21,9 @@ class Dns(XrayModel):
 class DnsOutbound(XrayModel):
     class Settings(XrayModel):
         network: Literal['tcp', 'udp'] | None = Field(default=None)
+        address: str | None = Field(default=None)
+        port: int | None = Field(default=None)
+        blockTypes: list[int] | None = Field(default=None, alias='blockTypes')
         non_ip_query: Literal['skip', 'drop', 'reject'] | None = Field(
             default='skip', alias='nonIPQuery')
 

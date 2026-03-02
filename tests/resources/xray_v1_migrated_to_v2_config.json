@@ -60,6 +60,13 @@
     {
       "tag": "blackhole",
       "protocol": "blackhole"
+    },
+    {
+      "tag": "dns",
+      "protocol": "dns",
+      "settings": {
+        "nonIPQuery": "skip"
+      }
     }
   ]
 }
