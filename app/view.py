@@ -38,7 +38,9 @@ class ServerView(BaseModel):
     veepeenet_version: str
     veepeenet_build: int
     xray_version: str
-    server_status: Literal['Running', 'Stopped']
+    server_status: Literal['running', 'stopped']
+    enabled: bool
+    uptime: str | None = Field(default=None)
     server_host: str
     server_port: int
     reality_address: str
@@ -56,7 +58,8 @@ class ServerView(BaseModel):
         ' ===========\n'
         'Xray server info:\n'
         f'{padding}version: {self.xray_version}\n'
-        f'{padding}status: {self.server_status}\n'
+        f"{padding}status: {self.server_status} ({'enabled' if self.enabled else 'disabled' })\n"
+        f"{padding}uptime: {self.uptime or 'unknown'}\n"
         f'{padding}address: {self.server_host}:{self.server_port}\n'
         f'{padding}reality_address: {self.reality_address}\n'
         f'{padding}reality_names: {", ".join(self.reality_names)}\n'

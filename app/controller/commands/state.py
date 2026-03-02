@@ -21,7 +21,8 @@ from app.utils import (
     is_xray_service_enabled,
     disable_xray_service,
     start_xray_service,
-    enable_xray_service
+    enable_xray_service,
+    get_xray_service_uptime
 )
 from app.view import ServerView
 
@@ -35,6 +36,7 @@ def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = Fals
 
     xray_config = load_config(XRAY_CONFIG_PATH)
     versions = detect_veepeenet_versions()
+    running = is_xray_service_running()
 
     client_names: list[str] = []
     for client in xray_config.inbounds[0].settings.clients:
@@ -53,7 +55,9 @@ def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = Fals
         veepeenet_version=versions.veepeenet_version,
         veepeenet_build=versions.veepeenet_build,
         xray_version=versions.xray_version,
-        server_status='Running' if is_xray_service_running() else 'Stopped',
+        server_status='running' if running else 'stopped',
+        enabled=is_xray_service_enabled(),
+        uptime=get_xray_service_uptime() if running else None,
         server_host=xray_config.inbounds[0].listen,
         server_port=xray_config.inbounds[0].port,
         reality_address=xray_config.inbounds[0].stream_settings.reality_settings.dest,

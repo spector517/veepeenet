@@ -104,6 +104,12 @@ def is_xray_service_running() -> bool:
     return run_command('systemctl is-active xray -q')[0] == 0
 
 
+def get_xray_service_uptime() -> str | None:
+    result = run_command('systemctl status xray --no-pager -l')
+    matched = search(r'Active:.*?;\s*(.+?)(?:\s+ago)?\s*$', result[1], MULTILINE)
+    return (matched.group(1).strip()) if matched else None
+
+
 def stop_xray_service() -> None:
     run_command('systemctl stop xray -q', check=True)
 

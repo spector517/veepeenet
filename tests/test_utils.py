@@ -13,6 +13,7 @@ from app.utils import (
     gen_xray_private_key,
     gen_xray_password,
     is_xray_service_running,
+    get_xray_service_uptime,
     restart_xray_service,
     enable_xray_service,
     disable_xray_service,
@@ -139,6 +140,66 @@ class TestIsXrayRunning:
         result = is_xray_service_running()
 
         assert result is False
+
+
+class TestGetXrayServiceUptime:
+
+    _STATUS_TEMPLATE = (
+        '● xray.service - Xray Service\n'
+        '     Loaded: loaded (/etc/systemd/system/xray.service; enabled)\n'
+        '     Active: active (running) since Mon 2026-03-02 10:00:00 UTC; {uptime} ago\n'
+        '   Main PID: 1234 (xray)\n'
+    )
+
+    def test_returns_uptime_hours_minutes(self, mocker):
+        stdout = self._STATUS_TEMPLATE.format(uptime='2h 30min')
+        mocker.patch('app.utils.run_command', return_value=(0, stdout, ''))
+
+        result = get_xray_service_uptime()
+
+        assert result == '2h 30min'
+
+    def test_returns_uptime_days(self, mocker):
+        stdout = self._STATUS_TEMPLATE.format(uptime='3 days 4h 5min')
+        mocker.patch('app.utils.run_command', return_value=(0, stdout, ''))
+
+        result = get_xray_service_uptime()
+
+        assert result == '3 days 4h 5min'
+
+    def test_returns_uptime_seconds(self, mocker):
+        stdout = self._STATUS_TEMPLATE.format(uptime='45s')
+        mocker.patch('app.utils.run_command', return_value=(0, stdout, ''))
+
+        result = get_xray_service_uptime()
+
+        assert result == '45s'
+
+    def test_returns_none_when_active_line_missing(self, mocker):
+        stdout = (
+            '● xray.service - Xray Service\n'
+            '     Loaded: loaded (/etc/systemd/system/xray.service; enabled)\n'
+            '     Active: inactive (dead)\n'
+        )
+        mocker.patch('app.utils.run_command', return_value=(0, stdout, ''))
+
+        result = get_xray_service_uptime()
+
+        assert result is None
+
+    def test_returns_none_when_stdout_empty(self, mocker):
+        mocker.patch('app.utils.run_command', return_value=(1, '', ''))
+
+        result = get_xray_service_uptime()
+
+        assert result is None
+
+    def test_calls_correct_command(self, mocker):
+        mock_run_command = mocker.patch('app.utils.run_command', return_value=(0, '', ''))
+
+        get_xray_service_uptime()
+
+        mock_run_command.assert_called_once_with('systemctl status xray --no-pager -l')
 
 
 class TestRestartXrayService:
