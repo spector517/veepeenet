@@ -3,13 +3,14 @@ from time import sleep
 
 from typer import Option, echo, Exit
 
-from app.app import app
+from app.cli import app
 from app.controller.common import (
     error_handler,
     load_config,
     exit_if_xray_config_not_found,
     check_and_install,
-    ClientData
+    get_vless_inbound,
+    ClientData,
 )
 from app.defaults import XRAY_CONFIG_PATH
 from app.model.vless_outbound import VlessOutbound
@@ -35,12 +36,13 @@ def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = Fals
     check_and_install()
 
     xray_config = load_config(XRAY_CONFIG_PATH)
+    inbound = get_vless_inbound(xray_config)
     versions = detect_veepeenet_versions()
     running = is_xray_service_running()
 
     client_names: list[str] = []
-    for client in xray_config.inbounds[0].settings.clients:
-        client_data = ClientData.from_model(client, xray_config.inbounds[0].listen)
+    for client in inbound.settings.clients:
+        client_data = ClientData.from_model(client, xray_config.veepeenet.host)
         client_names.append(client_data.name)
 
     outbounds: list[str] = []
@@ -58,10 +60,10 @@ def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = Fals
         server_status='running' if running else 'stopped',
         enabled=is_xray_service_enabled(),
         uptime=get_xray_service_uptime() if running else None,
-        server_host=xray_config.inbounds[0].listen,
-        server_port=xray_config.inbounds[0].port,
-        reality_address=xray_config.inbounds[0].stream_settings.reality_settings.dest,
-        reality_names=xray_config.inbounds[0].stream_settings.reality_settings.server_names,
+        server_host=xray_config.veepeenet.host,
+        server_port=inbound.port,
+        reality_address=inbound.stream_settings.reality_settings.dest,
+        reality_names=inbound.stream_settings.reality_settings.server_names,
         clients=client_names,
         outbounds=outbounds)
     if json:

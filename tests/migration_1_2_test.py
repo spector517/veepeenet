@@ -2,6 +2,7 @@ from json import dumps as json_dump
 from pathlib import Path
 
 from pytest import fixture, raises
+from pytest_mock import MockFixture
 
 from app.migration_1_2 import migrate_xray_config
 
@@ -28,9 +29,11 @@ class TestMigration12:
     def test_migrate_xray_config(
             self, xray_v1_config_path: Path,
             xray_v1_config_migrated_config_path: Path,
-            tmp_result_path: Path
+            tmp_result_path: Path,
+            mocker: MockFixture
     ):
         expected_content = xray_v1_config_migrated_config_path.read_text('utf-8')
+        mocker.patch('app.model.xray.uuid4', return_value='some-uuid')
 
         try:
             tmp_result_path.unlink(missing_ok=True)

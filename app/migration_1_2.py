@@ -5,7 +5,7 @@ import typer
 from typer import run, Argument
 
 from app.model.xray import Xray, FreedomOutbound, BlackholeOutbound
-from app.defaults import XRAY_CONFIG_PATH
+from app.defaults import XRAY_CONFIG_PATH, VLESS_LISTEN_INTERFACE
 from app.utils import write_text_file
 
 
@@ -20,10 +20,12 @@ def migrate_xray_config(
     try:
         xray_config_content = source_xray_config_path.read_text('utf-8')
         xray = Xray.model_validate_json(xray_config_content)
-        clients = xray.inbounds[0].settings.clients
-        short_ids = xray.inbounds[0].stream_settings.reality_settings.short_ids
+        inbound = xray.get_vless_inbound()
+        clients = inbound.settings.clients
+        short_ids = inbound.stream_settings.reality_settings.short_ids
 
-        xray.inbounds[0].listen = host
+        xray.veepeenet.host = host
+        inbound.listen = VLESS_LISTEN_INTERFACE
 
         if len(clients) != len(short_ids):
             raise ValueError("Number of clients does not match number of short IDs.")

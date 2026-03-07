@@ -4,7 +4,7 @@ from os import getuid
 from pathlib import Path
 from typing import Self, Callable, Any
 from urllib.parse import urljoin
-from uuid import uuid4
+from uuid import uuid4, uuid5, UUID
 
 from typer import echo, Exit
 
@@ -17,7 +17,7 @@ from app.defaults import (
     XRAY_ERROR_LOG_PATH,
     XRAY_CONFIG_PATH
 )
-from app.model.vless_inbound import Client
+from app.model.vless_inbound import Client, VlessInbound
 from app.model.xray import Xray
 from app.model.routing import Rule
 from app.model.types import RuleProtocolType
@@ -40,27 +40,37 @@ from app.utils import (
 @dataclass
 class ClientData:
     name: str
-    short_id: int
+    short_id: str
     host: str
-    uuid: str
+    uuid: UUID
 
-    def __init__(self, name: str, short_id: int, host: str, uuid: str = '') -> None:
+    def __init__(
+            self, name: str,
+            short_id: str,
+            host: str,
+            namespace: UUID | None = None,
+            uuid: UUID | None = None) -> None:
         self.name = name
         self.short_id = short_id
         self.host = host
-        self.uuid = uuid if uuid else str(uuid4())
+        if uuid:
+            self.uuid = uuid
+        elif namespace:
+            self.uuid = uuid5(namespace, name)
+        else:
+            self.uuid = uuid4()
 
     @classmethod
     def from_model(cls, client: Client, host: str) -> Self:
         name = '.'.join(client.email.split('@')[0].split('.')[:-1])
-        uuid = client.id
-        short_id = int(client.email.split('@')[0].split('.')[-1])
+        uuid = UUID(client.id)
+        short_id = client.email.split('@')[0].split('.')[-1]
         return ClientData(name=name, short_id=short_id, host=host, uuid=uuid)
 
     def to_model(self) -> Client:
         return Client(
-            id=self.uuid,
-            email=f'{self.name}.{self.short_id:04}@{self.host}'
+            id=str(self.uuid),
+            email=f'{self.name}.{self.short_id}@{self.host}'
         )
 
 
@@ -172,3 +182,10 @@ def load_config(xray_config_path: Path) -> Xray:
         echo('Config file not found', err=True)
         raise
     return Xray.model_validate_json(config_content, by_alias=True)
+
+
+def get_vless_inbound(xray_config: Xray) -> VlessInbound:
+    inbound = xray_config.get_vless_inbound()
+    if inbound:
+        return inbound
+    raise ValueError('VLESS inbound not found in config')

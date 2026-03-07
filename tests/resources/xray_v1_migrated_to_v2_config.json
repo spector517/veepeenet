@@ -1,4 +1,8 @@
 {
+  "veepeenet": {
+    "host": "126.6.6.6",
+    "namespace": "some-uuid"
+  },
   "log": {
     "access": "/var/log/xray/access.log",
     "error": "/var/log/xray/error.log",
@@ -7,10 +11,10 @@
   },
   "inbounds": [
     {
-      "listen": "126.6.6.6",
+      "tag": "vless-inbound",
+      "listen": "0.0.0.0",
       "port": 443,
       "protocol": "vless",
-      "tag": "vless-inbound",
       "settings": {
         "clients": [
           {

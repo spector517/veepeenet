@@ -36,7 +36,6 @@ from app.utils import (
     remove_duplicates,
     get_new_items,
     get_existing_items,
-    get_short_id,
     set_value,
 )
 
@@ -1114,96 +1113,6 @@ class TestGetExistingItems:
         result = get_existing_items(old, new)
 
         assert result == [1, 2, 1, 3, 2]
-
-
-class TestGetShortId:
-
-    def test_get_short_id_default_range(self):
-        existing_short_ids = [1, 2, 3, 4, 5]
-
-        result = get_short_id(existing_short_ids)
-
-        assert result == 6
-
-    def test_get_short_id_empty_existing_ids(self):
-        existing_short_ids = []
-
-        result = get_short_id(existing_short_ids)
-
-        assert result == 1
-
-    def test_get_short_id_with_gaps(self):
-        existing_short_ids = [1, 3, 5, 7]
-
-        result = get_short_id(existing_short_ids)
-
-        assert result == 2
-
-    def test_get_short_id_custom_range(self):
-        existing_short_ids = [100, 101, 102]
-
-        result = get_short_id(existing_short_ids, interval=range(100, 200))
-
-        assert result == 103
-
-    def test_get_short_id_custom_range_with_gap(self):
-        existing_short_ids = [50, 52, 54]
-
-        result = get_short_id(existing_short_ids, interval=range(50, 60))
-
-        assert result == 51
-
-    def test_get_short_id_custom_range_first_available(self):
-        existing_short_ids = [11, 12, 13]
-
-        result = get_short_id(existing_short_ids, interval=range(10, 20))
-
-        assert result == 10
-
-    def test_get_short_id_no_available_ids(self):
-        existing_short_ids = list(range(100))
-
-        with pytest.raises(ValueError) as exc_info:
-            get_short_id(existing_short_ids, interval=range(100))
-
-        assert 'No available short ID found' in str(exc_info.value)
-        assert 'range(0, 100)' in str(exc_info.value)
-
-    def test_get_short_id_large_range(self):
-        existing_short_ids = [0, 1, 2]
-
-        result = get_short_id(existing_short_ids, interval=range(1000))
-
-        assert result == 3
-
-    def test_get_short_id_returns_first_available(self):
-        existing_short_ids = [1, 3, 4, 5, 6]
-
-        result = get_short_id(existing_short_ids)
-
-        assert result == 2
-
-    def test_get_short_id_high_numbers(self):
-        existing_short_ids = [9999]
-
-        result = get_short_id(existing_short_ids)
-
-        assert result == 1
-
-    def test_get_short_id_with_unsorted_existing_ids(self):
-        existing_short_ids = [5, 2, 8, 1, 3]
-
-        result = get_short_id(existing_short_ids, interval=range(1, 10))
-
-        assert result == 4
-
-    def test_get_short_id_all_in_range_taken(self):
-        existing_short_ids = list(range(1, 6))
-
-        with pytest.raises(ValueError) as exc_info:
-            get_short_id(existing_short_ids, interval=range(1, 6))
-
-        assert 'No available short ID found' in str(exc_info.value)
 
 
 class TestSetValue:

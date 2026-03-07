@@ -3,13 +3,14 @@ from typing import Annotated, Literal, get_args
 
 from typer import Option, Argument, echo, Exit
 
-from app.app import routing
+from app.cli import routing
 from app.controller.common import RuleData
 from app.controller.common import (
     error_handler,
     load_config,
     exit_if_xray_config_not_found,
-    check_and_install
+    check_and_install,
+    get_vless_inbound,
 )
 from app.defaults import (
     XRAY_CONFIG_PATH,
@@ -41,7 +42,7 @@ def show(
         for rule in xray_config.routing.rules:
             rule_data = RuleData.from_model(rule)
             rule_view = RuleView(
-                name=rule_data.name,
+                name=rule_data.name or f'rule_{rule_data.priority}',
                 domains=rule_data.domains,
                 ips=rule_data.ips,
                 ports=rule_data.ports,
@@ -304,7 +305,7 @@ def _save_rules(xray_config: Xray, rules: list[RuleData] | None = None) -> None:
         if xray_config.routing is None:
             xray_config.routing = Routing()
         xray_config.routing.rules = model_rules
-        xray_config.inbounds[0].sniffing.enabled = True
+        get_vless_inbound(xray_config).sniffing.enabled = True
 
         all_geo_ip_rules = [ip
                              for rule in rules if rule.ips
@@ -323,7 +324,7 @@ def _save_rules(xray_config: Xray, rules: list[RuleData] | None = None) -> None:
             echo('Geosite data installed')
     else:
         xray_config.routing = None
-        xray_config.inbounds[0].sniffing.enabled = False
+        get_vless_inbound(xray_config).sniffing.enabled = False
 
     write_text_file(
         XRAY_CONFIG_PATH,

@@ -3,7 +3,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 
 from typer import Argument, Option, echo, Exit
 
-from app.app import outbounds
+from app.cli import outbounds
 from app.controller.common import (
     error_handler,
     load_config,

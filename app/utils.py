@@ -135,21 +135,24 @@ def disable_xray_service() -> None:
 
 
 def get_vless_client_url(client_name: str, xray_config: Xray) -> str | None:
-    for i, client in enumerate(xray_config.inbounds[0].settings.clients):
+    inbound = xray_config.get_vless_inbound()
+    if not inbound:
+        raise ValueError('VLESS inbound not found in Xray config')
+    for i, client in enumerate(inbound.settings.clients):
         if client_name == '.'.join(client.email.split('@')[0].split('.')[:-1]):
-            sni = xray_config.inbounds[0].stream_settings.reality_settings.server_names[0]
+            sni = inbound.stream_settings.reality_settings.server_names[0]
             password = gen_xray_password(
-                xray_config.inbounds[0].stream_settings.reality_settings.private_key)
+                inbound.stream_settings.reality_settings.private_key)
             spx = safe_url_encode(f'/{client_name}')
-            return (f'vless://{client.id}@{xray_config.inbounds[0].listen}:'
-                    f'{xray_config.inbounds[0].port}'
+            return (f'vless://{client.id}@{inbound.listen}:'
+                    f'{inbound.port}'
                     '?flow=xtls-rprx-vision'
                     '&type=raw'
                     '&security=reality'
                     '&fp=chrome'
                     f'&sni={sni}'
                     f'&pbk={password}'
-                    f'&sid={xray_config.inbounds[0].stream_settings.reality_settings.short_ids[i]}'
+                    f'&sid={inbound.stream_settings.reality_settings.short_ids[i]}'
                     f'&spx={spx}'
                     f'#{client_name}@{client.email.split('@')[-1]}')
     return None
@@ -209,13 +212,6 @@ def get_new_items(old: list[_T], new: list[_T]) -> list[_T]:
 
 def get_existing_items(old: list[_T], new: list[_T]) -> list[_T]:
     return [item for item in new if item in old]
-
-
-def get_short_id(existing_short_ids: list[int], interval: range = range(1, 10000)) -> int:
-    for i in interval:
-        if i not in existing_short_ids:
-            return i
-    raise ValueError(f'No available short ID found in the given interval {interval}')
 
 
 def set_value(obj: object, attr: str, value: object) -> bool:

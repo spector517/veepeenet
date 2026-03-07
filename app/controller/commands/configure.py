@@ -1,10 +1,17 @@
 from typing import Annotated
+from uuid import uuid4
 
 from typer import Option, echo, Exit
 
-from app.app import app
-from app.controller.common import load_config, check_and_install, error_handler
+from app.cli import app
+from app.controller.common import (
+    load_config,
+    check_and_install,
+    error_handler,
+    get_vless_inbound,
+)
 from app.defaults import (
+    VLESS_LISTEN_INTERFACE,
     VLESS_LISTEN_PORT,
     REALITY_HOST,
     REALITY_PORT,
@@ -20,6 +27,7 @@ from app.model.vless_inbound import (
     RealitySettings as InboundRealitySettings
 )
 from app.model.xray import Xray
+from app.model.veepeenet import VeePeeNET
 from app.utils import (
     detect_current_ipv4,
     write_text_file,
@@ -98,10 +106,10 @@ def _confirm_config_rewriting() -> bool:
     return answer.lower() == 'y'
 
 
-def _create_config(listen: str, listen_port: int,
+def _create_config(host: str, listen_port: int,
                     reality_host: str, reality_port: int, reality_names: list[str]) -> Xray:
     vless_inbound = VlessInbound(
-        listen=listen,
+        listen=VLESS_LISTEN_INTERFACE,
         port=listen_port,
         stream_settings=InboundStreamSettings(
             reality_settings=InboundRealitySettings(
@@ -109,19 +117,21 @@ def _create_config(listen: str, listen_port: int,
                 server_names=reality_names,
                 private_key=gen_xray_private_key(),
                 short_ids=[])))
-    return Xray(inbounds=[vless_inbound])
+    veepeenet = VeePeeNET(host=host, namespace=str(uuid4()))
+    return Xray(veepeenet=veepeenet, inbounds=[vless_inbound])
 
 
 def _update_config(
         xray_config: Xray,
-        listen: str,
+        host: str,
         listen_port: int,
         reality_host: str,
         reality_port: int,
         reality_names: list[str]
 ) -> Xray:
-    xray_config.inbounds[0].listen = listen
-    xray_config.inbounds[0].port = listen_port
-    xray_config.inbounds[0].stream_settings.reality_settings.dest = f'{reality_host}:{reality_port}'
-    xray_config.inbounds[0].stream_settings.reality_settings.server_names = reality_names
+    xray_config.veepeenet.host = host
+    vless_inbound = get_vless_inbound(xray_config)
+    vless_inbound.port = listen_port
+    vless_inbound.stream_settings.reality_settings.dest = f'{reality_host}:{reality_port}'
+    vless_inbound.stream_settings.reality_settings.server_names = reality_names
     return xray_config

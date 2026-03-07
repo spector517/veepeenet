@@ -1,14 +1,18 @@
 from pathlib import Path
 from typing import Annotated
+from uuid import UUID
+
+from xxhash import xxh64
 
 from typer import Argument, Option, echo
 
-from app.app import clients
+from app.cli import clients
 from app.controller.common import (
     error_handler,
     load_config,
     exit_if_xray_config_not_found,
     check_and_install,
+    get_vless_inbound,
     ClientData,
 )
 from app.defaults import XRAY_CONFIG_PATH
@@ -17,7 +21,6 @@ from app.utils import (
     get_vless_client_url,
     remove_duplicates,
     get_existing_items,
-    get_short_id,
     write_text_file
 )
 from app.view import ClientsView, ClientView
@@ -52,10 +55,10 @@ def show(
     check_and_install()
 
     xray_config = load_config(XRAY_CONFIG_PATH)
-    settings = xray_config.inbounds[0].settings
-    host = xray_config.inbounds[0].listen
+    inbound = get_vless_inbound(xray_config)
+    host = xray_config.veepeenet.host
 
-    clients_data = [ClientData.from_model(client, host) for client in settings.clients]
+    clients_data = [ClientData.from_model(client, host) for client in inbound.settings.clients]
     clients_views = [ClientView(
         name=client_data.name,
         url=get_vless_client_url(client_data.name, xray_config))
@@ -70,11 +73,13 @@ def show(
 
 def _add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -> None:
     xray_config = load_config(xray_config_path)
-    settings = xray_config.inbounds[0].settings
-    host = xray_config.inbounds[0].listen
-    reality_settings = xray_config.inbounds[0].stream_settings.reality_settings
+    inbound = get_vless_inbound(xray_config)
+    host = xray_config.veepeenet.host
+    reality_settings = inbound.stream_settings.reality_settings
+    namespace = UUID(xray_config.veepeenet.namespace)
 
-    existing_clients_data = [ClientData.from_model(client, host) for client in settings.clients]
+    existing_clients_data = [ClientData.from_model(client, host)
+                             for client in inbound.settings.clients]
     existing_names = [client_data.name for client_data in existing_clients_data]
     new_names = get_new_items(existing_names, remove_duplicates(names))
     already_existing_names = get_existing_items(existing_names, names)
@@ -88,13 +93,14 @@ def _add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) ->
 
     existing_short_ids = [client_data.short_id for client_data in existing_clients_data]
     for name in new_names:
-        short_id = get_short_id(existing_short_ids)
+        short_id = xxh64(name).hexdigest()
         existing_short_ids.append(short_id)
-        new_client_data = ClientData(name=name, short_id=short_id, host=host)
+        new_client_data = ClientData(
+            name=name, short_id=short_id, host=host, namespace=namespace)
         existing_clients_data.append(new_client_data)
 
-    settings.clients = [client_data.to_model() for client_data in existing_clients_data]
-    reality_settings.short_ids = [f'{short_id:04}' for short_id in existing_short_ids]
+    inbound.settings.clients = [client_data.to_model() for client_data in existing_clients_data]
+    reality_settings.short_ids = existing_short_ids
 
     write_text_file(
         xray_config_path,
@@ -105,10 +111,10 @@ def _add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) ->
 
 def _remove_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -> None:
     xray_config = load_config(xray_config_path)
-    existing_clients = xray_config.inbounds[0].settings.clients
-    host = xray_config.inbounds[0].listen
-    reality_settings = xray_config.inbounds[0].stream_settings.reality_settings
-    settings = xray_config.inbounds[0].settings
+    inbound = get_vless_inbound(xray_config)
+    existing_clients = inbound.settings.clients
+    host = xray_config.veepeenet.host
+    reality_settings = inbound.stream_settings.reality_settings
 
     existing_clients_data = [ClientData.from_model(client, host) for client in existing_clients]
     existing_names = [client_data.name for client_data in existing_clients_data]
@@ -123,10 +129,8 @@ def _remove_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH)
         return
 
     remaining_clients_data = [cd for cd in existing_clients_data if cd.name not in removable_names]
-    remaining_short_ids = [cd.short_id for cd in remaining_clients_data]
-
-    settings.clients = [client_data.to_model() for client_data in remaining_clients_data]
-    reality_settings.short_ids = [f'{short_id:04}' for short_id in remaining_short_ids]
+    inbound.settings.clients = [client_data.to_model() for client_data in remaining_clients_data]
+    reality_settings.short_ids = [cd.short_id for cd in remaining_clients_data]
 
     write_text_file(
         xray_config_path,

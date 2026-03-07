@@ -11,7 +11,7 @@ import app.controller.commands.state
 # noinspection PyUnusedImports
 import app.controller.commands.routing
 
-from app.app import app as typer_app
+from app.cli import app as typer_app
 
 if __name__ == "__main__":
     typer_app()
