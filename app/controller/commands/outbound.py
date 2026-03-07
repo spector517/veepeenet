@@ -23,6 +23,7 @@ from app.model.vless_outbound import (
     VlessOutbound,
     StreamSettings as OutboundStreamSettings
 )
+from app.model.xray import Outbound
 from app.utils import write_text_file, set_value, is_valid_vless_client_url
 
 
@@ -51,7 +52,7 @@ def add(
     xray_config = load_config(XRAY_CONFIG_PATH)
     for outbound in xray_config.outbounds:
         if outbound.tag == name:
-            echo(f'Outbound "{name}" already exists', err=True)
+            echo(f'VLESS outbound "{name}" already exists', err=True)
             raise Exit(code=41)
 
     if len(short_id) % 2 != 0:
@@ -134,8 +135,35 @@ def remove(
                 0o644)
             echo(f'Removed outbound "{name}"')
             return
-    echo(f'Outbound "{name}" not found', err=True)
+    echo(f'VLESS outbound "{name}" not found', err=True)
     raise Exit(code=45)
+
+
+@outbounds.command(help='Set outbound as default (move to first position)')
+@error_handler(default_message='Error setting default outbound', default_code=40)
+def set_default(
+        name: Annotated[str, Argument(help='Outbound name')],
+        _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+    exit_if_xray_config_not_found()
+    check_and_install()
+
+    xray_config = load_config(XRAY_CONFIG_PATH)
+    target_outbound: Outbound | None = None
+    for outbound in xray_config.outbounds:
+        if outbound.tag == name:
+            target_outbound = outbound
+            break
+    if not target_outbound:
+        echo(f'Outbound "{name}" not found', err=True)
+        raise Exit(code=45)
+
+    xray_config.outbounds.remove(target_outbound)
+    xray_config.outbounds.insert(0, target_outbound)
+    write_text_file(
+        XRAY_CONFIG_PATH,
+        xray_config.model_dump_json(by_alias=True, exclude_none=True, indent=2),
+        0o644)
+    echo(f'Outbound "{name}" is now the default')
 
 
 @outbounds.command(help='Change VLESS outbound')
@@ -164,7 +192,7 @@ def change(
         if outbound.tag == name and outbound.protocol == 'vless':
             target_outbound = outbound
     if not target_outbound:
-        echo(f'Outbound {name} not found', err=True)
+        echo(f'VLESS outbound {name} not found', err=True)
         raise Exit(code=45)
 
     if short_id and len(short_id) % 2 != 0:

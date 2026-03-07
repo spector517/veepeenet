@@ -20,8 +20,9 @@ app = Typer(add_completion=False)
 
 
 @app.callback()
-def show_version(  # pylint: disable=unused-argument
-        version: Annotated[
+def show_version(
+        # pylint: disable=unused-argument
+        _version: Annotated[
             bool, Option('--version', help='Show version and exit.',
                          callback=_version_callback, is_eager=True)] = False,
 ) -> None:
