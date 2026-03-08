@@ -7,6 +7,7 @@ from zipfile import ZipFile
 
 import pytest
 from pytest_mock import MockFixture
+from requests import HTTPError
 
 from app.model.xray import Xray
 from app.utils import (
@@ -37,6 +38,7 @@ from app.utils import (
     get_new_items,
     get_existing_items,
     set_value,
+    get_xray_github_releases,
 )
 
 
@@ -1296,3 +1298,151 @@ class TestSetValue:
         assert result is True
         assert obj.inner == new_inner
         assert obj.inner.value == 'new_inner'
+
+
+def _make_release(tag: str, prerelease: bool = False, draft: bool = False) -> dict:
+    return {'tag_name': tag, 'prerelease': prerelease, 'draft': draft}
+
+
+class TestGetXrayGithubReleases:
+
+    _RELEASES_URL = 'https://api.github.com/repos/XTLS/Xray-core/releases'
+
+    def test_returns_up_to_limit_versions(self, mocker):
+        releases = [_make_release(f'v1.0.{i}') for i in range(20)]
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_get.return_value.json.return_value = releases
+        mock_get.return_value.raise_for_status = MagicMock()
+
+        result = get_xray_github_releases(limit=10)
+
+        assert len(result) == 10
+        assert result == [f'v1.0.{i}' for i in range(10)]
+
+    def test_returns_fewer_than_limit_when_not_enough_releases(self, mocker):
+        releases = [_make_release('v1.0.0'), _make_release('v1.0.1')]
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_get.return_value.json.return_value = releases
+        mock_get.return_value.raise_for_status = MagicMock()
+
+        result = get_xray_github_releases(limit=10)
+
+        assert result == ['v1.0.0', 'v1.0.1']
+
+    def test_excludes_prerelease_versions(self, mocker):
+        releases = [
+            _make_release('v2.0.0'),
+            _make_release('v2.0.0-beta', prerelease=True),
+            _make_release('v1.9.0'),
+        ]
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_get.return_value.json.return_value = releases
+        mock_get.return_value.raise_for_status = MagicMock()
+
+        result = get_xray_github_releases(limit=10)
+
+        assert 'v2.0.0-beta' not in result
+        assert result == ['v2.0.0', 'v1.9.0']
+
+    def test_excludes_draft_releases(self, mocker):
+        releases = [
+            _make_release('v2.0.0'),
+            _make_release('v1.9.0-draft', draft=True),
+            _make_release('v1.8.0'),
+        ]
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_get.return_value.json.return_value = releases
+        mock_get.return_value.raise_for_status = MagicMock()
+
+        result = get_xray_github_releases(limit=10)
+
+        assert 'v1.9.0-draft' not in result
+        assert result == ['v2.0.0', 'v1.8.0']
+
+    def test_excludes_both_draft_and_prerelease(self, mocker):
+        releases = [
+            _make_release('v3.0.0'),
+            _make_release('v3.0.0-rc1', prerelease=True),
+            _make_release('v2.9.0-draft', draft=True),
+            _make_release('v2.8.0'),
+        ]
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_get.return_value.json.return_value = releases
+        mock_get.return_value.raise_for_status = MagicMock()
+
+        result = get_xray_github_releases(limit=10)
+
+        assert result == ['v3.0.0', 'v2.8.0']
+
+    def test_returns_empty_list_when_all_releases_are_prerelease(self, mocker):
+        releases = [
+            _make_release('v1.0.0-beta', prerelease=True),
+            _make_release('v1.0.0-alpha', prerelease=True),
+        ]
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_get.return_value.json.return_value = releases
+        mock_get.return_value.raise_for_status = MagicMock()
+
+        result = get_xray_github_releases(limit=10)
+
+        assert result == []
+
+    def test_returns_empty_list_when_no_releases(self, mocker):
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_get.return_value.json.return_value = []
+        mock_get.return_value.raise_for_status = MagicMock()
+
+        result = get_xray_github_releases(limit=10)
+
+        assert result == []
+
+    def test_default_limit_is_10(self, mocker):
+        releases = [_make_release(f'v1.0.{i}') for i in range(15)]
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_get.return_value.json.return_value = releases
+        mock_get.return_value.raise_for_status = MagicMock()
+
+        result = get_xray_github_releases()
+
+        assert len(result) == 10
+
+    def test_calls_correct_url_with_params(self, mocker):
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_get.return_value.json.return_value = []
+        mock_get.return_value.raise_for_status = MagicMock()
+
+        get_xray_github_releases()
+
+        mock_get.assert_called_once_with(
+            self._RELEASES_URL,
+            params={'per_page': 100},
+            timeout=10,
+            headers={'Accept': 'application/vnd.github+json'},
+        )
+
+    def test_raises_on_http_error(self, mocker):
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_get.return_value.raise_for_status.side_effect = HTTPError('404 Not Found')
+
+        with pytest.raises(HTTPError):
+            get_xray_github_releases()
+
+    def test_limit_zero_returns_empty_list(self, mocker):
+        releases = [_make_release(f'v1.0.{i}') for i in range(5)]
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_get.return_value.json.return_value = releases
+        mock_get.return_value.raise_for_status = MagicMock()
+
+        result = get_xray_github_releases(limit=0)
+
+        assert result == []
+
+    def test_raises_for_status_is_called(self, mocker):
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_response = mock_get.return_value
+        mock_response.json.return_value = []
+        mock_response.raise_for_status = MagicMock()
+
+        get_xray_github_releases()
+
+        mock_response.raise_for_status.assert_called_once()

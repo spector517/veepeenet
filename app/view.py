@@ -123,3 +123,15 @@ class VersionsView(BaseModel):
     veepeenet_version: str
     veepeenet_build: int
     xray_version: str
+
+
+class XrayReleasesView(BaseModel):
+    releases: list[str]
+
+    def __repr__(self) -> str:
+        padding = ' ' * 2
+        result = '================ Available Xray releases ===============\n'
+        for i, version in enumerate(self.releases, start=1):
+            result += f'{padding}{i}. {version}\n'
+        result += '======================================================='
+        return result

@@ -14,6 +14,7 @@ from app.view import VersionsView
 
 _T = TypeVar('_T')
 
+_XRAY_GITHUB_RELEASES_URL = 'https://api.github.com/repos/XTLS/Xray-core/releases'
 _CHUNK_SIZE = 1024 * 1024  # 1 MB
 
 app_resources = files('app.resources')
@@ -241,3 +242,20 @@ def run_command(command: str, stdin: str = '', check: bool = False, timeout: int
 def detect_veepeenet_versions() -> VersionsView:
     content = app_resources.joinpath('versions.json').read_text('utf-8')
     return VersionsView.model_validate_json(content)
+
+
+def get_xray_github_releases(limit: int = 10) -> list[str]:
+    response = get_request(
+        _XRAY_GITHUB_RELEASES_URL,
+        params={'per_page': 100},
+        timeout=10,
+        headers={'Accept': 'application/vnd.github+json'},
+    )
+    response.raise_for_status()
+    releases = response.json()
+    versions = [
+        release['tag_name']
+        for release in releases
+        if not release.get('prerelease', False) and not release.get('draft', False)
+    ]
+    return versions[:limit]

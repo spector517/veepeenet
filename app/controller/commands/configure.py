@@ -1,4 +1,5 @@
 from typing import Annotated
+from urllib.parse import urljoin
 from uuid import uuid4
 
 from typer import Option, echo, Exit
@@ -21,6 +22,9 @@ from app.defaults import (
     GEO_SITE_URL,
     XRAY_GEO_IP_DATA_PATH,
     XRAY_GEO_SITE_DATA_PATH,
+    XRAY_BINARY_PATH,
+    XRAY_ARCHIVE_NAME,
+    XRAY_DOWNLOAD_URL,
 )
 from app.model.vless_inbound import (
     VlessInbound,
@@ -34,7 +38,14 @@ from app.utils import (
     write_text_file,
     gen_xray_private_key,
     install_geo_data,
+    get_xray_github_releases,
+    install_xray_distrib,
+    is_xray_service_running,
+    stop_xray_service,
+    start_xray_service,
+    get_xray_distrib_version,
 )
+from app.view import XrayReleasesView
 
 
 @app.command(help='Configure VLESS Reality Xray service')
@@ -95,6 +106,58 @@ def update_geodata() -> None:
     install_geo_data(GEO_IP_URL, XRAY_GEO_IP_DATA_PATH)
     install_geo_data(GEO_SITE_URL, XRAY_GEO_SITE_DATA_PATH)
     echo('Geodata updated')
+
+
+@app.command(help='Update Xray distribution to a selected or latest version')
+@error_handler(default_message='Error during Xray distribution update', default_code=10)
+def update_xray(
+        _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+    check_root()
+
+    echo('Fetching available Xray releases from GitHub...')
+    releases = get_xray_github_releases(limit=10)
+    if not releases:
+        echo('No releases found', err=True)
+        raise Exit(code=13)
+
+    echo(repr(XrayReleasesView(releases=releases)))
+
+    raw = input(f'Select release to install [1-{len(releases)}] '
+                f'(press Enter for latest or Ctrl+C to cancel): ').strip()
+
+    if raw == '':
+        selected_version = releases[0]
+        echo(f'Installing latest release: {selected_version}')
+    else:
+        try:
+            choice = int(raw)
+            if choice < 1 or choice > len(releases):
+                raise ValueError
+            selected_version = releases[choice - 1]
+        except ValueError as exc:
+            echo(
+                f'Invalid input: "{raw}". Please enter a number between 1 and {len(releases)}.',
+                 err=True)
+            raise Exit(code=14) from exc
+
+    current_version = get_xray_distrib_version()
+    if current_version and f'v{current_version}' == selected_version:
+        echo(f'Xray {selected_version} is already installed, no update needed')
+        return
+
+    was_running = is_xray_service_running()
+    if was_running:
+        stop_xray_service()
+        echo('Xray service stopped')
+
+    url = urljoin(XRAY_DOWNLOAD_URL, f'{selected_version}/{XRAY_ARCHIVE_NAME}')
+    echo(f'Downloading Xray {selected_version}...')
+    install_xray_distrib(url, XRAY_BINARY_PATH)
+    echo(f'Xray {selected_version} installed successfully')
+
+    if was_running:
+        start_xray_service()
+        echo('Xray service started')
 
 
 def _confirm_host_detection(host: str) -> bool:

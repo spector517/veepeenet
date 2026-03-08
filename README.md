@@ -114,6 +114,12 @@ sudo xrayctl update-geodata
 ```
 Updates `geoip.dat` and `geosite.dat` files used for geo-based routing rules.
 
+### Update Xray distribution
+```
+sudo xrayctl update-xray
+```
+Updates Xray distribution to a selected or latest version. Shows a list of available releases from GitHub and allows you to choose which version to install.
+
 ### Show Xray service status
 ```
 sudo xrayctl status [OPTIONS]
