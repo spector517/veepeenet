@@ -7,8 +7,8 @@ from app.cli import outbounds
 from app.controller.common import (
     error_handler,
     load_config,
-    exit_if_xray_config_not_found,
-    check_and_install
+    check_xray_config,
+    check_root,
 )
 from app.defaults import (
     XRAY_CONFIG_PATH,
@@ -46,8 +46,8 @@ def add(
             FingerprintType,
             Option(help='Fingerprint of target server')] = VLESS_OUTBOUND_FINGERPRINT,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
-    exit_if_xray_config_not_found()
-    check_and_install()
+    check_root()
+    check_xray_config()
 
     xray_config = load_config(XRAY_CONFIG_PATH)
     for outbound in xray_config.outbounds:
@@ -122,8 +122,8 @@ def add_from_url(
 def remove(
         name: Annotated[str, Argument(help='Outbound name')],
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
-    exit_if_xray_config_not_found()
-    check_and_install()
+    check_root()
+    check_xray_config()
 
     xray_config = load_config(XRAY_CONFIG_PATH)
     for outbound in xray_config.outbounds:
@@ -144,8 +144,8 @@ def remove(
 def set_default(
         name: Annotated[str, Argument(help='Outbound name')],
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
-    exit_if_xray_config_not_found()
-    check_and_install()
+    check_root()
+    check_xray_config()
 
     xray_config = load_config(XRAY_CONFIG_PATH)
     target_outbound: Outbound | None = None
@@ -183,8 +183,8 @@ def change(
             Option(help='VLESS outbound port')] = None,
         new_name: Annotated[str | None, Option(help='New outbound name')] = None,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
-    exit_if_xray_config_not_found()
-    check_and_install()
+    check_root()
+    check_xray_config()
 
     xray_config = load_config(XRAY_CONFIG_PATH)
     target_outbound: VlessOutbound | None = None

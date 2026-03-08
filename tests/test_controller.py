@@ -50,7 +50,8 @@ class TestCreateConfig:
             return_value='very-secret-key')
         mocker.patch('app.controller.commands.configure.uuid4', return_value='some-uuid')
         write_text_file_mock = mocker.patch('app.controller.commands.configure.write_text_file')
-        mocker.patch('app.controller.commands.configure.check_and_install')
+        mocker.patch('app.controller.commands.configure.check_root')
+        mocker.patch('app.controller.commands.configure.check_distrib')
 
         with open(initial_config_path, 'rt', encoding='utf-8') as config_file:
             expected_xray_config_content = config_file.read()

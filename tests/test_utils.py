@@ -23,7 +23,7 @@ from app.utils import (
     detect_ssh_port,
     detect_current_ipv4,
     write_text_file,
-    is_xray_distrib_installed,
+    get_xray_distrib_version,
     install_xray_distrib,
     install_geo_data,
     is_xray_service_installed,
@@ -584,49 +584,48 @@ class TestWriteTextFile:
         assert file_path.read_text(encoding='utf-8') == 'content'
 
 
-class TestIsXrayDistribInstalled:
+class TestGetXrayDistribVersion:
 
-    def test_is_xray_distrib_installed_success(self, mocker):
+    def test_returns_version_string(self, mocker):
         mock_run_command = mocker.patch(
             'app.utils.run_command',
-            return_value=(0, 'Xray 1.8.0 (installed)', '')
+            return_value=(0, 'Xray 1.8.0 (Xray, Penetrates Everything.)', '')
         )
 
-        result = is_xray_distrib_installed('1.8.0')
+        result = get_xray_distrib_version()
 
-        assert result is True
+        assert result == '1.8.0'
         mock_run_command.assert_called_once_with('xray --version')
 
-    def test_is_xray_distrib_installed_with_v_prefix(self, mocker):
-        mocker.patch(
-            'app.utils.run_command',
-            return_value=(0, 'Xray 1.8.0 (installed)', '')
-        )
-
-        result = is_xray_distrib_installed('v1.8.0')
-
-        assert result is True
-
-    def test_is_xray_distrib_installed_not_found(self, mocker):
-        mocker.patch(
-            'app.utils.run_command',
-            return_value=(0, 'Xray 1.7.0 (installed)', '')
-        )
-
-        result = is_xray_distrib_installed('1.8.0')
-
-        assert result is False
-
-    def test_is_xray_distrib_installed_command_failure(self, mocker):
+    def test_returns_none_when_command_fails(self, mocker):
         mocker.patch(
             'app.utils.run_command',
             return_value=(1, '', 'xray: command not found')
         )
 
-        result = is_xray_distrib_installed('1.8.0')
+        result = get_xray_distrib_version()
 
-        assert result is False
+        assert result is None
 
+    def test_returns_none_when_output_has_no_version(self, mocker):
+        mocker.patch(
+            'app.utils.run_command',
+            return_value=(0, 'Unexpected output without version', '')
+        )
+
+        result = get_xray_distrib_version()
+
+        assert result is None
+
+    def test_returns_version_with_multiple_digits(self, mocker):
+        mocker.patch(
+            'app.utils.run_command',
+            return_value=(0, 'Xray 24.12.31 (Xray, Penetrates Everything.)', '')
+        )
+
+        result = get_xray_distrib_version()
+
+        assert result == '24.12.31'
 
 class TestInstallXrayDistrib:
 

@@ -23,7 +23,7 @@ from app.model.routing import Rule
 from app.model.types import RuleProtocolType
 from app.utils import (
     detect_veepeenet_versions,
-    is_xray_distrib_installed,
+    get_xray_distrib_version,
     is_xray_service_running,
     stop_xray_service,
     install_xray_distrib,
@@ -128,19 +128,16 @@ def error_handler(
     return wrapper_func
 
 
-def check_and_install(
+def check_distrib(
         bin_path: Path = XRAY_BINARY_PATH,
         unit_path: Path = XRAY_SERVICE_UNIT_PATH,
         archive_name: str = XRAY_ARCHIVE_NAME,
 ) -> None:
-    if getuid() != 0:
-        echo('Xray configuration must be run as root', err=True)
-        raise Exit(code=1)
     versions = detect_veepeenet_versions()
     was_stopped = False
 
-    if not is_xray_distrib_installed(versions.xray_version):
-        echo('Required Xray distribution is not installed. Will install it now...')
+    if not get_xray_distrib_version():
+        echo('Xray distribution is not installed. Will install it now...')
         if is_xray_service_running():
             stop_xray_service()
             echo('Stopped running Xray service')
@@ -168,7 +165,13 @@ def check_and_install(
         echo('Started Xray service')
 
 
-def exit_if_xray_config_not_found(xray_config_path: Path = XRAY_CONFIG_PATH) -> None:
+def check_root() -> None:
+    if getuid() != 0:
+        echo('This command must be run as root', err=True)
+        raise Exit(code=1)
+
+
+def check_xray_config(xray_config_path: Path = XRAY_CONFIG_PATH) -> None:
     if not xray_config_path.exists():
         echo('Xray config file not found, please run the `xrayctl config` command first',
                    err=True)

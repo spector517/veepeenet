@@ -6,7 +6,8 @@ from typer import Option, echo, Exit
 from app.cli import app
 from app.controller.common import (
     load_config,
-    check_and_install,
+    check_root,
+    check_distrib,
     error_handler,
     get_vless_inbound,
 )
@@ -52,7 +53,8 @@ def config(
                    show_default='Reality host')] = None,
         clean: Annotated[bool, Option(help='Override current configuration')] = False,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
-    check_and_install()
+    check_root()
+    check_distrib()
     if not host:
         host = detect_current_ipv4()
         if not host:
@@ -88,7 +90,7 @@ def config(
 @app.command(help='Update geodata (geoip.dat and geosite.dat) for Xray')
 @error_handler(default_message='Error during geodata updating', default_code=10)
 def update_geodata() -> None:
-    check_and_install()
+    check_root()
 
     install_geo_data(GEO_IP_URL, XRAY_GEO_IP_DATA_PATH)
     install_geo_data(GEO_SITE_URL, XRAY_GEO_SITE_DATA_PATH)

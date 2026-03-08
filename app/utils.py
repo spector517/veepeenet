@@ -19,12 +19,12 @@ _CHUNK_SIZE = 1024 * 1024  # 1 MB
 app_resources = files('app.resources')
 
 
-def is_xray_distrib_installed(version: str) -> bool:
+def get_xray_distrib_version() -> str | None:
     run_result = run_command('xray --version')
     if run_result[0] != 0:
-        return False
-    version = version[1:] if version.startswith('v') else version
-    return version in run_result[1]
+        return None
+    matcher = search(r'Xray\s+([\d.]+)', run_result[1])
+    return matcher.group(1) if matcher else None
 
 
 def install_xray_distrib(zip_url: str, bin_path: Path) -> None:

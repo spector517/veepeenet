@@ -7,8 +7,9 @@ from app.cli import app
 from app.controller.common import (
     error_handler,
     load_config,
-    exit_if_xray_config_not_found,
-    check_and_install,
+    check_xray_config,
+    check_root,
+    check_distrib,
     get_vless_inbound,
     ClientData,
 )
@@ -16,6 +17,7 @@ from app.defaults import XRAY_CONFIG_PATH
 from app.model.vless_outbound import VlessOutbound
 from app.utils import (
     detect_veepeenet_versions,
+    get_xray_distrib_version,
     is_xray_service_running,
     stop_xray_service,
     restart_xray_service,
@@ -33,12 +35,13 @@ from app.defaults import STATE_PENDING_TIMEOUT
 @error_handler(default_message='Error retrieving service status', default_code=30)
 def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = False,
            _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
-    exit_if_xray_config_not_found()
-    check_and_install()
+    check_xray_config()
+    check_distrib()
 
     xray_config = load_config(XRAY_CONFIG_PATH)
     inbound = get_vless_inbound(xray_config)
     versions = detect_veepeenet_versions()
+    xray_version = get_xray_distrib_version()
     running = is_xray_service_running()
 
     client_names: list[str] = []
@@ -57,7 +60,7 @@ def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = Fals
     server_view = ServerView(
         veepeenet_version=versions.veepeenet_version,
         veepeenet_build=versions.veepeenet_build,
-        xray_version=versions.xray_version,
+        xray_version=xray_version,
         server_status='running' if running else 'stopped',
         enabled=is_xray_service_enabled(),
         uptime=get_xray_service_uptime() if running else None,
@@ -76,8 +79,9 @@ def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = Fals
 @app.command(help='Start service')
 @error_handler(default_message='Error starting service', default_code=30)
 def start(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
-    exit_if_xray_config_not_found()
-    check_and_install()
+    check_root()
+    check_xray_config()
+    check_distrib()
 
     if is_xray_service_running():
         echo('Service is already running')
@@ -96,8 +100,9 @@ def start(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> No
 @app.command(help='Stop service')
 @error_handler(default_message='Error stopping service', default_code=30)
 def stop(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
-    exit_if_xray_config_not_found()
-    check_and_install()
+    check_root()
+    check_xray_config()
+    check_distrib()
 
     if not is_xray_service_running():
         echo('Service is not running')
@@ -115,8 +120,9 @@ def stop(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> Non
 @app.command(help='Restart service')
 @error_handler(default_message='Error restarting service',default_code=30)
 def restart(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
-    exit_if_xray_config_not_found()
-    check_and_install()
+    check_root()
+    check_xray_config()
+    check_distrib()
 
     restart_xray_service()
     sleep(STATE_PENDING_TIMEOUT)

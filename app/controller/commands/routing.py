@@ -8,8 +8,8 @@ from app.controller.common import RuleData
 from app.controller.common import (
     error_handler,
     load_config,
-    exit_if_xray_config_not_found,
-    check_and_install,
+    check_xray_config,
+    check_root,
     get_vless_inbound,
 )
 from app.defaults import (
@@ -83,6 +83,7 @@ def add_rule(
             Option(
                 help='Priority of the rule (lower value means higher priority)')] = None,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+    check_root()
     xray_config = _init_and_load_config()
 
     if not _is_outbound_exists(xray_config, outbound):
@@ -121,6 +122,7 @@ def add_rule(
 def remove_rule(
         name: Annotated[str, Argument(help='Rule name')],
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+    check_root()
     xray_config = _init_and_load_config()
 
     all_rules = _get_existing_rules(xray_config)
@@ -142,6 +144,7 @@ def rename_rule(
         name: Annotated[str, Argument(help='Current rule name')],
         new_name: Annotated[str, Option(help='New rule name')],
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+    check_root()
     xray_config = _init_and_load_config()
 
     all_rules = _get_existing_rules(xray_config)
@@ -163,6 +166,7 @@ def set_rule_priority(
         name: Annotated[str, Argument(help='Rule name')],
         priority: Annotated[int, Option(help='New priority value (lower = higher priority)')],
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+    check_root()
     xray_config = _init_and_load_config()
 
     all_rules = _get_existing_rules(xray_config)
@@ -202,6 +206,7 @@ def change_rule(
             list[str],
             Option(help='List of protocols to match: http, tls, quic or bittorrent')] = None,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+    check_root()
     xray_config = _init_and_load_config()
 
     if not (domain or ip or ports or protocol):
@@ -239,6 +244,7 @@ def change_rule(
 def set_domain_strategy(
         strategy: Annotated[RoutingDomainStrategyType, Argument(help='domain strategy value')],
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+    check_root()
     xray_config = _init_and_load_config()
 
     if not xray_config.routing or not xray_config.routing.rules:
@@ -285,8 +291,7 @@ def _get_existing_rules(xray_config: Xray) -> list[RuleData]:
 
 
 def _init_and_load_config() -> Xray:
-    exit_if_xray_config_not_found()
-    check_and_install()
+    check_xray_config()
     return load_config(XRAY_CONFIG_PATH)
 
 

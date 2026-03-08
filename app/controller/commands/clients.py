@@ -10,8 +10,8 @@ from app.cli import clients
 from app.controller.common import (
     error_handler,
     load_config,
-    exit_if_xray_config_not_found,
-    check_and_install,
+    check_xray_config,
+    check_root,
     get_vless_inbound,
     ClientData,
 )
@@ -31,8 +31,8 @@ from app.view import ClientsView, ClientView
 def add(client_names: Annotated[list[str],
         Argument(help='List of new client of server')],
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
-    exit_if_xray_config_not_found()
-    check_and_install()
+    check_root()
+    check_xray_config()
     _add_clients(client_names)
 
 
@@ -41,8 +41,8 @@ def add(client_names: Annotated[list[str],
 def remove(client_names: Annotated[list[str],
         Argument(help='List of clients to remove from Xray VLESS Reality server')],
            _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
-    exit_if_xray_config_not_found()
-    check_and_install()
+    check_root()
+    check_xray_config()
     _remove_clients(client_names)
 
 
@@ -51,8 +51,7 @@ def remove(client_names: Annotated[list[str],
 def show(
         json: Annotated[bool, Option(help='Show JSON formatted info')] = False,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
-    exit_if_xray_config_not_found()
-    check_and_install()
+    check_xray_config()
 
     xray_config = load_config(XRAY_CONFIG_PATH)
     inbound = get_vless_inbound(xray_config)
