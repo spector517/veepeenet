@@ -1,6 +1,8 @@
 # pylint: disable=line-too-long
 from pathlib import Path
 
+STATE_PENDING_TIMEOUT = 2
+
 REALITY_HOST = 'microsoft.com'
 REALITY_PORT = 443
 VLESS_LISTEN_INTERFACE = '0.0.0.0'

@@ -26,6 +26,7 @@ from app.utils import (
     get_xray_service_uptime
 )
 from app.view import ServerView
+from app.defaults import STATE_PENDING_TIMEOUT
 
 
 @app.command(help='Show service status')
@@ -82,7 +83,7 @@ def start(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> No
         echo('Service is already running')
         return
     start_xray_service()
-    sleep(2)
+    sleep(STATE_PENDING_TIMEOUT)
     if not is_xray_service_enabled():
         enable_xray_service()
     if is_xray_service_running():
@@ -102,7 +103,7 @@ def stop(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> Non
         echo('Service is not running')
         return
     stop_xray_service()
-    sleep(2)
+    sleep(STATE_PENDING_TIMEOUT)
     if is_xray_service_running():
         echo('Failed to stop service', err=True)
         raise Exit(code=32)
@@ -118,7 +119,7 @@ def restart(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> 
     check_and_install()
 
     restart_xray_service()
-    sleep(2)
+    sleep(STATE_PENDING_TIMEOUT)
     if is_xray_service_running():
         if not is_xray_service_enabled():
             enable_xray_service()
