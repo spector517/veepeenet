@@ -44,20 +44,24 @@ from app.utils import (
     stop_xray_service,
     start_xray_service,
     get_xray_distrib_version,
+    set_value,
 )
 from app.view import XrayReleasesView
 
 
-@app.command(help='Configure VLESS Reality Xray service')
+@app.command(help='Configure inbound VLESS Reality Xray service')
 @error_handler(default_message='Error during configuration service', default_code=10)
 def config(
         host: Annotated[str | None, Option(
             help=('Public interface of server.'
                   ' Using `hostname -i` if not specified.'
                   ' It is recommended to specify manually.'))] = None,
-        port: Annotated[int, Option(help='Inbound port.')] = VLESS_LISTEN_PORT,
-        reality_host: Annotated[str, Option(help='Reality host.')] = REALITY_HOST,
-        reality_port: Annotated[int, Option(help='Reality port.')] = REALITY_PORT,
+        port: Annotated[int | None, Option(
+            help='Inbound port.', show_default=str(VLESS_LISTEN_PORT))] = None,
+        reality_host: Annotated[str | None, Option(
+            help='Reality host.', show_default=REALITY_HOST)] = None,
+        reality_port: Annotated[int | None, Option(
+            help='Reality port.', show_default=str(REALITY_PORT))] = None,
         reality_names: Annotated[
             list[str],
             Option(help='Available Reality server names.',
@@ -66,17 +70,9 @@ def config(
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_root()
     check_distrib()
+
     if not host:
-        host = detect_current_ipv4()
-        if not host:
-            echo('Cannot auto detect public host address.'
-                 ' Please specify it manually via --host option',
-                 err=True)
-            raise Exit(code=11)
-        detect_host_address_answer = _confirm_host_detection(host)
-        if not detect_host_address_answer:
-            echo('Please specify public host address manually via --host option', err=True)
-            raise Exit(code=12)
+        host = _detect_host_or_error()
 
     if not XRAY_CONFIG_PATH.exists() or clean:
         if clean:
@@ -85,11 +81,18 @@ def config(
                 echo('Aborted')
                 return
         xray_config = _create_config(
-            host, port, reality_host, reality_port, reality_names or [reality_host])
+            host,
+            port or VLESS_LISTEN_PORT,
+            reality_host or REALITY_HOST,
+            reality_port or REALITY_PORT,
+            reality_names or [reality_host])
     else:
         xray_config = load_config(XRAY_CONFIG_PATH)
-        xray_config = _update_config(
-            xray_config, host, port, reality_host, reality_port, reality_names or [reality_host])
+        changed = _update_config(
+            xray_config, host, port, reality_host, reality_port, reality_names)
+        if not changed:
+            echo('No changed detected')
+            return
 
     write_text_file(
         XRAY_CONFIG_PATH,
@@ -160,6 +163,20 @@ def update_xray(
         echo('Xray service started')
 
 
+def _detect_host_or_error() -> str:
+    host = detect_current_ipv4()
+    if not host:
+        echo('Cannot auto detect public host address.'
+             ' Please specify it manually via --host option',
+             err=True)
+        raise Exit(code=11)
+    detect_host_address_answer = _confirm_host_detection(host)
+    if not detect_host_address_answer:
+        echo('Please specify public host address manually via --host option', err=True)
+        raise Exit(code=12)
+    return host
+
+
 def _confirm_host_detection(host: str) -> bool:
     answer = input(f'Auto detected public host address is {host}, is it correct? (y/N): ')
     return answer.lower() == 'y'
@@ -188,15 +205,21 @@ def _create_config(host: str, listen_port: int,
 
 def _update_config(
         xray_config: Xray,
-        host: str,
-        listen_port: int,
-        reality_host: str,
-        reality_port: int,
-        reality_names: list[str]
-) -> Xray:
-    xray_config.veepeenet.host = host
+        host: str | None,
+        listen_port: int | None,
+        reality_host: str | None,
+        reality_port: int | None,
+        reality_names: list[str] | None
+) -> bool:
     vless_inbound = get_vless_inbound(xray_config)
-    vless_inbound.port = listen_port
-    vless_inbound.stream_settings.reality_settings.dest = f'{reality_host}:{reality_port}'
-    vless_inbound.stream_settings.reality_settings.server_names = reality_names
-    return xray_config
+
+    changed = (
+        set_value(xray_config.veepeenet, 'host', host),
+        set_value(vless_inbound, 'port', listen_port),
+        set_value(vless_inbound.stream_settings.reality_settings,
+                  'dest', f'{reality_host}:{reality_port}'),
+        set_value(
+            vless_inbound.stream_settings.reality_settings,
+            'server_names', reality_names)
+    )
+    return any(changed)
