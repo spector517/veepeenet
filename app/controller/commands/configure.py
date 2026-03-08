@@ -71,10 +71,9 @@ def config(
     check_root()
     check_distrib()
 
-    if not host:
-        host = _detect_host_or_error()
-
     if not XRAY_CONFIG_PATH.exists() or clean:
+        if not host:
+            host = _detect_host_or_error()
         if clean:
             answer = _confirm_config_rewriting()
             if not answer:
@@ -88,11 +87,8 @@ def config(
             reality_names or [reality_host])
     else:
         xray_config = load_config(XRAY_CONFIG_PATH)
-        changed = _update_config(
+        _update_config(
             xray_config, host, port, reality_host, reality_port, reality_names)
-        if not changed:
-            echo('No changed detected')
-            return
 
     write_text_file(
         XRAY_CONFIG_PATH,
@@ -213,11 +209,18 @@ def _update_config(
 ) -> bool:
     vless_inbound = get_vless_inbound(xray_config)
 
+    reality_dest = vless_inbound.stream_settings.reality_settings.dest
+    dest_reality_host: str | None = None
+    dest_reality_port: int | None = None
+    if reality_dest:
+        dest_reality_host = reality_host or reality_dest.split(':')[0]
+        dest_reality_port = reality_port or int(reality_dest.split(':')[1])
+
     changed = (
         set_value(xray_config.veepeenet, 'host', host),
         set_value(vless_inbound, 'port', listen_port),
         set_value(vless_inbound.stream_settings.reality_settings,
-                  'dest', f'{reality_host}:{reality_port}'),
+                  'dest', f'{dest_reality_host}:{dest_reality_port}'),
         set_value(
             vless_inbound.stream_settings.reality_settings,
             'server_names', reality_names)

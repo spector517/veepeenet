@@ -145,7 +145,7 @@ def get_vless_client_url(client_name: str, xray_config: Xray) -> str | None:
             password = gen_xray_password(
                 inbound.stream_settings.reality_settings.private_key)
             spx = safe_url_encode(f'/{client_name}')
-            return (f'vless://{client.id}@{inbound.listen}:'
+            return (f'vless://{client.id}@{xray_config.veepeenet.host}:'
                     f'{inbound.port}'
                     '?flow=xtls-rprx-vision'
                     '&type=raw'
