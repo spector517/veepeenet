@@ -1,7 +1,8 @@
 from re import fullmatch
 from typing import Annotated, Literal, get_args
 
-from typer import Option, Argument, echo, Exit
+from rich.text import Text
+from typer import Option, Argument, Exit
 
 from app.cli import routing
 from app.controller.common import RuleData
@@ -11,6 +12,8 @@ from app.controller.common import (
     check_xray_config,
     check_root,
     get_vless_inbound,
+    stdout_console,
+    print_error
 )
 from app.defaults import (
     XRAY_CONFIG_PATH,
@@ -54,9 +57,9 @@ def show(
         view = RoutingView(domain_strategy=domain_strategy, rules=rules_view)
 
     if json:
-        echo(view.model_dump_json(exclude_none=True, indent=2))
+        stdout_console.print_json(view.model_dump_json(exclude_none=True, indent=2))
     else:
-        echo(repr(view))
+        stdout_console.print(view.rich_repr())
 
 
 @routing.command(help='Add rule to service')
@@ -87,25 +90,26 @@ def add_rule(
     xray_config = _init_and_load_config()
 
     if not _is_outbound_exists(xray_config, outbound):
-        echo(f'Outbound "{outbound}" not found', err=True)
+        print_error(f'Outbound {outbound} not found')
         raise Exit(code=51)
     if not (domain or ip or ports or protocol):
-        echo('At least one condition (domain, ip, ports, protocol) must be specified',
-                   err=True)
+        print_error(
+            'At least one condition (domain, ip, ports, protocol) must be specified')
         raise Exit(code=52)
     if not _is_correct_protocols(protocol):
         allowed_protocols = ', '.join(get_args(RuleProtocolType))
-        echo(
-            f'Invalid protocols: {",".join(protocol)}. Allowed values: {allowed_protocols}',
-            err=True)
+        print_error(
+            f'Invalid protocols: {",".join(protocol)}. Allowed values: {allowed_protocols}')
         raise Exit(code=53)
     if not _is_correct_ports_format(ports):
-        echo(f'Invalid ports format: "{ports}"', err=True)
+        print_error(f'Invalid ports format: "{ports}"')
         raise Exit(code=54)
 
     all_rules = _get_existing_rules(xray_config)
     if _find_rule_by_name(all_rules, name):
-        echo(f'Rule "{name}" already exists', err=True)
+        print_error(Text.assemble(
+            'Rule ', (f'{name}', 'bold yellow'), ' already exists'
+        ))
         raise Exit(code=55)
 
     new_rule = RuleData(name=name, outbound_name=outbound, protocols=protocol,
@@ -114,7 +118,10 @@ def add_rule(
     all_rules.append(new_rule)
 
     _save_rules(xray_config, all_rules)
-    echo(f'Rule "{name} --> {outbound}" successfully added')
+    stdout_console.print(Text.assemble(
+        'Rule ',
+        (f'{name} --> {outbound}', 'bold green'),
+        ' successfully added'))
 
 
 @routing.command(help='Remove rule from service')
@@ -129,13 +136,15 @@ def remove_rule(
     rule_to_delete = _find_rule_by_name(all_rules, name)
 
     if rule_to_delete is None:
-        echo(f'Rule "{name}" not found', err=True)
+        print_error(
+            Text.assemble('Rule ', (f'{name}', 'bold yellow'), ' not found'))
         raise Exit(code=56)
 
     all_rules.remove(rule_to_delete)
 
     _save_rules(xray_config, all_rules)
-    echo(f'Rule "{name}" successfully removed')
+    stdout_console.print(
+        Text.assemble('Rule ', (f'{name}', 'bold red'), ' successfully removed'))
 
 
 @routing.command(help='Rename rule')
@@ -151,13 +160,19 @@ def rename_rule(
     rule_to_rename = _find_rule_by_name(all_rules, name)
 
     if rule_to_rename is None:
-        echo(f'Rule "{name}" not found', err=True)
+        print_error(
+            Text.assemble('Rule ', (f'{name}', 'bold yellow'), ' not found'))
         raise Exit(code=56)
 
     rule_to_rename.name = new_name
 
     _save_rules(xray_config, all_rules)
-    echo(f'Rule "{name}" successfully renamed to "{new_name}"')
+    stdout_console.print(
+        Text.assemble(
+        'Rule ',
+            (f'{name}', 'bold green'),
+            ' successfully renamed to ',
+            (f'{new_name}', 'bold green')))
 
 
 @routing.command(help='Change rule priority', name='set-priority')
@@ -173,16 +188,21 @@ def set_rule_priority(
     rule_to_update = _find_rule_by_name(all_rules, name)
 
     if rule_to_update is None:
-        echo(f'Rule "{name}" not found', err=True)
+        print_error(
+            Text.assemble('Rule ', (f'{name}', 'bold yellow'), ' not found'))
         raise Exit(code=56)
 
     if rule_to_update.priority == priority:
-        echo(f'Rule "{name}" already has priority {priority}', err=True)
+        print_error(Text.assemble(
+            'Rule ', (f'{name}', 'bold yellow'), f' already has priority {priority}'
+        ))
         raise Exit(code=57)
     rule_to_update.priority = priority
 
     _save_rules(xray_config, all_rules)
-    echo(f'Rule "{name}" priority successfully changed to {priority}')
+    stdout_console.print(Text.assemble(
+        'Rule ', (f'{name}', 'bold green'), f' priority successfully changed to {priority}'
+    ))
 
 
 @routing.command(help='Change rule conditions')
@@ -210,24 +230,23 @@ def change_rule(
     xray_config = _init_and_load_config()
 
     if not (domain or ip or ports or protocol):
-        echo('At least one condition (domain, ip, ports, protocol) must be specified',
-                   err=True)
+        print_error(
+            'At least one condition (domain, ip, ports, protocol) must be specified')
         raise Exit(code=52)
     if not _is_correct_protocols(protocol):
         allowed_protocols = ', '.join(get_args(RuleProtocolType))
-        echo(
-            f'Invalid protocols: {",".join(protocol)}. Allowed values: {allowed_protocols}',
-            err=True)
+        print_error(
+            f'Invalid protocols: {",".join(protocol)}. Allowed values: {allowed_protocols}')
         raise Exit(code=53)
     if ports and not _is_correct_ports_format(ports):
-        echo(f'Invalid ports format: "{ports}"', err=True)
+        print_error(f'Invalid ports format: "{ports}"')
         raise Exit(code=54)
 
     all_rules = _get_existing_rules(xray_config)
     rule_to_change = _find_rule_by_name(all_rules, name)
 
     if rule_to_change is None:
-        echo(f'Rule "{name}" not found', err=True)
+        print_error(Text.assemble('Rule ', (f'{name}', 'bold yellow'), ' not found'))
         raise Exit(code=56)
 
     if action == 'put':
@@ -236,7 +255,7 @@ def change_rule(
         _remove_conditions(rule_to_change, domain, ip, ports, protocol)
 
     _save_rules(xray_config, all_rules)
-    echo(f'Rule "{name}" changed')
+    stdout_console.print(Text.assemble('Rule ', (f'{name}', 'bold green'), ' changed'))
 
 
 @routing.command(help='Set domain strategy')
@@ -248,12 +267,14 @@ def set_domain_strategy(
     xray_config = _init_and_load_config()
 
     if not xray_config.routing or not xray_config.routing.rules:
-        echo('At least one rule must be defined to set domain strategy', err=True)
+        print_error('At least one rule must be defined to set domain strategy')
         raise Exit(code=58)
 
     current_strategy = _get_domain_strategy(xray_config)
     if current_strategy == strategy:
-        echo(f'Domain strategy is already set to "{strategy}"', err=True)
+        print_error(Text.assemble(
+            'Domain strategy is already set to ', (f'{strategy}', 'bold yellow')
+        ))
         raise Exit(code=59)
 
     xray_config.routing.domain_strategy = strategy
@@ -261,7 +282,9 @@ def set_domain_strategy(
         XRAY_CONFIG_PATH,
         xray_config.model_dump_json(by_alias=True, exclude_none=True, indent=2),
         0o644)
-    echo(f'Domain strategy successfully changed to "{strategy}"')
+    stdout_console.print(Text.assemble(
+        'Domain strategy successfully changed to ', (f'{strategy}', 'bold green')
+    ))
 
 def _is_outbound_exists(xray_config: Xray, outbound_name: str) -> bool:
     for outbound in xray_config.outbounds:
@@ -322,11 +345,13 @@ def _save_rules(xray_config: Xray, rules: list[RuleData] | None = None) -> None:
                               if domain.startswith('geosite:')]
 
         if all_geo_ip_rules and not XRAY_GEO_IP_DATA_PATH.exists():
-            install_geo_data(GEO_IP_URL, XRAY_GEO_IP_DATA_PATH)
-            echo('GeoIP data installed')
+            with stdout_console.status('Installing GeoIP data'):
+                install_geo_data(GEO_IP_URL, XRAY_GEO_IP_DATA_PATH)
+            stdout_console.print('GeoIP data installed')
         if all_geo_site_rules and not XRAY_GEO_SITE_DATA_PATH.exists():
-            install_geo_data(GEO_SITE_URL, XRAY_GEO_SITE_DATA_PATH)
-            echo('Geosite data installed')
+            with stdout_console.status('Installing Geosite data'):
+                install_geo_data(GEO_SITE_URL, XRAY_GEO_SITE_DATA_PATH)
+            stdout_console.print('Geosite data installed')
     else:
         xray_config.routing = None
         get_vless_inbound(xray_config).sniffing.enabled = False

@@ -1,37 +1,42 @@
 from typing import Literal
 
 from pydantic import BaseModel, Field
+from rich.console import Group
+from rich.panel import Panel
+from rich.text import Text
 
+
+def joined_bold(items: list[str], fallback: str | None = None) -> Text:
+    if not items:
+        return Text(fallback or '', style='bold yellow')
+    return Text(', ', no_wrap=True).join(Text(item, style='bold cyan') for item in items)
+
+def row(label: str, value: Text) -> Text:
+    return Text.assemble(label, value)
 
 class ClientView(BaseModel):
     name: str
     url: str
 
-    def __repr__(self) -> str:
-        return f'{self.name}: {self.url}'
+    def rich_repr(self) -> Group:
+        return Group(
+            Text(self.name, style='bold cyan'),
+            Text(self.url, style='magenta')
+        )
 
 
 class ClientsView(BaseModel):
     clients: list[ClientView]
 
-    def __repr__(self) -> str:
-        padding = ' ' * 2
-
-        clients_str = '==================== Xray clients  ====================\n'
-
+    def rich_repr(self) -> Group:
         if not self.clients:
-            clients_str += f'{padding}Server has no clients\n'
-            return clients_str
+            return Group(Text('Server has no clients', style='yellow'))
 
-        client_block_breaker = '-------------------------------------------------------\n'
+        client_panels: list[Group | str] = []
         for client in self.clients:
-            clients_str += client_block_breaker
-            client_repr = '\n'.join(
-                [f'{padding * 2}{line}' for line in repr(client).splitlines()])
-            clients_str += f'{client_repr}\n'
-            clients_str += client_block_breaker
-        clients_str += '======================================================='
-        return clients_str
+            client_panels += [client.rich_repr(), '']
+
+        return Group(*client_panels)
 
 
 class ServerView(BaseModel):
@@ -48,24 +53,37 @@ class ServerView(BaseModel):
     clients: list[str]
     outbounds: list[str]
 
-    def __repr__(self) -> str:
-        padding = ' ' * 2
+    def rich_repr(self) -> Panel:
+        run_status = Text(
+            self.server_status,
+            style='bold green' if self.server_status == 'running' else 'bold red',
+        )
+        enabled_status = Text(
+            'enabled' if self.enabled else 'disabled',
+            style='bold green' if self.enabled else 'bold yellow',
+        )
 
-        clients_str = ', '.join(self.clients) \
-            if self.clients else 'Server has no clients'
-        return ('=========== '
-        f'VeePeeNET {self.veepeenet_version} build {self.veepeenet_build}'
-        ' ===========\n'
-        'Xray server info:\n'
-        f'{padding}version: {self.xray_version}\n'
-        f"{padding}status: {self.server_status} ({'enabled' if self.enabled else 'disabled' })\n"
-        f"{padding}uptime: {self.uptime or 'unknown'}\n"
-        f'{padding}address: {self.server_host}:{self.server_port}\n'
-        f'{padding}reality_address: {self.reality_address}\n'
-        f'{padding}reality_names: {", ".join(self.reality_names)}\n'
-        f'{padding}clients: {clients_str}\n'
-        f'{padding}outbounds: {", ".join(self.outbounds)}\n'
-        '=======================================================')
+        content = Text('\n').join([
+            row('status: ', Text.assemble(run_status, ' (', enabled_status, ')')),
+            row('uptime: ', Text(
+                self.uptime, style='bold green') if self.uptime else Text(
+                'n/a', style='bold red')),
+            row('xray_version: ', Text(self.xray_version, style='bold cyan')),
+            row('address: ', Text(f'{self.server_host}:{self.server_port}', style='bold cyan')),
+            row('reality_address: ', Text(self.reality_address, style='bold cyan')),
+            row('reality_names: ', joined_bold(self.reality_names)),
+            row('clients: ', joined_bold(self.clients, 'Server has no clients')),
+            row('outbounds: ', joined_bold(self.outbounds)),
+        ])
+
+        return Panel(
+            content,
+            title='Xray server information',
+            subtitle=f'VeePeeNET {self.veepeenet_version}',
+            title_align='left',
+            subtitle_align='right',
+            border_style='green' if self.server_status == 'running' else 'yellow',
+        )
 
 
 class RuleView(BaseModel):
@@ -77,46 +95,56 @@ class RuleView(BaseModel):
     outbound_name: str
     priority: int
 
-    def __repr__(self) -> str:
-        padding = ' ' * 2
-        rule_str = f'#{self.priority} {self.name}: --> {self.outbound_name}\n'
+    def rich_repr(self) -> Panel:
+        content_lines: list[Text] = [
+            row('name: ', Text(self.name, style='bold cyan')),
+        ]
 
         if self.domains:
-            rule_str += f'{padding}Domains: {", ".join(self.domains)}\n'
+            content_lines.append(row('domains: ', joined_bold(self.domains)))
         if self.ips:
-            rule_str += f'{padding}IPs: {", ".join(self.ips)}\n'
+            content_lines.append(row('ips: ', joined_bold(self.ips)))
         if self.ports:
-            rule_str += f'{padding}Ports: {self.ports}\n'
+            content_lines.append(row('ports: ', Text(self.ports, style='bold cyan')))
         if self.protocols:
-            rule_str += f'{padding}Protocols: {", ".join(self.protocols)}\n'
+            content_lines.append(row('protocols: ', joined_bold(self.protocols)))
 
-        return rule_str
+        content = Text('\n').join(content_lines)
+        title = Text.assemble(
+            f'Rule #{self.priority} ',
+            (self.name, 'bold green'),
+            ' --> ',
+            (self.outbound_name, 'bold green')
+        )
+        return Panel(
+            content,
+            title=title,
+            title_align='left',
+            border_style='magenta',
+        )
+
 
 class RoutingView(BaseModel):
     domain_strategy: str | None = Field(default=None)
     rules: list[RuleView] | None = Field(default=None)
 
-    def __repr__(self) -> str:
-        padding = ' ' * 2
-
-        routing_str = '==================== Xray routing  ====================\n'
-
+    def rich_repr(self) -> Group:
         if not self.domain_strategy and not self.rules:
-            routing_str += f'{padding}No routing rules configured\n'
-            return routing_str
+            return Group(Text('No routing rules configured', style='yellow'))
 
-        routing_str += f'{padding}Domain strategy: {self.domain_strategy}\n'
-        if not self.rules:
-            return routing_str
-        rule_block_breaker = '-------------------------------------------------------\n'
-        for rule in self.rules:
-            routing_str += rule_block_breaker
-            rule_repr = '\n'.join(
-                [f'{padding * 2}{line}' for line in repr(rule).splitlines()])
-            routing_str += f'{rule_repr}\n'
-            routing_str += rule_block_breaker
-        routing_str += '======================================================='
-        return routing_str
+        content_parts: list[Group | Text | Panel | str] = [
+            Text.assemble(
+                ('Domain strategy: ', 'magenta'),
+                    (self.domain_strategy, 'bold cyan')
+            )
+        ]
+
+        if self.rules:
+            # pylint: disable=not-an-iterable
+            for rule in self.rules:
+                content_parts.append(rule.rich_repr())
+
+        return Group(*content_parts)
 
 
 class VersionsView(BaseModel):
@@ -128,10 +156,13 @@ class VersionsView(BaseModel):
 class XrayReleasesView(BaseModel):
     releases: list[str]
 
-    def __repr__(self) -> str:
-        padding = ' ' * 2
-        result = '================ Available Xray releases ===============\n'
+    def rich_repr(self) -> Panel:
+        rich_releases: list[Text] = []
         for i, version in enumerate(self.releases, start=1):
-            result += f'{padding}{i}. {version}\n'
-        result += '======================================================='
-        return result
+            rich_releases.append(
+                Text(f'{i}. ', style='bold green').append(Text(version, style='bold cyan')))
+        return Panel(
+            Text('\n').join(rich_releases),
+            title=Text('Available Xray versions', style='bold'),
+            title_align='left',
+        )

@@ -1,7 +1,7 @@
 from typing import Annotated
-from time import sleep
 
-from typer import Option, echo, Exit
+from rich.console import Text
+from typer import Option, Exit
 
 from app.cli import app
 from app.controller.common import (
@@ -11,7 +11,11 @@ from app.controller.common import (
     check_root,
     check_distrib,
     get_vless_inbound,
-    ClientData,
+    start_service,
+    stop_service,
+    restart_service,
+    print_error,
+    ClientData, stdout_console,
 )
 from app.defaults import XRAY_CONFIG_PATH
 from app.model.vless_outbound import VlessOutbound
@@ -19,16 +23,10 @@ from app.utils import (
     detect_veepeenet_versions,
     get_xray_distrib_version,
     is_xray_service_running,
-    stop_xray_service,
-    restart_xray_service,
     is_xray_service_enabled,
-    disable_xray_service,
-    start_xray_service,
-    enable_xray_service,
     get_xray_service_uptime
 )
 from app.view import ServerView
-from app.defaults import STATE_PENDING_TIMEOUT
 
 
 @app.command(help='Show service status')
@@ -71,9 +69,11 @@ def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = Fals
         clients=client_names,
         outbounds=outbounds)
     if json:
-        echo(server_view.model_dump_json(exclude_none=True, indent=2))
+        stdout_console.print_json(
+            server_view.model_dump_json(exclude_none=True),
+            indent=2)
     else:
-        echo(repr(server_view))
+        stdout_console.print(server_view.rich_repr())
 
 
 @app.command(help='Start service')
@@ -83,18 +83,11 @@ def start(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> No
     check_xray_config()
     check_distrib()
 
-    if is_xray_service_running():
-        echo('Service is already running')
-        return
-    start_xray_service()
-    sleep(STATE_PENDING_TIMEOUT)
-    if not is_xray_service_enabled():
-        enable_xray_service()
-    if is_xray_service_running():
-        echo('Service started')
-    else:
-        echo('Failed to start service', err=True)
-        raise Exit(code=31)
+    try:
+        start_service()
+    except RuntimeError as e:
+        print_error('Failed to start service')
+        raise Exit(code=31) from e
 
 
 @app.command(help='Stop service')
@@ -104,17 +97,11 @@ def stop(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> Non
     check_xray_config()
     check_distrib()
 
-    if not is_xray_service_running():
-        echo('Service is not running')
-        return
-    stop_xray_service()
-    sleep(STATE_PENDING_TIMEOUT)
-    if is_xray_service_running():
-        echo('Failed to stop service', err=True)
-        raise Exit(code=32)
-    if is_xray_service_enabled():
-        disable_xray_service()
-    echo('Service stopped')
+    try:
+        stop_service()
+    except RuntimeError as e:
+        print_error(Text('Failed to stop service', style='red'))
+        raise Exit(code=32) from e
 
 
 @app.command(help='Restart service')
@@ -124,12 +111,8 @@ def restart(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> 
     check_xray_config()
     check_distrib()
 
-    restart_xray_service()
-    sleep(STATE_PENDING_TIMEOUT)
-    if is_xray_service_running():
-        if not is_xray_service_enabled():
-            enable_xray_service()
-        echo('Service restarted')
-    else:
-        echo('Failed to restart service', err=True)
-        raise Exit(code=33)
+    try:
+        restart_service()
+    except RuntimeError as e:
+        print_error(Text('Failed to restart service', style='red'))
+        raise Exit(code=33) from e
