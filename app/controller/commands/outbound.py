@@ -38,7 +38,7 @@ def add(
         uuid: Annotated[str, Option(help='VLESS client identifier')],
         sni: Annotated[str, Option(help='Server name of target server')],
         short_id: Annotated[str, Option(help='One of short_id of target server')],
-        password: Annotated[str, Option(help='Public key of target server')] = '',
+        password: Annotated[str, Option(help='Public key of target server')],
         spider_x: Annotated[
             str,
             Option(help='Initial path and parameters for the spider')] = VLESS_OUTBOUND_SPIDER_X,
