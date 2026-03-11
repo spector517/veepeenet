@@ -2,8 +2,8 @@ from typing import Literal, Any
 
 from pydantic import Field
 
-from app.model.base import XrayModel
 from app.defaults import XRAY_ACCESS_LOG_PATH, XRAY_ERROR_LOG_PATH
+from app.model.base import XrayModel
 
 
 class Log(XrayModel):

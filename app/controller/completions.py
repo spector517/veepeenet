@@ -3,9 +3,9 @@ from typing import Iterator
 
 from typer import Context
 
-from app.model.xray import Outbound
 from app.controller.common import load_config, ClientData, RuleData
 from app.defaults import XRAY_CONFIG_PATH
+from app.model.xray import Outbound
 
 
 def complete_client_name(_ctx: Context, _args: list[str], incomplete: str) -> Iterator[str]:

@@ -3,13 +3,13 @@ from uuid import uuid4
 
 from pydantic import Field, model_serializer, model_validator
 
+from app.defaults import VLESS_LISTEN_INTERFACE
 from app.model.base import XrayModel
 from app.model.routing import Routing
 from app.model.shared import Log, Dns, FreedomOutbound, BlackholeOutbound, DnsOutbound
+from app.model.veepeenet import VeePeeNET
 from app.model.vless_inbound import VlessInbound
 from app.model.vless_outbound import VlessOutbound
-from app.model.veepeenet import VeePeeNET
-from app.defaults import VLESS_LISTEN_INTERFACE
 
 Outbound = Annotated[
     VlessOutbound | FreedomOutbound | BlackholeOutbound | DnsOutbound,

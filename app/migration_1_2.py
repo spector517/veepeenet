@@ -4,8 +4,8 @@ from typing import Annotated
 import typer
 from typer import run, Argument
 
-from app.model.xray import Xray, FreedomOutbound, BlackholeOutbound
 from app.defaults import XRAY_CONFIG_PATH, VLESS_LISTEN_INTERFACE
+from app.model.xray import Xray, FreedomOutbound, BlackholeOutbound
 from app.utils import write_text_file
 
 

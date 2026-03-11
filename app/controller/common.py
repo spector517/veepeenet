@@ -8,8 +8,8 @@ from urllib.parse import urljoin
 from uuid import uuid4, uuid5, UUID
 
 from rich.console import Console
-from rich.text import Text
 from rich.panel import Panel
+from rich.text import Text
 from typer import Exit
 
 from app.defaults import (
