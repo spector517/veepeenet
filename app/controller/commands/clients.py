@@ -16,6 +16,7 @@ from app.controller.common import (
     stdout_console,
     ClientData,
 )
+from app.controller.completions import complete_client_name
 from app.defaults import XRAY_CONFIG_PATH
 from app.utils import (
     get_new_items,
@@ -40,7 +41,8 @@ def add(client_names: Annotated[list[str],
 @clients.command(help='Remove clients from service')
 @error_handler(default_message='Error removing clients from service', default_code=20)
 def remove(client_names: Annotated[list[str],
-        Argument(help='List of clients to remove from Xray VLESS Reality server')],
+        Argument(help='List of clients to remove from Xray VLESS Reality server',
+                 autocompletion=complete_client_name)],
            _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_root()
     check_xray_config()

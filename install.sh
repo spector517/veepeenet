@@ -22,4 +22,6 @@ python3 -m venv /usr/local/lib/veepeenet/venv
 ln -s /usr/local/lib/veepeenet/venv/bin/xrayctl /usr/local/bin/xrayctl
 ln -s /usr/local/lib/veepeenet/venv/bin/xray-migrate-1-to-2 /usr/local/bin/xray-migrate-1-to-2
 
+/usr/local/bin/xrayctl --install-completion
+
 echo 'VeePeeNET successfully installed'

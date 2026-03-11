@@ -94,13 +94,13 @@ class RuleData:
 
     @classmethod
     def from_model(cls, rule: Rule, number: int = 0) -> Self:
-        split_name = rule.tag.split('.')
         try:
+            split_name = rule.tag.split('.') if rule.tag else ''
             priority = int(split_name[-1])
             name = '.'.join(split_name[:-1])
         except ValueError:
             priority = (number + 1) * 10
-            name = rule.tag
+            name = rule.tag or f'rule_{priority}'
         return RuleData(name=name, outbound_name=rule.outbound_tag, protocols=rule.protocol,
                         ports=rule.port, domains=rule.domain, ips=rule.ip, priority=priority)
 

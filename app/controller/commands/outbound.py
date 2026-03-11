@@ -13,6 +13,7 @@ from app.controller.common import (
     stdout_console,
     print_error,
 )
+from app.controller.completions import complete_outbound_name, complete_vless_outbound_name
 from app.defaults import (
     XRAY_CONFIG_PATH,
     VLESS_OUTBOUND_SPIDER_X,
@@ -125,7 +126,8 @@ def add_from_url(
 @outbounds.command(help='Remove VLESS outbound from service')
 @error_handler(default_message='Error removing VLESS outbound connection', default_code=40)
 def remove(
-        name: Annotated[str, Argument(help='Outbound name')],
+        name: Annotated[str, Argument(
+            help='Outbound name', autocompletion=complete_vless_outbound_name)],
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_root()
     check_xray_config()
@@ -148,7 +150,7 @@ def remove(
 @outbounds.command(help='Set outbound as default (move to first position)')
 @error_handler(default_message='Error setting default outbound', default_code=40)
 def set_default(
-        name: Annotated[str, Argument(help='Outbound name')],
+        name: Annotated[str, Argument(help='Outbound name', autocompletion=complete_outbound_name)],
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_root()
     check_xray_config()
@@ -176,7 +178,8 @@ def set_default(
 @outbounds.command(help='Change VLESS outbound')
 @error_handler(default_message='Error changing VLESS outbound connection', default_code=40)
 def change(
-        name: Annotated[str, Argument(help='Outbound name')],
+        name: Annotated[str, Argument(
+            help='Outbound name', autocompletion=complete_vless_outbound_name)],
         address: Annotated[str | None, Option(help='Outbound address (ip or domain name)')] = None,
         uuid: Annotated[str | None, Option(help='VLESS client identifier')] = None,
         sni: Annotated[str | None, Option(help='Server name of target server')] = None,

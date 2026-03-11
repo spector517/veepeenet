@@ -16,7 +16,7 @@ def _version_callback(value: bool) -> None:
         raise typer.Exit()
 
 
-app = Typer(add_completion=False)
+app = Typer()
 
 
 @app.callback()
@@ -29,9 +29,9 @@ def show_version(
     pass
 
 
-clients = Typer(add_completion=False)
-routing = Typer(add_completion=False)
-outbounds = Typer(add_completion=False)
+clients = Typer()
+routing = Typer()
+outbounds = Typer()
 
 app.add_typer(clients, name='clients', help='Manage clients')
 app.add_typer(routing, name='routing', help='Manage routing')

@@ -15,6 +15,7 @@ from app.controller.common import (
     stdout_console,
     print_error
 )
+from app.controller.completions import complete_route_name
 from app.defaults import (
     XRAY_CONFIG_PATH,
     GEO_IP_URL,
@@ -45,7 +46,7 @@ def show(
         for rule in xray_config.routing.rules:
             rule_data = RuleData.from_model(rule)
             rule_view = RuleView(
-                name=rule_data.name or f'rule_{rule_data.priority}',
+                name=rule_data.name,
                 domains=rule_data.domains,
                 ips=rule_data.ips,
                 ports=rule_data.ports,
@@ -127,7 +128,7 @@ def add_rule(
 @routing.command(help='Remove rule from service')
 @error_handler(default_message='Error removing rule from service', default_code=50)
 def remove_rule(
-        name: Annotated[str, Argument(help='Rule name')],
+        name: Annotated[str, Argument(help='Rule name', autocompletion=complete_route_name)],
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_root()
     xray_config = _init_and_load_config()
@@ -178,7 +179,7 @@ def rename_rule(
 @routing.command(help='Change rule priority', name='set-priority')
 @error_handler(default_message='Error changing rule priority', default_code=50)
 def set_rule_priority(
-        name: Annotated[str, Argument(help='Rule name')],
+        name: Annotated[str, Argument(help='Rule name', autocompletion=complete_route_name)],
         priority: Annotated[int, Option(help='New priority value (lower = higher priority)')],
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_root()
@@ -208,7 +209,7 @@ def set_rule_priority(
 @routing.command(help='Change rule conditions')
 @error_handler(default_message='Error changing rule conditions', default_code=50)
 def change_rule(
-        name: Annotated[str, Argument(help='Rule name')],
+        name: Annotated[str, Argument(help='Rule name', autocompletion=complete_route_name)],
         action: Annotated[
             Literal['put', 'del'],
             Argument(help='Change type: "put" - add new values, "del" - delete values')

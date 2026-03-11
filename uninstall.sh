@@ -35,4 +35,11 @@ rm -rf /usr/local/etc/xray
 rm -rf /usr/local/bin/xray
 rm -rf /usr/local/share/xray
 
-echo 'VeePeeNET successfully unistalled'
+rm -f "$HOME/.bash_completions/xrayctl.sh"
+
+if [[ -f "$HOME/.bashrc" ]]; then
+  sed -i.bak "/source.*xrayctl\.sh/d" "$HOME/.bashrc"
+  rm -f "$HOME/.bashrc.bak"
+fi
+
+echo 'VeePeeNET successfully uninstalled'
