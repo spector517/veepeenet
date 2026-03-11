@@ -1,8 +1,8 @@
 from importlib.resources import files
-from io import BytesIO
 from pathlib import Path
 from re import findall, MULTILINE, search, fullmatch
 from subprocess import run
+from tempfile import NamedTemporaryFile
 from typing import Literal, TypeVar
 from urllib.parse import quote_plus as safe_url_encode
 from zipfile import ZipFile
@@ -14,32 +14,51 @@ from app.view import VersionsView
 
 _T = TypeVar('_T')
 
+_XRAY_GITHUB_RELEASES_URL = 'https://api.github.com/repos/XTLS/Xray-core/releases'
+_CHUNK_SIZE = 1024 * 1024  # 1 MB
+
 app_resources = files('app.resources')
 
 
-def is_xray_distrib_installed(version: str) -> bool:
+def get_xray_distrib_version() -> str | None:
     run_result = run_command('xray --version')
     if run_result[0] != 0:
-        return False
-    version = version[1:] if version.startswith('v') else version
-    return version in run_result[1]
+        return None
+    matcher = search(r'Xray\s+([\d.]+)', run_result[1])
+    return matcher.group(1) if matcher else None
 
 
 def install_xray_distrib(zip_url: str, bin_path: Path) -> None:
     bin_path.parent.mkdir(parents=True, mode=0o755, exist_ok=True)
 
-    distrib_bytes = get_request(zip_url, timeout=20).content
-    with ZipFile(BytesIO(distrib_bytes)) as zip_file:
-        with zip_file.open('xray') as xray_file:
-            bin_path.write_bytes(xray_file.read())
+    with NamedTemporaryFile(delete=False, suffix='.zip') as tmp_zip:
+        tmp_zip_path = Path(tmp_zip.name)
+
+    try:
+        with get_request(zip_url, timeout=20, stream=True) as response:
+            with open(tmp_zip_path, 'wb') as tmp_zip_file:
+                for chunk in response.iter_content(chunk_size=_CHUNK_SIZE):
+                    tmp_zip_file.write(chunk)
+
+        with ZipFile(tmp_zip_path) as zip_file:
+            with zip_file.open('xray') as xray_file:
+                with open(bin_path, 'wb') as out_file:
+                    for chunk in iter(lambda: xray_file.read(_CHUNK_SIZE), b''):
+                        out_file.write(chunk)
+    finally:
+        tmp_zip_path.unlink(missing_ok=True)
+
     bin_path.chmod(0o744)
 
 
 def install_geo_data(geo_data_url: str, geo_data_path: Path) -> None:
     geo_data_path.parent.mkdir(parents=True, mode=0o755, exist_ok=True)
 
-    geo_data_bytes = get_request(geo_data_url, timeout=20).content
-    geo_data_path.write_bytes(geo_data_bytes)
+    with get_request(geo_data_url, timeout=20, stream=True) as response:
+        with open(geo_data_path, 'wb') as out_file:
+            for chunk in response.iter_content(chunk_size=_CHUNK_SIZE):
+                out_file.write(chunk)
+
     geo_data_path.chmod(0o644)
 
 
@@ -86,6 +105,12 @@ def is_xray_service_running() -> bool:
     return run_command('systemctl is-active xray -q')[0] == 0
 
 
+def get_xray_service_uptime() -> str | None:
+    result = run_command('systemctl status xray --no-pager -l')
+    matched = search(r'Active:.*?;\s*(.+?)(?:\s+ago)?\s*$', result[1], MULTILINE)
+    return (matched.group(1).strip()) if matched else None
+
+
 def stop_xray_service() -> None:
     run_command('systemctl stop xray -q', check=True)
 
@@ -111,21 +136,24 @@ def disable_xray_service() -> None:
 
 
 def get_vless_client_url(client_name: str, xray_config: Xray) -> str | None:
-    for i, client in enumerate(xray_config.inbounds[0].settings.clients):
+    inbound = xray_config.get_vless_inbound()
+    if not inbound:
+        raise ValueError('VLESS inbound not found in Xray config')
+    for i, client in enumerate(inbound.settings.clients):
         if client_name == '.'.join(client.email.split('@')[0].split('.')[:-1]):
-            sni = xray_config.inbounds[0].stream_settings.reality_settings.server_names[0]
+            sni = inbound.stream_settings.reality_settings.server_names[0]
             password = gen_xray_password(
-                xray_config.inbounds[0].stream_settings.reality_settings.private_key)
+                inbound.stream_settings.reality_settings.private_key)
             spx = safe_url_encode(f'/{client_name}')
-            return (f'vless://{client.id}@{xray_config.inbounds[0].listen}:'
-                    f'{xray_config.inbounds[0].port}'
+            return (f'vless://{client.id}@{xray_config.veepeenet.host}:'
+                    f'{inbound.port}'
                     '?flow=xtls-rprx-vision'
                     '&type=raw'
                     '&security=reality'
                     '&fp=chrome'
                     f'&sni={sni}'
                     f'&pbk={password}'
-                    f'&sid={xray_config.inbounds[0].stream_settings.reality_settings.short_ids[i]}'
+                    f'&sid={inbound.stream_settings.reality_settings.short_ids[i]}'
                     f'&spx={spx}'
                     f'#{client_name}@{client.email.split('@')[-1]}')
     return None
@@ -187,13 +215,6 @@ def get_existing_items(old: list[_T], new: list[_T]) -> list[_T]:
     return [item for item in new if item in old]
 
 
-def get_short_id(existing_short_ids: list[int], interval: range = range(1, 10000)) -> int:
-    for i in interval:
-        if i not in existing_short_ids:
-            return i
-    raise ValueError(f'No available short ID found in the given interval {interval}')
-
-
 def set_value(obj: object, attr: str, value: object) -> bool:
     if hasattr(obj, attr):
         if getattr(obj, attr) != value and value is not None:
@@ -221,3 +242,20 @@ def run_command(command: str, stdin: str = '', check: bool = False, timeout: int
 def detect_veepeenet_versions() -> VersionsView:
     content = app_resources.joinpath('versions.json').read_text('utf-8')
     return VersionsView.model_validate_json(content)
+
+
+def get_xray_github_releases(limit: int = 10) -> list[str]:
+    response = get_request(
+        _XRAY_GITHUB_RELEASES_URL,
+        params={'per_page': 100},
+        timeout=10,
+        headers={'Accept': 'application/vnd.github+json'},
+    )
+    response.raise_for_status()
+    releases = response.json()
+    versions = [
+        release['tag_name']
+        for release in releases
+        if not release.get('prerelease', False) and not release.get('draft', False)
+    ]
+    return versions[:limit]

@@ -7,12 +7,14 @@ from zipfile import ZipFile
 
 import pytest
 from pytest_mock import MockFixture
+from requests import HTTPError
 
 from app.model.xray import Xray
 from app.utils import (
     gen_xray_private_key,
     gen_xray_password,
     is_xray_service_running,
+    get_xray_service_uptime,
     restart_xray_service,
     enable_xray_service,
     disable_xray_service,
@@ -22,7 +24,7 @@ from app.utils import (
     detect_ssh_port,
     detect_current_ipv4,
     write_text_file,
-    is_xray_distrib_installed,
+    get_xray_distrib_version,
     install_xray_distrib,
     install_geo_data,
     is_xray_service_installed,
@@ -35,8 +37,8 @@ from app.utils import (
     remove_duplicates,
     get_new_items,
     get_existing_items,
-    get_short_id,
     set_value,
+    get_xray_github_releases,
 )
 
 
@@ -50,6 +52,15 @@ def _make_xray_zip(xray_binary: bytes) -> bytes:
     with ZipFile(buf, mode='w') as zf:
         zf.writestr('xray', xray_binary)
     return buf.getvalue()
+
+
+def _make_streaming_mock(data: bytes, chunk_size: int = 1024 * 1024) -> MagicMock:
+    chunks = [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)] or [b'']
+    mock_response = MagicMock()
+    mock_response.iter_content.return_value = iter(chunks)
+    mock_response.__enter__ = MagicMock(return_value=mock_response)
+    mock_response.__exit__ = MagicMock(return_value=False)
+    return mock_response
 
 
 class TestGenXrayPrivateKey:
@@ -130,6 +141,66 @@ class TestIsXrayRunning:
         result = is_xray_service_running()
 
         assert result is False
+
+
+class TestGetXrayServiceUptime:
+
+    _STATUS_TEMPLATE = (
+        '● xray.service - Xray Service\n'
+        '     Loaded: loaded (/etc/systemd/system/xray.service; enabled)\n'
+        '     Active: active (running) since Mon 2026-03-02 10:00:00 UTC; {uptime} ago\n'
+        '   Main PID: 1234 (xray)\n'
+    )
+
+    def test_returns_uptime_hours_minutes(self, mocker):
+        stdout = self._STATUS_TEMPLATE.format(uptime='2h 30min')
+        mocker.patch('app.utils.run_command', return_value=(0, stdout, ''))
+
+        result = get_xray_service_uptime()
+
+        assert result == '2h 30min'
+
+    def test_returns_uptime_days(self, mocker):
+        stdout = self._STATUS_TEMPLATE.format(uptime='3 days 4h 5min')
+        mocker.patch('app.utils.run_command', return_value=(0, stdout, ''))
+
+        result = get_xray_service_uptime()
+
+        assert result == '3 days 4h 5min'
+
+    def test_returns_uptime_seconds(self, mocker):
+        stdout = self._STATUS_TEMPLATE.format(uptime='45s')
+        mocker.patch('app.utils.run_command', return_value=(0, stdout, ''))
+
+        result = get_xray_service_uptime()
+
+        assert result == '45s'
+
+    def test_returns_none_when_active_line_missing(self, mocker):
+        stdout = (
+            '● xray.service - Xray Service\n'
+            '     Loaded: loaded (/etc/systemd/system/xray.service; enabled)\n'
+            '     Active: inactive (dead)\n'
+        )
+        mocker.patch('app.utils.run_command', return_value=(0, stdout, ''))
+
+        result = get_xray_service_uptime()
+
+        assert result is None
+
+    def test_returns_none_when_stdout_empty(self, mocker):
+        mocker.patch('app.utils.run_command', return_value=(1, '', ''))
+
+        result = get_xray_service_uptime()
+
+        assert result is None
+
+    def test_calls_correct_command(self, mocker):
+        mock_run_command = mocker.patch('app.utils.run_command', return_value=(0, '', ''))
+
+        get_xray_service_uptime()
+
+        mock_run_command.assert_called_once_with('systemctl status xray --no-pager -l')
 
 
 class TestRestartXrayService:
@@ -515,49 +586,48 @@ class TestWriteTextFile:
         assert file_path.read_text(encoding='utf-8') == 'content'
 
 
-class TestIsXrayDistribInstalled:
+class TestGetXrayDistribVersion:
 
-    def test_is_xray_distrib_installed_success(self, mocker):
+    def test_returns_version_string(self, mocker):
         mock_run_command = mocker.patch(
             'app.utils.run_command',
-            return_value=(0, 'Xray 1.8.0 (installed)', '')
+            return_value=(0, 'Xray 1.8.0 (Xray, Penetrates Everything.)', '')
         )
 
-        result = is_xray_distrib_installed('1.8.0')
+        result = get_xray_distrib_version()
 
-        assert result is True
+        assert result == '1.8.0'
         mock_run_command.assert_called_once_with('xray --version')
 
-    def test_is_xray_distrib_installed_with_v_prefix(self, mocker):
-        mocker.patch(
-            'app.utils.run_command',
-            return_value=(0, 'Xray 1.8.0 (installed)', '')
-        )
-
-        result = is_xray_distrib_installed('v1.8.0')
-
-        assert result is True
-
-    def test_is_xray_distrib_installed_not_found(self, mocker):
-        mocker.patch(
-            'app.utils.run_command',
-            return_value=(0, 'Xray 1.7.0 (installed)', '')
-        )
-
-        result = is_xray_distrib_installed('1.8.0')
-
-        assert result is False
-
-    def test_is_xray_distrib_installed_command_failure(self, mocker):
+    def test_returns_none_when_command_fails(self, mocker):
         mocker.patch(
             'app.utils.run_command',
             return_value=(1, '', 'xray: command not found')
         )
 
-        result = is_xray_distrib_installed('1.8.0')
+        result = get_xray_distrib_version()
 
-        assert result is False
+        assert result is None
 
+    def test_returns_none_when_output_has_no_version(self, mocker):
+        mocker.patch(
+            'app.utils.run_command',
+            return_value=(0, 'Unexpected output without version', '')
+        )
+
+        result = get_xray_distrib_version()
+
+        assert result is None
+
+    def test_returns_version_with_multiple_digits(self, mocker):
+        mocker.patch(
+            'app.utils.run_command',
+            return_value=(0, 'Xray 24.12.31 (Xray, Penetrates Everything.)', '')
+        )
+
+        result = get_xray_distrib_version()
+
+        assert result == '24.12.31'
 
 class TestInstallXrayDistrib:
 
@@ -566,24 +636,20 @@ class TestInstallXrayDistrib:
         xray_binary = b'xray_binary_content'
 
         mock_get = mocker.patch('app.utils.get_request')
-        mock_response = MagicMock()
-        mock_response.content = _make_xray_zip(xray_binary)
-        mock_get.return_value = mock_response
+        mock_get.return_value = _make_streaming_mock(_make_xray_zip(xray_binary))
 
         install_xray_distrib('http://example.com/xray.zip', bin_path)
 
         assert bin_path.exists()
         assert bin_path.read_bytes() == xray_binary
         assert bin_path.stat().st_mode & 0o777 == 0o744
-        mock_get.assert_called_once_with('http://example.com/xray.zip', timeout=20)
+        mock_get.assert_called_once_with('http://example.com/xray.zip', timeout=20, stream=True)
 
     def test_install_xray_distrib_creates_parent_directories(self, mocker, tmp_path: Path):
         bin_path = tmp_path / 'deep' / 'nested' / 'xray'
 
         mock_get = mocker.patch('app.utils.get_request')
-        mock_response = MagicMock()
-        mock_response.content = _make_xray_zip(b'binary')
-        mock_get.return_value = mock_response
+        mock_get.return_value = _make_streaming_mock(_make_xray_zip(b'binary'))
 
         install_xray_distrib('http://example.com/xray.zip', bin_path)
 
@@ -595,9 +661,7 @@ class TestInstallXrayDistrib:
         new_binary = b'new_xray_binary'
 
         mock_get = mocker.patch('app.utils.get_request')
-        mock_response = MagicMock()
-        mock_response.content = _make_xray_zip(new_binary)
-        mock_get.return_value = mock_response
+        mock_get.return_value = _make_streaming_mock(_make_xray_zip(new_binary))
 
         install_xray_distrib('http://example.com/xray.zip', bin_path)
 
@@ -611,24 +675,20 @@ class TestInstallGeoData:
         test_content = b'geodata_content'
 
         mock_get = mocker.patch('app.utils.get_request')
-        mock_response = MagicMock()
-        mock_response.content = test_content
-        mock_get.return_value = mock_response
+        mock_get.return_value = _make_streaming_mock(test_content)
 
         install_geo_data('http://example.com/geoip.dat', geo_data_path)
 
         assert geo_data_path.exists()
         assert geo_data_path.read_bytes() == test_content
-        mock_get.assert_called_once_with('http://example.com/geoip.dat', timeout=20)
+        mock_get.assert_called_once_with('http://example.com/geoip.dat', timeout=20, stream=True)
         assert geo_data_path.stat().st_mode & 0o777 == 0o644
 
     def test_install_geo_data_creates_parent_directory(self, mocker, tmp_path: Path):
         geo_data_path = tmp_path / 'new_dir' / 'geoip.dat'
 
         mock_get = mocker.patch('app.utils.get_request')
-        mock_response = MagicMock()
-        mock_response.content = b'geodata'
-        mock_get.return_value = mock_response
+        mock_get.return_value = _make_streaming_mock(b'geodata')
 
         install_geo_data('http://example.com/geoip.dat', geo_data_path)
 
@@ -639,9 +699,7 @@ class TestInstallGeoData:
         test_content = b'test_geodata_content'
 
         mock_get = mocker.patch('app.utils.get_request')
-        mock_response = MagicMock()
-        mock_response.content = test_content
-        mock_get.return_value = mock_response
+        mock_get.return_value = _make_streaming_mock(test_content)
 
         install_geo_data('http://example.com/geoip.dat', geo_data_path)
 
@@ -653,9 +711,7 @@ class TestInstallGeoData:
         geo_data_path = tmp_path / 'geoip.dat'
 
         mock_get = mocker.patch('app.utils.get_request')
-        mock_response = MagicMock()
-        mock_response.content = b'geodata'
-        mock_get.return_value = mock_response
+        mock_get.return_value = _make_streaming_mock(b'geodata')
 
         install_geo_data('http://example.com/geoip.dat', geo_data_path)
 
@@ -666,13 +722,11 @@ class TestInstallGeoData:
         test_url = 'http://example.com/custom_geodata.dat'
 
         mock_get = mocker.patch('app.utils.get_request')
-        mock_response = MagicMock()
-        mock_response.content = b'geodata'
-        mock_get.return_value = mock_response
+        mock_get.return_value = _make_streaming_mock(b'geodata')
 
         install_geo_data(test_url, geo_data_path)
 
-        mock_get.assert_called_once_with(test_url, timeout=20)
+        mock_get.assert_called_once_with(test_url, timeout=20, stream=True)
 
     def test_install_geo_data_overwrites_existing_file(self, mocker, tmp_path: Path):
         geo_data_path = tmp_path / 'geoip.dat'
@@ -680,9 +734,7 @@ class TestInstallGeoData:
         new_content = b'new_geodata_content'
 
         mock_get = mocker.patch('app.utils.get_request')
-        mock_response = MagicMock()
-        mock_response.content = new_content
-        mock_get.return_value = mock_response
+        mock_get.return_value = _make_streaming_mock(new_content)
 
         install_geo_data('http://example.com/geoip.dat', geo_data_path)
 
@@ -692,9 +744,7 @@ class TestInstallGeoData:
         geo_data_path = tmp_path / 'geoip.dat'
 
         mock_get = mocker.patch('app.utils.get_request')
-        mock_response = MagicMock()
-        mock_response.content = b''
-        mock_get.return_value = mock_response
+        mock_get.return_value = _make_streaming_mock(b'')
 
         install_geo_data('http://example.com/geoip.dat', geo_data_path)
 
@@ -705,9 +755,7 @@ class TestInstallGeoData:
         large_content = b'x' * (10 * 1024 * 1024)  # 10 MB
 
         mock_get = mocker.patch('app.utils.get_request')
-        mock_response = MagicMock()
-        mock_response.content = large_content
-        mock_get.return_value = mock_response
+        mock_get.return_value = _make_streaming_mock(large_content)
 
         install_geo_data('http://example.com/geoip.dat', geo_data_path)
 
@@ -1068,96 +1116,6 @@ class TestGetExistingItems:
         assert result == [1, 2, 1, 3, 2]
 
 
-class TestGetShortId:
-
-    def test_get_short_id_default_range(self):
-        existing_short_ids = [1, 2, 3, 4, 5]
-
-        result = get_short_id(existing_short_ids)
-
-        assert result == 6
-
-    def test_get_short_id_empty_existing_ids(self):
-        existing_short_ids = []
-
-        result = get_short_id(existing_short_ids)
-
-        assert result == 1
-
-    def test_get_short_id_with_gaps(self):
-        existing_short_ids = [1, 3, 5, 7]
-
-        result = get_short_id(existing_short_ids)
-
-        assert result == 2
-
-    def test_get_short_id_custom_range(self):
-        existing_short_ids = [100, 101, 102]
-
-        result = get_short_id(existing_short_ids, interval=range(100, 200))
-
-        assert result == 103
-
-    def test_get_short_id_custom_range_with_gap(self):
-        existing_short_ids = [50, 52, 54]
-
-        result = get_short_id(existing_short_ids, interval=range(50, 60))
-
-        assert result == 51
-
-    def test_get_short_id_custom_range_first_available(self):
-        existing_short_ids = [11, 12, 13]
-
-        result = get_short_id(existing_short_ids, interval=range(10, 20))
-
-        assert result == 10
-
-    def test_get_short_id_no_available_ids(self):
-        existing_short_ids = list(range(100))
-
-        with pytest.raises(ValueError) as exc_info:
-            get_short_id(existing_short_ids, interval=range(100))
-
-        assert 'No available short ID found' in str(exc_info.value)
-        assert 'range(0, 100)' in str(exc_info.value)
-
-    def test_get_short_id_large_range(self):
-        existing_short_ids = [0, 1, 2]
-
-        result = get_short_id(existing_short_ids, interval=range(1000))
-
-        assert result == 3
-
-    def test_get_short_id_returns_first_available(self):
-        existing_short_ids = [1, 3, 4, 5, 6]
-
-        result = get_short_id(existing_short_ids)
-
-        assert result == 2
-
-    def test_get_short_id_high_numbers(self):
-        existing_short_ids = [9999]
-
-        result = get_short_id(existing_short_ids)
-
-        assert result == 1
-
-    def test_get_short_id_with_unsorted_existing_ids(self):
-        existing_short_ids = [5, 2, 8, 1, 3]
-
-        result = get_short_id(existing_short_ids, interval=range(1, 10))
-
-        assert result == 4
-
-    def test_get_short_id_all_in_range_taken(self):
-        existing_short_ids = list(range(1, 6))
-
-        with pytest.raises(ValueError) as exc_info:
-            get_short_id(existing_short_ids, interval=range(1, 6))
-
-        assert 'No available short ID found' in str(exc_info.value)
-
-
 class TestSetValue:
 
     def test_set_value_change_existing_attribute(self):
@@ -1340,3 +1298,151 @@ class TestSetValue:
         assert result is True
         assert obj.inner == new_inner
         assert obj.inner.value == 'new_inner'
+
+
+def _make_release(tag: str, prerelease: bool = False, draft: bool = False) -> dict:
+    return {'tag_name': tag, 'prerelease': prerelease, 'draft': draft}
+
+
+class TestGetXrayGithubReleases:
+
+    _RELEASES_URL = 'https://api.github.com/repos/XTLS/Xray-core/releases'
+
+    def test_returns_up_to_limit_versions(self, mocker):
+        releases = [_make_release(f'v1.0.{i}') for i in range(20)]
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_get.return_value.json.return_value = releases
+        mock_get.return_value.raise_for_status = MagicMock()
+
+        result = get_xray_github_releases(limit=10)
+
+        assert len(result) == 10
+        assert result == [f'v1.0.{i}' for i in range(10)]
+
+    def test_returns_fewer_than_limit_when_not_enough_releases(self, mocker):
+        releases = [_make_release('v1.0.0'), _make_release('v1.0.1')]
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_get.return_value.json.return_value = releases
+        mock_get.return_value.raise_for_status = MagicMock()
+
+        result = get_xray_github_releases(limit=10)
+
+        assert result == ['v1.0.0', 'v1.0.1']
+
+    def test_excludes_prerelease_versions(self, mocker):
+        releases = [
+            _make_release('v2.0.0'),
+            _make_release('v2.0.0-beta', prerelease=True),
+            _make_release('v1.9.0'),
+        ]
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_get.return_value.json.return_value = releases
+        mock_get.return_value.raise_for_status = MagicMock()
+
+        result = get_xray_github_releases(limit=10)
+
+        assert 'v2.0.0-beta' not in result
+        assert result == ['v2.0.0', 'v1.9.0']
+
+    def test_excludes_draft_releases(self, mocker):
+        releases = [
+            _make_release('v2.0.0'),
+            _make_release('v1.9.0-draft', draft=True),
+            _make_release('v1.8.0'),
+        ]
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_get.return_value.json.return_value = releases
+        mock_get.return_value.raise_for_status = MagicMock()
+
+        result = get_xray_github_releases(limit=10)
+
+        assert 'v1.9.0-draft' not in result
+        assert result == ['v2.0.0', 'v1.8.0']
+
+    def test_excludes_both_draft_and_prerelease(self, mocker):
+        releases = [
+            _make_release('v3.0.0'),
+            _make_release('v3.0.0-rc1', prerelease=True),
+            _make_release('v2.9.0-draft', draft=True),
+            _make_release('v2.8.0'),
+        ]
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_get.return_value.json.return_value = releases
+        mock_get.return_value.raise_for_status = MagicMock()
+
+        result = get_xray_github_releases(limit=10)
+
+        assert result == ['v3.0.0', 'v2.8.0']
+
+    def test_returns_empty_list_when_all_releases_are_prerelease(self, mocker):
+        releases = [
+            _make_release('v1.0.0-beta', prerelease=True),
+            _make_release('v1.0.0-alpha', prerelease=True),
+        ]
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_get.return_value.json.return_value = releases
+        mock_get.return_value.raise_for_status = MagicMock()
+
+        result = get_xray_github_releases(limit=10)
+
+        assert result == []
+
+    def test_returns_empty_list_when_no_releases(self, mocker):
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_get.return_value.json.return_value = []
+        mock_get.return_value.raise_for_status = MagicMock()
+
+        result = get_xray_github_releases(limit=10)
+
+        assert result == []
+
+    def test_default_limit_is_10(self, mocker):
+        releases = [_make_release(f'v1.0.{i}') for i in range(15)]
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_get.return_value.json.return_value = releases
+        mock_get.return_value.raise_for_status = MagicMock()
+
+        result = get_xray_github_releases()
+
+        assert len(result) == 10
+
+    def test_calls_correct_url_with_params(self, mocker):
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_get.return_value.json.return_value = []
+        mock_get.return_value.raise_for_status = MagicMock()
+
+        get_xray_github_releases()
+
+        mock_get.assert_called_once_with(
+            self._RELEASES_URL,
+            params={'per_page': 100},
+            timeout=10,
+            headers={'Accept': 'application/vnd.github+json'},
+        )
+
+    def test_raises_on_http_error(self, mocker):
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_get.return_value.raise_for_status.side_effect = HTTPError('404 Not Found')
+
+        with pytest.raises(HTTPError):
+            get_xray_github_releases()
+
+    def test_limit_zero_returns_empty_list(self, mocker):
+        releases = [_make_release(f'v1.0.{i}') for i in range(5)]
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_get.return_value.json.return_value = releases
+        mock_get.return_value.raise_for_status = MagicMock()
+
+        result = get_xray_github_releases(limit=0)
+
+        assert result == []
+
+    def test_raises_for_status_is_called(self, mocker):
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_response = mock_get.return_value
+        mock_response.json.return_value = []
+        mock_response.raise_for_status = MagicMock()
+
+        get_xray_github_releases()
+
+        mock_response.raise_for_status.assert_called_once()

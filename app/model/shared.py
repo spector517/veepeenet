@@ -2,8 +2,8 @@ from typing import Literal, Any
 
 from pydantic import Field
 
-from app.model.base import XrayModel
 from app.defaults import XRAY_ACCESS_LOG_PATH, XRAY_ERROR_LOG_PATH
+from app.model.base import XrayModel
 
 
 class Log(XrayModel):
@@ -21,6 +21,9 @@ class Dns(XrayModel):
 class DnsOutbound(XrayModel):
     class Settings(XrayModel):
         network: Literal['tcp', 'udp'] | None = Field(default=None)
+        address: str | None = Field(default=None)
+        port: int | None = Field(default=None)
+        blockTypes: list[int] | None = Field(default=None, alias='blockTypes')
         non_ip_query: Literal['skip', 'drop', 'reject'] | None = Field(
             default='skip', alias='nonIPQuery')
 

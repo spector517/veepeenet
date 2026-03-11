@@ -1,4 +1,8 @@
 {
+  "veepeenet": {
+    "host": "1.1.1.1",
+    "namespace": "some-uuid"
+  },
   "log": {
     "access": "/var/log/xray/access.log",
     "error": "/var/log/xray/error.log",
@@ -7,10 +11,10 @@
   },
   "inbounds": [
     {
+      "tag": "vless-inbound",
       "listen": "0.0.0.0",
       "port": 8443,
       "protocol": "vless",
-      "tag": "vless-inbound",
       "settings": {
         "clients": [],
         "decryption": "none"

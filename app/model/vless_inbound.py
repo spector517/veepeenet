@@ -8,7 +8,7 @@ from app.model.base import XrayModel
 class Client(XrayModel):
     email: str | None = Field(default=None)
     id: str
-    flow: Literal['xtls-rprx-vision'] = 'xtls-rprx-vision'
+    flow: Literal['xtls-rprx-vision', 'xtls-rprx-vision-udp443'] = 'xtls-rprx-vision'
 
 
 class RealitySettings(XrayModel):
@@ -36,10 +36,10 @@ class Sniffing(XrayModel):
 
 
 class VlessInbound(XrayModel):
+    tag: str | None = Field(default='vless-inbound')
     listen: str | None = Field(default=None)
     port: int | str
     protocol: Literal['vless'] = 'vless'
-    tag: str | None = Field(default='vless-inbound')
     settings: Settings = Field(default_factory=Settings)
     stream_settings: StreamSettings
     sniffing: Sniffing = Field(default_factory=Sniffing)

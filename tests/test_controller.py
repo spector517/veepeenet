@@ -44,17 +44,25 @@ class TestLoadConfig:
 
 class TestCreateConfig:
 
-    def test_create_config(self, initial_config_path: Path, mocker: MockFixture):
+    def test_create_config(self,
+                           initial_config_path: Path,
+                           non_existent_config_path: Path,
+                           mocker: MockFixture):
+
         mocker.patch(
             'app.controller.commands.configure.gen_xray_private_key',
             return_value='very-secret-key')
+        mocker.patch('app.controller.commands.configure.uuid4', return_value='some-uuid')
         write_text_file_mock = mocker.patch('app.controller.commands.configure.write_text_file')
-        mocker.patch('app.controller.commands.configure.check_and_install')
+        mocker.patch('app.controller.commands.configure.check_root')
+        mocker.patch('app.controller.commands.configure.check_distrib')
+        mocker.patch(
+            'app.controller.commands.configure.XRAY_CONFIG_PATH', non_existent_config_path)
 
         with open(initial_config_path, 'rt', encoding='utf-8') as config_file:
             expected_xray_config_content = config_file.read()
 
-        config('0.0.0.0', 8443, 'example.com', 443)
+        config('1.1.1.1', 8443, 'example.com', 443)
 
         write_text_file_mock.assert_called_once()
         actual_xray_config_content = write_text_file_mock.call_args[0][1]
