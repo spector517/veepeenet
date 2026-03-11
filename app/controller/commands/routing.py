@@ -91,7 +91,7 @@ def add_rule(
     xray_config = _init_and_load_config()
 
     if not _is_outbound_exists(xray_config, outbound):
-        print_error(f'Outbound {outbound} not found')
+        print_error(Text.assemble('Outbound ', (outbound, 'bold yellow'), ' not found'))
         raise Exit(code=51)
     if not (domain or ip or ports or protocol):
         print_error(

@@ -42,7 +42,7 @@ from app.utils import (
     restart_xray_service
 )
 
-stdout_console = Console()
+stdout_console = Console(soft_wrap=True)
 stderr_console = Console(stderr=True)
 
 @dataclass
