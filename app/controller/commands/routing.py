@@ -15,7 +15,7 @@ from app.controller.common import (
     stdout_console,
     print_error
 )
-from app.controller.completions import complete_route_name
+from app.controller.completions import complete_route_name, complete_outbound_name
 from app.defaults import (
     XRAY_CONFIG_PATH,
     GEO_IP_URL,
@@ -69,7 +69,8 @@ def add_rule(
         name: Annotated[str, Argument(help='Rule name')],
         outbound: Annotated[
             str,
-            Option(help='Outbound name to which the rule will direct traffic')],
+            Option(help='Outbound name to which the rule will direct traffic',
+                   autocompletion=complete_outbound_name)],
         domain: Annotated[
             list[str],
             Option(help='List of domain patterns to match (e.g. "domain:example.com")')] = None,
@@ -151,7 +152,8 @@ def remove_rule(
 @routing.command(help='Rename rule')
 @error_handler()
 def rename_rule(
-        name: Annotated[str, Argument(help='Current rule name')],
+        name: Annotated[str, Argument(
+            help='Current rule name', autocompletion=complete_route_name)],
         new_name: Annotated[str, Option(help='New rule name')],
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_root()
