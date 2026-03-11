@@ -43,8 +43,8 @@ def show(
     else:
         domain_strategy = _get_domain_strategy(xray_config)
         rules_view: list[RuleView] = []
-        for rule in xray_config.routing.rules:
-            rule_data = RuleData.from_model(rule)
+        for i, rule in enumerate(xray_config.routing.rules):
+            rule_data = RuleData.from_model(rule, i)
             rule_view = RuleView(
                 name=rule_data.name,
                 domains=rule_data.domains,
