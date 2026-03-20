@@ -289,6 +289,44 @@ def set_domain_strategy(
         'Domain strategy successfully changed to ', (f'{strategy}', 'bold green')
     ))
 
+
+@routing.command(help='Change rule outbound', name='change-outbound')
+@error_handler(default_message='Error changing rule outbound', default_code=50)
+def change_outbound(
+        name: Annotated[str, Argument(help='Rule name', autocompletion=complete_route_name)],
+        outbound: Annotated[
+            str,
+            Option(help='New outbound name',
+                   autocompletion=complete_outbound_name)],
+        _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+    check_root()
+    xray_config = _init_and_load_config()
+
+    all_rules = _get_existing_rules(xray_config)
+    rule_to_change = _find_rule_by_name(all_rules, name)
+
+    if rule_to_change is None:
+        print_error(Text.assemble('Rule ', (f'{name}', 'bold yellow'), ' not found'))
+        raise Exit(code=56)
+
+    if not _is_outbound_exists(xray_config, outbound):
+        print_error(Text.assemble('Outbound ', (outbound, 'bold yellow'), ' not found'))
+        raise Exit(code=51)
+
+    if rule_to_change.outbound_name == outbound:
+        print_error(Text.assemble(
+            'Rule ', (f'{name}', 'bold yellow'),
+            ' already uses outbound ', (outbound, 'bold yellow')))
+        raise Exit(code=57)
+
+    rule_to_change.outbound_name = outbound
+
+    _save_rules(xray_config, all_rules)
+    stdout_console.print(Text.assemble(
+        'Rule ', (f'{name}', 'bold green'),
+        ' outbound changed to ', (outbound, 'bold green')))
+
+
 def _is_outbound_exists(xray_config: Xray, outbound_name: str) -> bool:
     for outbound in xray_config.outbounds:
         if outbound.tag == outbound_name:

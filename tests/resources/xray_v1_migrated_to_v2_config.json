@@ -4,9 +4,9 @@
     "namespace": "some-uuid"
   },
   "log": {
-    "access": "/var/log/xray/access.log",
+    "access": "none",
     "error": "/var/log/xray/error.log",
-    "loglevel": "off",
+    "loglevel": "warning",
     "dnsLog": false
   },
   "inbounds": [

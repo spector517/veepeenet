@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Annotated
 from uuid import UUID
 
+from rich.console import Console
 from rich.text import Text
 from typer import Argument, Option
 from xxhash import xxh64
@@ -70,7 +71,8 @@ def show(
     if json:
         stdout_console.print_json(view.model_dump_json(exclude_none=True), indent=2)
     else:
-        stdout_console.print(view.rich_repr())
+        url_console = Console(soft_wrap=True, width=2**15)
+        url_console.print(view.rich_repr())
 
 
 def _add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -> None:

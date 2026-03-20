@@ -116,11 +116,48 @@ def update_geodata() -> None:
 @app.command(help='Update Xray distribution to a selected or latest version')
 @error_handler(default_message='Error during Xray distribution update', default_code=10)
 def update_xray(
+        version: Annotated[
+            str | None,
+            Option(help='Target version (e.g. v1.8.24 or 1.8.24)')] = None,
+        list_versions: Annotated[
+            bool,
+            Option('--list', help='List available versions and exit')] = False,
+        limit: Annotated[
+            int,
+            Option(help='Number of versions to show with --list')] = 9,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_root()
 
+    if list_versions:
+        _print_available_releases(limit)
+        return
+
+    selected_version = _select_version(version, limit)
+    _install_xray_version(selected_version)
+
+
+def _print_available_releases(limit: int) -> None:
     with stdout_console.status('Fetching available Xray releases from GitHub'):
-        releases = get_xray_github_releases(limit=9)
+        releases = get_xray_github_releases(limit=limit)
+    if not releases:
+        print_error('No Xray releases found')
+        raise Exit(code=13)
+    stdout_console.print(XrayReleasesView(releases=releases).rich_repr())
+
+
+def _select_version(version: str | None, limit: int) -> str:
+    if version:
+        normalized = version if version.startswith('v') else f'v{version}'
+        with stdout_console.status('Fetching available Xray releases from GitHub'):
+            releases = get_xray_github_releases(limit=100)
+        if normalized not in releases:
+            print_error(Text.assemble(
+                'Version ', (normalized, 'bold yellow'), ' not found in available releases'))
+            raise Exit(code=14)
+        return normalized
+
+    with stdout_console.status('Fetching available Xray releases from GitHub'):
+        releases = get_xray_github_releases(limit=limit)
     if not releases:
         print_error('No Xray releases found')
         raise Exit(code=13)
@@ -138,8 +175,10 @@ def update_xray(
     choice = int(raw)
     if choice < 1 or choice > len(releases):
         raise ValueError
-    selected_version = releases[choice - 1]
+    return releases[choice - 1]
 
+
+def _install_xray_version(selected_version: str) -> None:
     current_version = get_xray_distrib_version()
     if current_version and f'v{current_version}' == selected_version:
         stdout_console.print(Text.assemble(

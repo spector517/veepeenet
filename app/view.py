@@ -21,7 +21,7 @@ class ClientView(BaseModel):
     def rich_repr(self) -> Group:
         return Group(
             Text(self.name, style='bold cyan'),
-            Text(self.url, style='magenta')
+            Text(self.url, style='magenta', no_wrap=True)
         )
 
 
@@ -39,6 +39,20 @@ class ClientsView(BaseModel):
         return Group(*client_panels)
 
 
+class OutboundView(BaseModel):
+    name: str
+    address: str | None = Field(default=None)
+
+    def rich_text(self) -> Text:
+        if self.address:
+            return Text.assemble(
+                (self.name, 'bold cyan'),
+                (' (', ''),
+                (self.address, 'dim'),
+                (')', ''))
+        return Text(self.name, 'bold cyan')
+
+
 class ServerView(BaseModel):
     veepeenet_version: str
     veepeenet_build: int
@@ -51,7 +65,7 @@ class ServerView(BaseModel):
     reality_address: str
     reality_names: list[str]
     clients: list[str]
-    outbounds: list[str]
+    outbounds: list[OutboundView]
 
     def rich_repr(self) -> Panel:
         run_status = Text(
@@ -61,6 +75,12 @@ class ServerView(BaseModel):
         enabled_status = Text(
             'enabled' if self.enabled else 'disabled',
             style='bold green' if self.enabled else 'bold yellow',
+        )
+
+        outbounds_text = (
+            Text(', ').join(ob.rich_text() for ob in self.outbounds)
+            if self.outbounds
+            else Text('No outbounds', style='bold yellow')
         )
 
         content = Text('\n').join([
@@ -73,7 +93,7 @@ class ServerView(BaseModel):
             row('reality_address: ', Text(self.reality_address, style='bold cyan')),
             row('reality_names: ', joined_bold(self.reality_names)),
             row('clients: ', joined_bold(self.clients, 'Server has no clients')),
-            row('outbounds: ', joined_bold(self.outbounds)),
+            row('outbounds: ', outbounds_text),
         ])
 
         return Panel(

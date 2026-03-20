@@ -26,7 +26,7 @@ from app.utils import (
     is_xray_service_enabled,
     get_xray_service_uptime
 )
-from app.view import ServerView
+from app.view import ServerView, OutboundView
 
 
 @app.command(help='Show service status')
@@ -47,13 +47,14 @@ def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = Fals
         client_data = ClientData.from_model(client, xray_config.veepeenet.host)
         client_names.append(client_data.name)
 
-    outbounds: list[str] = []
+    outbounds: list[OutboundView] = []
     for outbound in xray_config.outbounds:
         if isinstance(outbound, VlessOutbound):
-            outbounds.append(
-                f'{outbound.tag}({outbound.settings.address}:{outbound.settings.port})')
+            outbounds.append(OutboundView(
+                name=outbound.tag,
+                address=f'{outbound.settings.address}:{outbound.settings.port}'))
         else:
-            outbounds.append(outbound.tag)
+            outbounds.append(OutboundView(name=outbound.tag))
 
     server_view = ServerView(
         veepeenet_version=versions.veepeenet_version,

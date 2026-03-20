@@ -1,4 +1,4 @@
-from app.model.shared import Log, Dns, DnsOutbound
+from app.model.shared import Log, Dns, DnsOutbound, DnsServer
 from app.model.vless_inbound import VlessInbound, Client, StreamSettings, RealitySettings
 
 
@@ -6,9 +6,9 @@ class TestLog:
 
     def test_default_log(self):
         expected_map = {
-            'access': '/var/log/xray/access.log',
+            'access': 'none',
             'error': '/var/log/xray/error.log',
-            'loglevel': 'off',
+            'loglevel': 'warning',
             'dnsLog': False,
         }
 
@@ -19,7 +19,7 @@ class TestLog:
 
     def test_change_loglevel(self):
         expected_map = {
-            'access': '/var/log/xray/access.log',
+            'access': 'none',
             'error': '/var/log/xray/error.log',
             'loglevel': 'debug',
             'dnsLog': False,
@@ -30,6 +30,18 @@ class TestLog:
         actual_map = log.model_dump(by_alias=True)
 
         assert actual_map == expected_map
+
+    def test_off_loglevel_normalized_to_none(self):
+        log = Log(loglevel='off')
+        assert log.loglevel == 'none'
+
+    def test_none_loglevel_stays_none(self):
+        log = Log(loglevel='none')
+        assert log.loglevel == 'none'
+
+    def test_off_loglevel_from_json(self):
+        log = Log.model_validate({'loglevel': 'off'})
+        assert log.loglevel == 'none'
 
 
 class TestDns:
@@ -44,6 +56,38 @@ class TestDns:
         actual_map = dns.model_dump(by_alias=True)
 
         assert actual_map == expected_map
+
+    def test_dns_with_server_objects(self):
+        dns = Dns(servers=[
+            '1.1.1.1',
+            DnsServer(address='https://dns.google/dns-query', domains=['example.com']),
+        ])
+        dumped = dns.model_dump(by_alias=True, exclude_none=True)
+
+        assert dumped == {
+            'servers': [
+                '1.1.1.1',
+                {'address': 'https://dns.google/dns-query', 'domains': ['example.com']},
+            ]
+        }
+
+    def test_dns_mixed_from_json(self):
+        data = {
+            'servers': [
+                '8.8.8.8',
+                {'address': 'https://1.1.1.1/dns-query', 'domains': ['geosite:netflix']},
+            ]
+        }
+        dns = Dns.model_validate(data)
+        assert isinstance(dns.servers[0], str)
+        assert isinstance(dns.servers[1], DnsServer)
+        assert dns.servers[1].address == 'https://1.1.1.1/dns-query'
+
+    def test_dns_server_extra_fields_preserved(self):
+        data = {'address': '1.1.1.1', 'clientIp': '5.6.7.8'}
+        server = DnsServer.model_validate(data)
+        dumped = server.model_dump(by_alias=True, exclude_none=True)
+        assert dumped['clientIp'] == '5.6.7.8'
 
 
 class TestClient:

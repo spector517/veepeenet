@@ -39,6 +39,10 @@ from app.utils import (
     get_existing_items,
     set_value,
     get_xray_github_releases,
+    validate_xray_config,
+    backup_config,
+    restore_config,
+    get_xray_service_journal,
 )
 
 
@@ -1446,3 +1450,90 @@ class TestGetXrayGithubReleases:
         get_xray_github_releases()
 
         mock_response.raise_for_status.assert_called_once()
+
+
+class TestValidateXrayConfig:
+
+    def test_success(self, mocker):
+        mocker.patch('app.utils.run_command', return_value=(0, 'Configuration OK', ''))
+        success, output = validate_xray_config(Path('/tmp/config.json'))
+        assert success is True
+        assert output == 'Configuration OK'
+
+    def test_failure(self, mocker):
+        mocker.patch('app.utils.run_command', return_value=(1, '', 'invalid config'))
+        success, output = validate_xray_config(Path('/tmp/config.json'))
+        assert success is False
+        assert output == 'invalid config'
+
+    def test_failure_stderr_empty_uses_stdout(self, mocker):
+        mocker.patch('app.utils.run_command', return_value=(1, 'stdout error', ''))
+        success, output = validate_xray_config(Path('/tmp/config.json'))
+        assert success is False
+        assert output == 'stdout error'
+
+    def test_calls_xray_run_test(self, mocker):
+        mock_cmd = mocker.patch('app.utils.run_command', return_value=(0, 'ok', ''))
+        validate_xray_config(Path('/etc/xray/config.json'))
+        mock_cmd.assert_called_once_with('xray run -test -config /etc/xray/config.json')
+
+
+class TestBackupConfig:
+
+    def test_backup_creates_bak_file(self, tmp_path):
+        config_path = tmp_path / 'config.json'
+        config_path.write_text('{"test": true}')
+
+        backup_path = backup_config(config_path)
+
+        assert backup_path == config_path.with_suffix('.json.bak')
+        assert backup_path.exists()
+        assert backup_path.read_text() == '{"test": true}'
+
+    def test_backup_overwrites_existing_bak(self, tmp_path):
+        config_path = tmp_path / 'config.json'
+        bak_path = config_path.with_suffix('.json.bak')
+        bak_path.write_text('old backup')
+        config_path.write_text('new config')
+
+        backup_config(config_path)
+
+        assert bak_path.read_text() == 'new config'
+
+
+class TestRestoreConfig:
+
+    def test_restore_overwrites_config_and_deletes_bak(self, tmp_path):
+        config_path = tmp_path / 'config.json'
+        bak_path = tmp_path / 'config.json.bak'
+        config_path.write_text('broken config')
+        bak_path.write_text('good config')
+
+        restore_config(config_path, bak_path)
+
+        assert config_path.read_text() == 'good config'
+        assert not bak_path.exists()
+
+
+class TestGetXrayServiceJournal:
+
+    def test_returns_journal_output(self, mocker):
+        mocker.patch('app.utils.run_command',
+                     return_value=(0, 'Jan 01 xray[123]: some log line', ''))
+        result = get_xray_service_journal(lines=10)
+        assert result == 'Jan 01 xray[123]: some log line'
+
+    def test_returns_none_on_empty_output(self, mocker):
+        mocker.patch('app.utils.run_command', return_value=(0, '', ''))
+        result = get_xray_service_journal()
+        assert result is None
+
+    def test_returns_none_on_failure(self, mocker):
+        mocker.patch('app.utils.run_command', return_value=(1, '', 'error'))
+        result = get_xray_service_journal()
+        assert result is None
+
+    def test_calls_journalctl_with_lines(self, mocker):
+        mock_cmd = mocker.patch('app.utils.run_command', return_value=(0, 'log', ''))
+        get_xray_service_journal(lines=5)
+        mock_cmd.assert_called_once_with('journalctl -u xray -n 5 --no-pager -q')

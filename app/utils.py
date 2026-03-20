@@ -1,6 +1,7 @@
 from importlib.resources import files
 from pathlib import Path
 from re import findall, MULTILINE, search, fullmatch
+from shutil import copy2
 from subprocess import run
 from tempfile import NamedTemporaryFile
 from typing import Literal, TypeVar
@@ -242,6 +243,29 @@ def run_command(command: str, stdin: str = '', check: bool = False, timeout: int
 def detect_veepeenet_versions() -> VersionsView:
     content = app_resources.joinpath('versions.json').read_text('utf-8')
     return VersionsView.model_validate_json(content)
+
+
+def validate_xray_config(config_path: Path) -> tuple[bool, str]:
+    result = run_command(f'xray run -test -config {config_path}')
+    if result[0] == 0:
+        return True, result[1]
+    return False, result[2] or result[1]
+
+
+def backup_config(config_path: Path) -> Path:
+    backup_path = config_path.with_suffix('.json.bak')
+    copy2(config_path, backup_path)
+    return backup_path
+
+
+def restore_config(config_path: Path, backup_path: Path) -> None:
+    copy2(backup_path, config_path)
+    backup_path.unlink(missing_ok=True)
+
+
+def get_xray_service_journal(lines: int = 20) -> str | None:
+    result = run_command(f'journalctl -u xray -n {lines} --no-pager -q')
+    return result[1] if result[0] == 0 and result[1] else None
 
 
 def get_xray_github_releases(limit: int = 10) -> list[str]:
