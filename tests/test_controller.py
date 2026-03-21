@@ -53,7 +53,7 @@ class TestCreateConfig:
             'app.controller.commands.configure.gen_xray_private_key',
             return_value='very-secret-key')
         mocker.patch('app.controller.commands.configure.uuid4', return_value='some-uuid')
-        write_text_file_mock = mocker.patch('app.controller.commands.configure.write_text_file')
+        save_config_mock = mocker.patch('app.controller.commands.configure.save_config')
         mocker.patch('app.controller.commands.configure.check_root')
         mocker.patch('app.controller.commands.configure.check_distrib')
         mocker.patch(
@@ -64,7 +64,9 @@ class TestCreateConfig:
 
         config('1.1.1.1', 8443, 'example.com', 443)
 
-        write_text_file_mock.assert_called_once()
-        actual_xray_config_content = write_text_file_mock.call_args[0][1]
+        save_config_mock.assert_called_once()
+        actual_xray_config = save_config_mock.call_args[0][0]
+        actual_xray_config_content = actual_xray_config.model_dump_json(
+            by_alias=True, exclude_none=True, indent=2)
 
         assert actual_xray_config_content == expected_xray_config_content
