@@ -20,6 +20,7 @@ from app.defaults import (
     XRAY_ERROR_LOG_PATH,
     XRAY_CONFIG_PATH,
     STATE_PENDING_TIMEOUT,
+    STYLE_REGULAR, STYLE_VALUE, STYLE_WARN, STYLE_OK,
 )
 from app.model.routing import Rule
 from app.model.types import RuleProtocolType
@@ -133,10 +134,12 @@ def error_handler(
                 return func(*args, **kwargs)
             except Exit:
                 raise
+            except KeyboardInterrupt:
+                raise
             except BaseException as e:
                 if '_debug' in kwargs and kwargs['_debug']:
                     raise
-                print_error(f'{default_message or "Unknown error"}: {e}')
+                print_error(Text(f'{default_message or "Unknown error"}: {e}', STYLE_REGULAR))
                 raise Exit(code=default_code) from e
 
         return wrapper
@@ -153,25 +156,25 @@ def check_distrib(
     was_stopped = False
 
     if not get_xray_distrib_version():
-        stdout_console.print('Xray distribution is not installed')
-        with stdout_console.status('Installing Xray distribution'):
+        stdout_console.print(Text('Xray distribution is not installed', STYLE_WARN))
+        with stdout_console.status(Text('Installing Xray distribution', STYLE_REGULAR)):
             url = urljoin(XRAY_DOWNLOAD_URL, f'{versions.xray_version}/{archive_name}')
             install_xray_distrib(url, bin_path)
             write_text_file(XRAY_ERROR_LOG_PATH, "")
         stdout_console.print(Text.assemble(
-            'Xray distribution ',
-            (versions.xray_version, 'bold cyan'),
-            ' installed successfully'
+            ('Xray distribution ', STYLE_OK),
+            (versions.xray_version, STYLE_VALUE),
+            (' installed successfully', STYLE_OK)
         ))
 
     if not is_xray_service_installed(unit_path):
-        stdout_console.print('Required Xray service is not installed')
+        stdout_console.print(Text('Required Xray service is not installed', STYLE_WARN))
         if is_xray_service_running():
             stop_service()
             was_stopped = True
-        with stdout_console.status('Installing Xray service'):
+        with stdout_console.status(Text('Installing Xray service', STYLE_REGULAR)):
             install_xray_service(unit_path)
-        stdout_console.print('Xray service installed')
+        stdout_console.print(Text('Xray service installed', STYLE_OK))
 
     if was_stopped:
         start_service()
@@ -179,7 +182,7 @@ def check_distrib(
 
 def check_root() -> None:
     if getuid() != 0:
-        print_error('This command must be run as root')
+        print_error(Text('This command must be run as root', STYLE_REGULAR))
         raise Exit(code=1)
 
 
@@ -194,6 +197,13 @@ def load_config(xray_config_path: Path) -> Xray:
     return Xray.model_validate_json(config_content, by_alias=True)
 
 
+def save_config(config: Xray, xray_config_path: Path) -> None:
+    write_text_file(
+        xray_config_path,
+        config.model_dump_json(by_alias=True, exclude_none=True, indent=2),
+        0o644)
+
+
 def get_vless_inbound(xray_config: Xray) -> VlessInbound:
     inbound = xray_config.get_vless_inbound()
     if inbound:
@@ -204,20 +214,20 @@ def get_vless_inbound(xray_config: Xray) -> VlessInbound:
 def start_service() -> None:
     if is_xray_service_running():
         stdout_console.print(Text.assemble(
-            'Xray service is ',
-            ('already running', 'bold yellow')))
+            ('Xray service is ', STYLE_REGULAR),
+            ('already running', STYLE_WARN)))
         return
 
     _test_config_or_fail()
     backup_path = backup_config(XRAY_CONFIG_PATH) if XRAY_CONFIG_PATH.exists() else None
 
-    with stdout_console.status('Starting service'):
+    with stdout_console.status(Text('Starting service', STYLE_REGULAR)):
         start_xray_service()
         sleep(STATE_PENDING_TIMEOUT)
         if not is_xray_service_enabled():
             enable_xray_service()
     if is_xray_service_running():
-        stdout_console.print(Text('Service started', style='bold green'))
+        stdout_console.print(Text('Service started', STYLE_OK))
     else:
         _handle_service_failure('start', backup_path, False)
 
@@ -225,17 +235,17 @@ def start_service() -> None:
 def stop_service() -> None:
     if not is_xray_service_running():
         stdout_console.print(Text.assemble(
-            'Xray service is ',
-            ('already stopped', 'bold yellow')))
+            ('Xray service is ', STYLE_REGULAR),
+            ('already stopped', STYLE_WARN)))
         return
-    with stdout_console.status('Stopping service'):
+    with stdout_console.status(Text('Stopping service', STYLE_REGULAR)):
         stop_xray_service()
         sleep(STATE_PENDING_TIMEOUT)
         if is_xray_service_running():
             raise RuntimeError('Failed to stop service')
         if is_xray_service_enabled():
             disable_xray_service()
-    stdout_console.print(Text('Service stopped', style='bold green'))
+    stdout_console.print(Text('Service stopped', STYLE_WARN))
 
 
 def restart_service() -> None:
@@ -243,13 +253,13 @@ def restart_service() -> None:
     was_running = is_xray_service_running()
     backup_path = backup_config(XRAY_CONFIG_PATH) if XRAY_CONFIG_PATH.exists() else None
 
-    with stdout_console.status('Restarting service'):
+    with stdout_console.status(Text('Restarting service', STYLE_REGULAR)):
         restart_xray_service()
         sleep(STATE_PENDING_TIMEOUT)
     if is_xray_service_running():
         if not is_xray_service_enabled():
             enable_xray_service()
-        stdout_console.print(Text('Service restarted', style='bold green'))
+        stdout_console.print(Text('Service restarted', STYLE_OK))
     else:
         _handle_service_failure('restart', backup_path, was_running)
 
@@ -258,7 +268,7 @@ def _test_config_or_fail() -> None:
     success, output = validate_xray_config(XRAY_CONFIG_PATH)
     if not success:
         print_error(Text.assemble(
-            'Xray config test failed:\n',
+            ('Xray config test failed:\n', STYLE_REGULAR),
             (output, 'dim')))
         raise RuntimeError(f'Xray config test failed: {output}')
 
@@ -268,21 +278,20 @@ def _handle_service_failure(
     journal = get_xray_service_journal()
     if journal:
         stderr_console.print(Panel(
-            Text(journal, style='dim'),
+            Text(journal, 'dim'),
             title='Service journal',
             title_align='left',
             border_style='red'))
     if backup_path and backup_path.exists():
         restore_config(XRAY_CONFIG_PATH, backup_path)
-        stderr_console.print(Text.assemble(
-            ('Config restored', 'bold yellow'),
-            ' from backup'))
+        stderr_console.print(Text('Config restored from backup', STYLE_WARN))
         if was_running:
-            with stdout_console.status('Starting service from restored config'):
+            with stdout_console.status(
+                    Text('Starting service from restored config', STYLE_REGULAR)):
                 start_xray_service()
                 sleep(STATE_PENDING_TIMEOUT)
             if is_xray_service_running():
                 stdout_console.print(Text.assemble(
-                    ('Service started', 'bold green'),
-                    ' from restored config'))
+                    ('Service started', STYLE_OK),
+                    (' from restored config', STYLE_REGULAR)))
     raise RuntimeError(f'Failed to {action} service')

@@ -17,7 +17,7 @@ from app.controller.common import (
     print_error,
     ClientData, stdout_console,
 )
-from app.defaults import XRAY_CONFIG_PATH
+from app.defaults import XRAY_CONFIG_PATH, STYLE_REGULAR
 from app.model.vless_outbound import VlessOutbound
 from app.utils import (
     detect_veepeenet_versions,
@@ -87,7 +87,7 @@ def start(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> No
     try:
         start_service()
     except RuntimeError as e:
-        print_error('Failed to start service')
+        print_error(Text('Failed to start service', STYLE_REGULAR))
         raise Exit(code=31) from e
 
 
@@ -101,7 +101,7 @@ def stop(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> Non
     try:
         stop_service()
     except RuntimeError as e:
-        print_error(Text('Failed to stop service', style='red'))
+        print_error(Text('Failed to stop service', STYLE_REGULAR))
         raise Exit(code=32) from e
 
 
@@ -115,5 +115,5 @@ def restart(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> 
     try:
         restart_service()
     except RuntimeError as e:
-        print_error(Text('Failed to restart service', style='red'))
+        print_error(Text('Failed to restart service', STYLE_REGULAR))
         raise Exit(code=33) from e

@@ -23,3 +23,16 @@ XRAY_GEO_IP_DATA_PATH = Path('/usr/local/share/xray/geoip.dat')
 XRAY_GEO_SITE_DATA_PATH = Path('/usr/local/share/xray/geosite.dat')
 GEO_IP_URL = 'https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat'
 GEO_SITE_URL = 'https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat'
+
+STYLE_OK = 'green'
+STYLE_WARN = 'yellow'
+STYLE_FAIL = 'red'
+
+STYLE_ACCENT_UP = 'bold green'
+STYLE_ACCENT_NEUTRAL = 'bold yellow'
+STYLE_ACCENT_DOWN = 'bold red'
+
+STYLE_VALUE = 'bold cyan'
+STYLE_URL = 'magenta'
+STYLE_REGULAR = 'white'
+STYLE_DIM = 'dim'

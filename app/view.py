@@ -5,13 +5,25 @@ from rich.console import Group
 from rich.panel import Panel
 from rich.text import Text
 
+from app.defaults import (
+    STYLE_WARN,
+    STYLE_VALUE,
+    STYLE_URL,
+    STYLE_ACCENT_UP,
+    STYLE_ACCENT_DOWN,
+    STYLE_ACCENT_NEUTRAL,
+    STYLE_OK,
+    STYLE_DIM,
+    STYLE_REGULAR
+)
+
 
 def joined_bold(items: list[str], fallback: str | None = None) -> Text:
     if not items:
-        return Text(fallback or '', style='bold yellow')
-    return Text(', ', no_wrap=True).join(Text(item, style='bold cyan') for item in items)
+        return Text(fallback or '', STYLE_ACCENT_NEUTRAL)
+    return Text(', ', no_wrap=True).join(Text(item, STYLE_VALUE) for item in items)
 
-def row(label: str, value: Text) -> Text:
+def row(label: Text, value: Text) -> Text:
     return Text.assemble(label, value)
 
 class ClientView(BaseModel):
@@ -20,8 +32,8 @@ class ClientView(BaseModel):
 
     def rich_repr(self) -> Group:
         return Group(
-            Text(self.name, style='bold cyan'),
-            Text(self.url, style='magenta', no_wrap=True)
+            Text(self.name, STYLE_VALUE),
+            Text(self.url, STYLE_URL, no_wrap=True)
         )
 
 
@@ -30,7 +42,7 @@ class ClientsView(BaseModel):
 
     def rich_repr(self) -> Group:
         if not self.clients:
-            return Group(Text('Server has no clients', style='yellow'))
+            return Group(Text('Server has no clients', STYLE_WARN))
 
         client_panels: list[Group | str] = []
         for client in self.clients:
@@ -46,11 +58,11 @@ class OutboundView(BaseModel):
     def rich_text(self) -> Text:
         if self.address:
             return Text.assemble(
-                (self.name, 'bold cyan'),
+                (self.name, STYLE_VALUE),
                 (' (', ''),
-                (self.address, 'dim'),
+                (self.address, STYLE_URL),
                 (')', ''))
-        return Text(self.name, 'bold cyan')
+        return Text(self.name, STYLE_VALUE)
 
 
 class ServerView(BaseModel):
@@ -70,30 +82,35 @@ class ServerView(BaseModel):
     def rich_repr(self) -> Panel:
         run_status = Text(
             self.server_status,
-            style='bold green' if self.server_status == 'running' else 'bold red',
+            STYLE_ACCENT_UP if self.server_status == 'running' else STYLE_ACCENT_DOWN,
         )
         enabled_status = Text(
             'enabled' if self.enabled else 'disabled',
-            style='bold green' if self.enabled else 'bold yellow',
+            STYLE_ACCENT_UP if self.enabled else STYLE_ACCENT_NEUTRAL,
         )
 
         outbounds_text = (
             Text(', ').join(ob.rich_text() for ob in self.outbounds)
             if self.outbounds
-            else Text('No outbounds', style='bold yellow')
+            else Text('No outbounds', STYLE_ACCENT_NEUTRAL)
         )
 
         content = Text('\n').join([
-            row('status: ', Text.assemble(run_status, ' (', enabled_status, ')')),
-            row('uptime: ', Text(
-                self.uptime, style='bold green') if self.uptime else Text(
-                'n/a', style='bold red')),
-            row('xray_version: ', Text(self.xray_version, style='bold cyan')),
-            row('address: ', Text(f'{self.server_host}:{self.server_port}', style='bold cyan')),
-            row('reality_address: ', Text(self.reality_address, style='bold cyan')),
-            row('reality_names: ', joined_bold(self.reality_names)),
-            row('clients: ', joined_bold(self.clients, 'Server has no clients')),
-            row('outbounds: ', outbounds_text),
+            row(Text('status: ', STYLE_REGULAR),
+                Text.assemble(run_status, ' (', enabled_status, ')')),
+            row(Text('uptime: ', STYLE_REGULAR), Text(
+                self.uptime, STYLE_ACCENT_UP) if self.uptime else Text(
+                'n/a', STYLE_ACCENT_DOWN)),
+            row(Text('xray_version: ', STYLE_REGULAR),
+                Text(self.xray_version, STYLE_VALUE)),
+            row(Text('address: ', STYLE_REGULAR),
+                Text(f'{self.server_host}:{self.server_port}', STYLE_VALUE)),
+            row(Text('reality_address: ', STYLE_REGULAR),
+                Text(self.reality_address, STYLE_VALUE)),
+            row(Text('reality_names: ', STYLE_REGULAR), joined_bold(self.reality_names)),
+            row(Text('clients: ', STYLE_REGULAR),
+                joined_bold(self.clients, 'Server has no clients')),
+            row(Text('outbounds: ', STYLE_REGULAR), outbounds_text),
         ])
 
         return Panel(
@@ -102,7 +119,7 @@ class ServerView(BaseModel):
             subtitle=f'VeePeeNET {self.veepeenet_version}',
             title_align='left',
             subtitle_align='right',
-            border_style='green' if self.server_status == 'running' else 'yellow',
+            border_style=STYLE_OK if self.server_status == 'running' else STYLE_WARN,
         )
 
 
@@ -117,30 +134,34 @@ class RuleView(BaseModel):
 
     def rich_repr(self) -> Panel:
         content_lines: list[Text] = [
-            row('name: ', Text(self.name, style='bold cyan')),
+            row(Text('name: ', STYLE_REGULAR), Text(self.name, STYLE_VALUE)),
         ]
 
         if self.domains:
-            content_lines.append(row('domains: ', joined_bold(self.domains)))
+            content_lines.append(
+                row(Text('domains: ', STYLE_REGULAR),joined_bold(self.domains)))
         if self.ips:
-            content_lines.append(row('ips: ', joined_bold(self.ips)))
+            content_lines.append(
+                row(Text('ips: ', STYLE_REGULAR), joined_bold(self.ips)))
         if self.ports:
-            content_lines.append(row('ports: ', Text(self.ports, style='bold cyan')))
+            content_lines.append(
+                row(Text('ports: ', STYLE_REGULAR), Text(self.ports, STYLE_VALUE)))
         if self.protocols:
-            content_lines.append(row('protocols: ', joined_bold(self.protocols)))
+            content_lines.append(
+                row(Text('protocols: ', STYLE_REGULAR), joined_bold(self.protocols)))
 
         content = Text('\n').join(content_lines)
         title = Text.assemble(
-            f'Rule #{self.priority} ',
-            (self.name, 'bold green'),
-            ' --> ',
-            (self.outbound_name, 'bold green')
+            (f'Rule #{self.priority} ', STYLE_REGULAR),
+            (self.name, STYLE_ACCENT_UP),
+            (' --> ', STYLE_ACCENT_NEUTRAL),
+            (self.outbound_name, STYLE_ACCENT_UP)
         )
         return Panel(
             content,
             title=title,
             title_align='left',
-            border_style='magenta',
+            border_style=STYLE_DIM,
         )
 
 
@@ -150,12 +171,12 @@ class RoutingView(BaseModel):
 
     def rich_repr(self) -> Group:
         if not self.domain_strategy and not self.rules:
-            return Group(Text('No routing rules configured', style='yellow'))
+            return Group(Text('No routing rules configured', STYLE_WARN))
 
-        content_parts: list[Group | Text | Panel | str] = [
+        content_parts: list[Group | Text | Panel] = [
             Text.assemble(
-                ('Domain strategy: ', 'magenta'),
-                    (self.domain_strategy, 'bold cyan')
+                ('Domain strategy: ', STYLE_REGULAR),
+                (self.domain_strategy, STYLE_VALUE)
             )
         ]
 
@@ -180,9 +201,10 @@ class XrayReleasesView(BaseModel):
         rich_releases: list[Text] = []
         for i, version in enumerate(self.releases, start=1):
             rich_releases.append(
-                Text(f'{i}. ', style='bold green').append(Text(version, style='bold cyan')))
+                Text(f'{i}. ', STYLE_REGULAR).append(Text(version, STYLE_VALUE)))
         return Panel(
             Text('\n').join(rich_releases),
-            title=Text('Available Xray versions', style='bold'),
+            title=Text('Available Xray versions', STYLE_REGULAR),
             title_align='left',
+            border_style=STYLE_DIM,
         )

@@ -17,6 +17,7 @@ from app.controller.common import (
     stop_service,
     stdout_console,
     print_error,
+    save_config,
 )
 from app.defaults import (
     VLESS_LISTEN_INTERFACE,
@@ -31,6 +32,10 @@ from app.defaults import (
     XRAY_BINARY_PATH,
     XRAY_ARCHIVE_NAME,
     XRAY_DOWNLOAD_URL,
+    STYLE_WARN,
+    STYLE_REGULAR,
+    STYLE_OK,
+    STYLE_VALUE,
 )
 from app.model.veepeenet import VeePeeNET
 from app.model.vless_inbound import (
@@ -41,7 +46,6 @@ from app.model.vless_inbound import (
 from app.model.xray import Xray
 from app.utils import (
     detect_current_ipv4,
-    write_text_file,
     gen_xray_private_key,
     install_geo_data,
     get_xray_github_releases,
@@ -81,7 +85,7 @@ def config(
         if clean:
             answer = _confirm_config_rewriting()
             if not answer:
-                stdout_console.print('Aborted')
+                stdout_console.print(Text('Aborted', STYLE_WARN))
                 return
         xray_config = _create_config(
             host,
@@ -94,11 +98,8 @@ def config(
         _update_config(
             xray_config, host, port, reality_host, reality_port, reality_names)
 
-    write_text_file(
-        XRAY_CONFIG_PATH,
-        xray_config.model_dump_json(by_alias=True, exclude_none=True, indent=2),
-        0o644)
-    stdout_console.print('Successfully configured VLESS inbound')
+    save_config(xray_config, XRAY_CONFIG_PATH)
+    stdout_console.print(Text('VLESS inbound configured', STYLE_REGULAR))
 
 
 @app.command(help='Update geodata (geoip.dat and geosite.dat) for Xray')
@@ -106,11 +107,11 @@ def config(
 def update_geodata() -> None:
     check_root()
 
-    with stdout_console.status('Updating geoip data'):
+    with stdout_console.status(Text('Updating geoip data', STYLE_REGULAR)):
         install_geo_data(GEO_IP_URL, XRAY_GEO_IP_DATA_PATH)
-    with stdout_console.status('Updating geosite data'):
+    with stdout_console.status(Text('Updating geosite data', STYLE_REGULAR)):
         install_geo_data(GEO_SITE_URL, XRAY_GEO_SITE_DATA_PATH)
-    stdout_console.print('Geodata updated')
+    stdout_console.print(Text('Geoip data', STYLE_OK))
 
 
 @app.command(help='Update Xray distribution to a selected or latest version')
@@ -140,7 +141,7 @@ def _print_available_releases(limit: int) -> None:
     with stdout_console.status('Fetching available Xray releases from GitHub'):
         releases = get_xray_github_releases(limit=limit)
     if not releases:
-        print_error('No Xray releases found')
+        print_error(Text('No Xray releases found', STYLE_REGULAR))
         raise Exit(code=13)
     stdout_console.print(XrayReleasesView(releases=releases).rich_repr())
 
@@ -148,15 +149,18 @@ def _print_available_releases(limit: int) -> None:
 def _select_version(version: str | None, limit: int) -> str:
     if version:
         normalized = version if version.startswith('v') else f'v{version}'
-        with stdout_console.status('Fetching available Xray releases from GitHub'):
+        with stdout_console.status(
+                Text('Fetching available Xray releases from GitHub', STYLE_REGULAR)):
             releases = get_xray_github_releases(limit=100)
         if normalized not in releases:
             print_error(Text.assemble(
-                'Version ', (normalized, 'bold yellow'), ' not found in available releases'))
+                ('Version ', STYLE_REGULAR),
+                (normalized, STYLE_VALUE),
+                (' not found in available releases', STYLE_REGULAR)))
             raise Exit(code=14)
         return normalized
 
-    with stdout_console.status('Fetching available Xray releases from GitHub'):
+    with stdout_console.status(Text('Fetching available Xray releases from GitHub', STYLE_REGULAR)):
         releases = get_xray_github_releases(limit=limit)
     if not releases:
         print_error('No Xray releases found')
@@ -165,39 +169,44 @@ def _select_version(version: str | None, limit: int) -> str:
     stdout_console.print(XrayReleasesView(releases=releases).rich_repr())
 
     raw = Prompt.ask(
-        f'Select release to install [1-{len(releases)}] '
-        f'(press Enter for latest or Ctrl+C to cancel)',
+        Text.assemble(
+            ('Select release to install ', STYLE_REGULAR),
+            (f'[1-{len(releases)}]', STYLE_VALUE),
+            (' (press ', STYLE_REGULAR),
+            ('Enter', STYLE_VALUE),
+            (' for latest or ', STYLE_REGULAR),
+            ('Ctrl+C', STYLE_VALUE),
+            (' to cancel', STYLE_REGULAR)),
         choices=[str(i) for i in range(1, len(releases) + 1)],
         default=1,
         show_choices=False,
     )
-
-    choice = int(raw)
-    if choice < 1 or choice > len(releases):
-        raise ValueError
-    return releases[choice - 1]
+    return releases[int(raw) - 1]
 
 
 def _install_xray_version(selected_version: str) -> None:
     current_version = get_xray_distrib_version()
     if current_version and f'v{current_version}' == selected_version:
         stdout_console.print(Text.assemble(
-            'Xray ',
-            (selected_version, 'bold cyan'),
-            ' is already installed, no update required'))
+            ('Xray ', STYLE_REGULAR),
+            (selected_version, STYLE_VALUE),
+            (' is already installed', STYLE_WARN),
+            (', no update required', STYLE_REGULAR)))
         return
 
     was_running = is_xray_service_running()
     if was_running:
         stop_service()
 
-    with stdout_console.status(f'Downloading Xray {selected_version}'):
+    with stdout_console.status(Text.assemble(
+            ('Downloading Xray ', STYLE_REGULAR),
+            (selected_version, STYLE_VALUE))):
         url = urljoin(XRAY_DOWNLOAD_URL, f'{selected_version}/{XRAY_ARCHIVE_NAME}')
         install_xray_distrib(url, XRAY_BINARY_PATH)
     stdout_console.print(Text.assemble(
-        'Xray ',
-        (selected_version, 'bold cyan'),
-        ' installed successfully'))
+        Text('Xray ', STYLE_REGULAR),
+        (selected_version, STYLE_VALUE),
+        (' installed successfully', STYLE_REGULAR)))
 
     if was_running:
         start_service()
@@ -207,34 +216,38 @@ def _detect_host_or_error() -> str:
     host = detect_current_ipv4()
     if not host:
         print_error(Text.assemble(
-            'Cannot auto detect ',
-            ('public host address', 'bold'),
-            '. Please specify it manually via --host option'))
+            ('Cannot auto detect ', STYLE_REGULAR),
+            ('public host address', STYLE_VALUE),
+            ('. Please specify it manually via ', STYLE_REGULAR),
+            ('--host', STYLE_VALUE),
+            ('option', STYLE_REGULAR)))
         raise Exit(code=11)
     detect_host_address_answer = _confirm_host_detection(host)
     if not detect_host_address_answer:
         print_error(Text.assemble(
-            'Please specify ',
-            ('public host address', 'bold'),
-             'manually via --host option'))
+            ('Please specify it manually via ', STYLE_REGULAR),
+            ('--host', STYLE_VALUE),
+            ('option', STYLE_REGULAR)))
         raise Exit(code=12)
     return host
 
 
 def _confirm_host_detection(host: str) -> bool:
     return Confirm.ask(Text.assemble(
-        'Auto detected ',
-        ('public host address ', 'bold'),
-        'is ',
-        (host, 'bold'),
-        ', is it correct?'
+        ('Auto detected ', STYLE_REGULAR),
+        ('public host address ', STYLE_VALUE),
+        ('is ', STYLE_REGULAR),
+        (host, STYLE_VALUE),
+        (', is it correct?', STYLE_REGULAR)
     ))
 
 
 def _confirm_config_rewriting() -> bool:
     return Confirm.ask(Text.assemble(
-        ('ATTENTION!!! ', 'yellow'),
-        'Xray config file already exists, are you sure to overwrite it?'
+        ('ATTENTION!!! ', STYLE_WARN),
+        ('Xray config file ', STYLE_REGULAR),
+        (' is already exists', STYLE_WARN),
+        (', are you sure to overwrite it?', STYLE_REGULAR)
     ))
 
 
