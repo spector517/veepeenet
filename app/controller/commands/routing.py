@@ -29,6 +29,16 @@ from app.defaults import (
     STYLE_ACCENT_DOWN,
     STYLE_ACCENT_NEUTRAL,
     STYLE_VALUE,
+    EXIT_ROUTING_ERROR,
+    EXIT_ROUTING_OUTBOUND_NOT_FOUND,
+    EXIT_ROUTING_NO_CONDITIONS,
+    EXIT_ROUTING_INVALID_PROTOCOLS,
+    EXIT_ROUTING_INVALID_PORTS,
+    EXIT_ROUTING_RULE_EXISTS,
+    EXIT_ROUTING_RULE_NOT_FOUND,
+    EXIT_ROUTING_RULE_SAME_VALUE,
+    EXIT_ROUTING_NO_RULES,
+    EXIT_ROUTING_STRATEGY_SAME,
 )
 from app.model.routing import Routing
 from app.model.types import RuleProtocolType, RoutingDomainStrategyType
@@ -38,7 +48,7 @@ from app.view import RoutingView, RuleView
 
 
 @routing.command(help='Show routing settings', name='list')
-@error_handler(default_message='Error showing routing settings', default_code=50)
+@error_handler(default_message='Error showing routing settings', default_code=EXIT_ROUTING_ERROR)
 def show(
         json: Annotated[bool, Option(help='Show JSON formatted info')] = False,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
@@ -71,7 +81,7 @@ def show(
 
 
 @routing.command(help='Add rule to service')
-@error_handler(default_message='Error adding rule to service', default_code=50)
+@error_handler(default_message='Error adding rule to service', default_code=EXIT_ROUTING_ERROR)
 def add_rule(
         name: Annotated[str, Argument(help='Rule name')],
         outbound: Annotated[
@@ -103,12 +113,12 @@ def add_rule(
             ('Outbound ', STYLE_REGULAR),
             (outbound, STYLE_ACCENT_NEUTRAL),
             (' not found', STYLE_REGULAR)))
-        raise Exit(code=51)
+        raise Exit(code=EXIT_ROUTING_OUTBOUND_NOT_FOUND)
     if not (domain or ip or ports or protocol):
         print_error(Text(
             'At least one condition (domain, ip, ports, protocol) must be specified',
             STYLE_REGULAR))
-        raise Exit(code=52)
+        raise Exit(code=EXIT_ROUTING_NO_CONDITIONS)
     if not _is_correct_protocols(protocol):
         allowed_protocols = ', '.join(get_args(RuleProtocolType))
         print_error(Text.assemble(
@@ -116,12 +126,12 @@ def add_rule(
             (','.join(protocol), STYLE_ACCENT_NEUTRAL),
             ('. Allowed values: ', STYLE_REGULAR),
             (allowed_protocols, STYLE_VALUE)))
-        raise Exit(code=53)
+        raise Exit(code=EXIT_ROUTING_INVALID_PROTOCOLS)
     if not _is_correct_ports_format(ports):
         print_error(Text.assemble(
             ('Invalid ports format: ', STYLE_REGULAR),
             (ports, STYLE_ACCENT_NEUTRAL)))
-        raise Exit(code=54)
+        raise Exit(code=EXIT_ROUTING_INVALID_PORTS)
 
     all_rules = _get_existing_rules(xray_config)
     if _find_rule_by_name(all_rules, name):
@@ -129,7 +139,7 @@ def add_rule(
             ('Rule ', STYLE_REGULAR),
             (name, STYLE_ACCENT_NEUTRAL),
             (' already exists', STYLE_REGULAR)))
-        raise Exit(code=55)
+        raise Exit(code=EXIT_ROUTING_RULE_EXISTS)
 
     new_rule = RuleData(name=name, outbound_name=outbound, protocols=protocol,
                         ports=ports, domains=domain, ips=ip,
@@ -146,7 +156,7 @@ def add_rule(
 
 
 @routing.command(help='Remove rule from service')
-@error_handler(default_message='Error removing rule from service', default_code=50)
+@error_handler(default_message='Error removing rule from service', default_code=EXIT_ROUTING_ERROR)
 def remove_rule(
         name: Annotated[str, Argument(help='Rule name', autocompletion=complete_route_name)],
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
@@ -161,7 +171,7 @@ def remove_rule(
             ('Rule ', STYLE_REGULAR),
             (name, STYLE_ACCENT_NEUTRAL),
             (' not found', STYLE_REGULAR)))
-        raise Exit(code=56)
+        raise Exit(code=EXIT_ROUTING_RULE_NOT_FOUND)
 
     all_rules.remove(rule_to_delete)
 
@@ -190,7 +200,7 @@ def rename_rule(
             ('Rule ', STYLE_REGULAR),
             (name, STYLE_ACCENT_NEUTRAL),
             (' not found', STYLE_REGULAR)))
-        raise Exit(code=56)
+        raise Exit(code=EXIT_ROUTING_RULE_NOT_FOUND)
 
     rule_to_rename.name = new_name
 
@@ -203,7 +213,7 @@ def rename_rule(
 
 
 @routing.command(help='Change rule priority', name='set-priority')
-@error_handler(default_message='Error changing rule priority', default_code=50)
+@error_handler(default_message='Error changing rule priority', default_code=EXIT_ROUTING_ERROR)
 def set_rule_priority(
         name: Annotated[str, Argument(help='Rule name', autocompletion=complete_route_name)],
         priority: Annotated[int, Option(help='New priority value (lower = higher priority)')],
@@ -219,7 +229,7 @@ def set_rule_priority(
             ('Rule ', STYLE_REGULAR),
             (name, STYLE_ACCENT_NEUTRAL),
             (' not found', STYLE_REGULAR)))
-        raise Exit(code=56)
+        raise Exit(code=EXIT_ROUTING_RULE_NOT_FOUND)
 
     if rule_to_update.priority == priority:
         print_error(Text.assemble(
@@ -227,7 +237,7 @@ def set_rule_priority(
             (name, STYLE_ACCENT_NEUTRAL),
             (' already has priority ', STYLE_REGULAR),
             (str(priority), STYLE_VALUE)))
-        raise Exit(code=57)
+        raise Exit(code=EXIT_ROUTING_RULE_SAME_VALUE)
     rule_to_update.priority = priority
 
     _save_rules(xray_config, all_rules)
@@ -239,7 +249,7 @@ def set_rule_priority(
 
 
 @routing.command(help='Change rule conditions')
-@error_handler(default_message='Error changing rule conditions', default_code=50)
+@error_handler(default_message='Error changing rule conditions', default_code=EXIT_ROUTING_ERROR)
 def change_rule(
         name: Annotated[str, Argument(help='Rule name', autocompletion=complete_route_name)],
         action: Annotated[
@@ -266,7 +276,7 @@ def change_rule(
         print_error(Text(
             'At least one condition (domain, ip, ports, protocol) must be specified',
             STYLE_REGULAR))
-        raise Exit(code=52)
+        raise Exit(code=EXIT_ROUTING_NO_CONDITIONS)
     if not _is_correct_protocols(protocol):
         allowed_protocols = ', '.join(get_args(RuleProtocolType))
         print_error(Text.assemble(
@@ -274,12 +284,12 @@ def change_rule(
             (','.join(protocol), STYLE_ACCENT_NEUTRAL),
             ('. Allowed values: ', STYLE_REGULAR),
             (allowed_protocols, STYLE_VALUE)))
-        raise Exit(code=53)
+        raise Exit(code=EXIT_ROUTING_INVALID_PROTOCOLS)
     if ports and not _is_correct_ports_format(ports):
         print_error(Text.assemble(
             ('Invalid ports format: ', STYLE_REGULAR),
             (ports, STYLE_ACCENT_NEUTRAL)))
-        raise Exit(code=54)
+        raise Exit(code=EXIT_ROUTING_INVALID_PORTS)
 
     all_rules = _get_existing_rules(xray_config)
     rule_to_change = _find_rule_by_name(all_rules, name)
@@ -289,7 +299,7 @@ def change_rule(
             ('Rule ', STYLE_REGULAR),
             (name, STYLE_ACCENT_NEUTRAL),
             (' not found', STYLE_REGULAR)))
-        raise Exit(code=56)
+        raise Exit(code=EXIT_ROUTING_RULE_NOT_FOUND)
 
     if action == 'put':
         _add_conditions(rule_to_change, domain, ip, ports, protocol)
@@ -304,7 +314,7 @@ def change_rule(
 
 
 @routing.command(help='Set domain strategy')
-@error_handler(default_message='Error setting domain strategy', default_code=50)
+@error_handler(default_message='Error setting domain strategy', default_code=EXIT_ROUTING_ERROR)
 def set_domain_strategy(
         strategy: Annotated[RoutingDomainStrategyType, Argument(help='domain strategy value')],
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
@@ -314,14 +324,14 @@ def set_domain_strategy(
     if not xray_config.routing or not xray_config.routing.rules:
         print_error(Text(
             'At least one rule must be defined to set domain strategy', STYLE_REGULAR))
-        raise Exit(code=58)
+        raise Exit(code=EXIT_ROUTING_NO_RULES)
 
     current_strategy = _get_domain_strategy(xray_config)
     if current_strategy == strategy:
         print_error(Text.assemble(
             ('Domain strategy is already set to ', STYLE_REGULAR),
             (strategy, STYLE_ACCENT_NEUTRAL)))
-        raise Exit(code=59)
+        raise Exit(code=EXIT_ROUTING_STRATEGY_SAME)
 
     xray_config.routing.domain_strategy = strategy
     save_config(xray_config, XRAY_CONFIG_PATH)
@@ -331,7 +341,7 @@ def set_domain_strategy(
 
 
 @routing.command(help='Change rule outbound', name='change-outbound')
-@error_handler(default_message='Error changing rule outbound', default_code=50)
+@error_handler(default_message='Error changing rule outbound', default_code=EXIT_ROUTING_ERROR)
 def change_outbound(
         name: Annotated[str, Argument(help='Rule name', autocompletion=complete_route_name)],
         outbound: Annotated[
@@ -350,14 +360,14 @@ def change_outbound(
             ('Rule ', STYLE_REGULAR),
             (name, STYLE_ACCENT_NEUTRAL),
             (' not found', STYLE_REGULAR)))
-        raise Exit(code=56)
+        raise Exit(code=EXIT_ROUTING_RULE_NOT_FOUND)
 
     if not _is_outbound_exists(xray_config, outbound):
         print_error(Text.assemble(
             ('Outbound ', STYLE_REGULAR),
             (outbound, STYLE_ACCENT_NEUTRAL),
             (' not found', STYLE_REGULAR)))
-        raise Exit(code=51)
+        raise Exit(code=EXIT_ROUTING_OUTBOUND_NOT_FOUND)
 
     if rule_to_change.outbound_name == outbound:
         print_error(Text.assemble(
@@ -365,7 +375,7 @@ def change_outbound(
             (name, STYLE_ACCENT_NEUTRAL),
             (' already uses outbound ', STYLE_REGULAR),
             (outbound, STYLE_ACCENT_NEUTRAL)))
-        raise Exit(code=57)
+        raise Exit(code=EXIT_ROUTING_RULE_SAME_VALUE)
 
     rule_to_change.outbound_name = outbound
 

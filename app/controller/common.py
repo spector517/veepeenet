@@ -21,6 +21,8 @@ from app.defaults import (
     XRAY_CONFIG_PATH,
     STATE_PENDING_TIMEOUT,
     STYLE_REGULAR, STYLE_VALUE, STYLE_WARN, STYLE_OK,
+    EXIT_NOT_ROOT,
+    EXIT_NO_CONFIG,
 )
 from app.model.routing import Rule
 from app.model.types import RuleProtocolType
@@ -183,13 +185,13 @@ def check_distrib(
 def check_root() -> None:
     if getuid() != 0:
         print_error(Text('This command must be run as root', STYLE_REGULAR))
-        raise Exit(code=1)
+        raise Exit(code=EXIT_NOT_ROOT)
 
 
 def check_xray_config(xray_config_path: Path = XRAY_CONFIG_PATH) -> None:
     if not xray_config_path.exists():
         print_error('Xray config file not found, please run the `xrayctl config` command first')
-        raise Exit(code=2)
+        raise Exit(code=EXIT_NO_CONFIG)
 
 
 def load_config(xray_config_path: Path) -> Xray:

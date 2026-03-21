@@ -17,7 +17,14 @@ from app.controller.common import (
     print_error,
     ClientData, stdout_console,
 )
-from app.defaults import XRAY_CONFIG_PATH, STYLE_REGULAR
+from app.defaults import (
+    XRAY_CONFIG_PATH,
+    STYLE_REGULAR,
+    EXIT_STATE_ERROR,
+    EXIT_STATE_START_FAILED,
+    EXIT_STATE_STOP_FAILED,
+    EXIT_STATE_RESTART_FAILED,
+)
 from app.model.vless_outbound import VlessOutbound
 from app.utils import (
     detect_veepeenet_versions,
@@ -30,7 +37,7 @@ from app.view import ServerView, OutboundView
 
 
 @app.command(help='Show service status')
-@error_handler(default_message='Error retrieving service status', default_code=30)
+@error_handler(default_message='Error retrieving service status', default_code=EXIT_STATE_ERROR)
 def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = False,
            _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_xray_config()
@@ -78,7 +85,7 @@ def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = Fals
 
 
 @app.command(help='Start service')
-@error_handler(default_message='Error starting service', default_code=30)
+@error_handler(default_message='Error starting service', default_code=EXIT_STATE_ERROR)
 def start(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_root()
     check_xray_config()
@@ -88,11 +95,11 @@ def start(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> No
         start_service()
     except RuntimeError as e:
         print_error(Text('Failed to start service', STYLE_REGULAR))
-        raise Exit(code=31) from e
+        raise Exit(code=EXIT_STATE_START_FAILED) from e
 
 
 @app.command(help='Stop service')
-@error_handler(default_message='Error stopping service', default_code=30)
+@error_handler(default_message='Error stopping service', default_code=EXIT_STATE_ERROR)
 def stop(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_root()
     check_xray_config()
@@ -102,11 +109,11 @@ def stop(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> Non
         stop_service()
     except RuntimeError as e:
         print_error(Text('Failed to stop service', STYLE_REGULAR))
-        raise Exit(code=32) from e
+        raise Exit(code=EXIT_STATE_STOP_FAILED) from e
 
 
 @app.command(help='Restart service')
-@error_handler(default_message='Error restarting service',default_code=30)
+@error_handler(default_message='Error restarting service', default_code=EXIT_STATE_ERROR)
 def restart(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_root()
     check_xray_config()
@@ -116,4 +123,4 @@ def restart(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> 
         restart_service()
     except RuntimeError as e:
         print_error(Text('Failed to restart service', STYLE_REGULAR))
-        raise Exit(code=33) from e
+        raise Exit(code=EXIT_STATE_RESTART_FAILED) from e

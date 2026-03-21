@@ -36,6 +36,11 @@ from app.defaults import (
     STYLE_REGULAR,
     STYLE_OK,
     STYLE_VALUE,
+    EXIT_CONFIGURE_ERROR,
+    EXIT_CONFIGURE_HOST_NOT_DETECTED,
+    EXIT_CONFIGURE_HOST_REJECTED,
+    EXIT_CONFIGURE_NO_RELEASES,
+    EXIT_CONFIGURE_VERSION_NOT_FOUND,
 )
 from app.model.veepeenet import VeePeeNET
 from app.model.vless_inbound import (
@@ -58,7 +63,8 @@ from app.view import XrayReleasesView
 
 
 @app.command(help='Configure inbound VLESS Reality Xray service')
-@error_handler(default_message='Error during configuration service', default_code=10)
+@error_handler(default_message='Error during configuration service',
+               default_code=EXIT_CONFIGURE_ERROR)
 def config(
         host: Annotated[str | None, Option(
             help=('Public interface of server.'
@@ -103,7 +109,8 @@ def config(
 
 
 @app.command(help='Update geodata (geoip.dat and geosite.dat) for Xray')
-@error_handler(default_message='Error during geodata updating', default_code=10)
+@error_handler(default_message='Error during geodata updating',
+               default_code=EXIT_CONFIGURE_ERROR)
 def update_geodata() -> None:
     check_root()
 
@@ -115,7 +122,8 @@ def update_geodata() -> None:
 
 
 @app.command(help='Update Xray distribution to a selected or latest version')
-@error_handler(default_message='Error during Xray distribution update', default_code=10)
+@error_handler(default_message='Error during Xray distribution update',
+               default_code=EXIT_CONFIGURE_ERROR)
 def update_xray(
         version: Annotated[
             str | None,
@@ -142,7 +150,7 @@ def _print_available_releases(limit: int) -> None:
         releases = get_xray_github_releases(limit=limit)
     if not releases:
         print_error(Text('No Xray releases found', STYLE_REGULAR))
-        raise Exit(code=13)
+        raise Exit(code=EXIT_CONFIGURE_NO_RELEASES)
     stdout_console.print(XrayReleasesView(releases=releases).rich_repr())
 
 
@@ -157,14 +165,14 @@ def _select_version(version: str | None, limit: int) -> str:
                 ('Version ', STYLE_REGULAR),
                 (normalized, STYLE_VALUE),
                 (' not found in available releases', STYLE_REGULAR)))
-            raise Exit(code=14)
+            raise Exit(code=EXIT_CONFIGURE_VERSION_NOT_FOUND)
         return normalized
 
     with stdout_console.status(Text('Fetching available Xray releases from GitHub', STYLE_REGULAR)):
         releases = get_xray_github_releases(limit=limit)
     if not releases:
         print_error('No Xray releases found')
-        raise Exit(code=13)
+        raise Exit(code=EXIT_CONFIGURE_NO_RELEASES)
 
     stdout_console.print(XrayReleasesView(releases=releases).rich_repr())
 
@@ -221,14 +229,14 @@ def _detect_host_or_error() -> str:
             ('. Please specify it manually via ', STYLE_REGULAR),
             ('--host', STYLE_VALUE),
             ('option', STYLE_REGULAR)))
-        raise Exit(code=11)
+        raise Exit(code=EXIT_CONFIGURE_HOST_NOT_DETECTED)
     detect_host_address_answer = _confirm_host_detection(host)
     if not detect_host_address_answer:
         print_error(Text.assemble(
             ('Please specify it manually via ', STYLE_REGULAR),
             ('--host', STYLE_VALUE),
             ('option', STYLE_REGULAR)))
-        raise Exit(code=12)
+        raise Exit(code=EXIT_CONFIGURE_HOST_REJECTED)
     return host
 
 

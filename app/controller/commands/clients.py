@@ -25,7 +25,8 @@ from app.defaults import (
     STYLE_REGULAR,
     STYLE_WARN,
     STYLE_ACCENT_UP,
-    STYLE_ACCENT_DOWN
+    STYLE_ACCENT_DOWN,
+    EXIT_CLIENTS_ERROR,
 )
 from app.utils import (
     get_new_items,
@@ -37,7 +38,7 @@ from app.view import ClientsView, ClientView
 
 
 @clients.command(help='Register clients to service')
-@error_handler(default_message='Error adding clients to service', default_code=20)
+@error_handler(default_message='Error adding clients to service', default_code=EXIT_CLIENTS_ERROR)
 def add(client_names: Annotated[list[str],
         Argument(help='List of new client of server')],
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
@@ -47,7 +48,8 @@ def add(client_names: Annotated[list[str],
 
 
 @clients.command(help='Remove clients from service')
-@error_handler(default_message='Error removing clients from service', default_code=20)
+@error_handler(default_message='Error removing clients from service',
+               default_code=EXIT_CLIENTS_ERROR)
 def remove(client_names: Annotated[list[str],
         Argument(help='List of clients to remove from Xray VLESS Reality server',
                  autocompletion=complete_client_name)],
@@ -58,7 +60,7 @@ def remove(client_names: Annotated[list[str],
 
 
 @clients.command(help='List clients of service', name='list')
-@error_handler(default_message='Error listing clients of service', default_code=20)
+@error_handler(default_message='Error listing clients of service', default_code=EXIT_CLIENTS_ERROR)
 def show(
         json: Annotated[bool, Option(help='Show JSON formatted info')] = False,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
