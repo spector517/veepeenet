@@ -214,7 +214,7 @@ def _install_xray_version(selected_version: str) -> None:
     stdout_console.print(Text.assemble(
         Text('Xray ', STYLE_REGULAR),
         (selected_version, STYLE_VALUE),
-        (' installed successfully', STYLE_REGULAR)))
+        (' installed', STYLE_REGULAR)))
 
     if was_running:
         start_service()

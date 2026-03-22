@@ -59,7 +59,7 @@ class OutboundView(BaseModel):
         if self.address:
             return Text.assemble(
                 (self.name, STYLE_VALUE),
-                (' (', ''),
+                ('(', ''),
                 (self.address, STYLE_URL),
                 (')', ''))
         return Text(self.name, STYLE_VALUE)
@@ -72,6 +72,7 @@ class ServerView(BaseModel):
     server_status: Literal['running', 'stopped']
     enabled: bool
     uptime: str | None = Field(default=None)
+    restart_required: bool
     server_host: str
     server_port: int
     reality_address: str
@@ -113,13 +114,23 @@ class ServerView(BaseModel):
             row(Text('outbounds: ', STYLE_REGULAR), outbounds_text),
         ])
 
+        border_style: str
+        if self.server_status == 'running':
+            border_style = STYLE_WARN if self.restart_required else STYLE_OK
+        else:
+            border_style = STYLE_DIM
+
+        title = Text('Xray server information')
+        if self.restart_required:
+            title.append(Text(' (configuration changes detected, restart required)'))
+
         return Panel(
             content,
-            title='Xray server information',
+            title=title,
             subtitle=f'VeePeeNET {self.veepeenet_version}',
             title_align='left',
             subtitle_align='right',
-            border_style=STYLE_OK if self.server_status == 'running' else STYLE_WARN,
+            border_style=border_style,
         )
 
 
@@ -161,7 +172,6 @@ class RuleView(BaseModel):
             content,
             title=title,
             title_align='left',
-            border_style=STYLE_DIM,
         )
 
 
@@ -174,10 +184,10 @@ class RoutingView(BaseModel):
             return Group(Text('No routing rules configured', STYLE_WARN))
 
         content_parts: list[Group | Text | Panel] = [
-            Text.assemble(
+            Panel(Text.assemble(
                 ('Domain strategy: ', STYLE_REGULAR),
                 (self.domain_strategy, STYLE_VALUE)
-            )
+            ))
         ]
 
         if self.rules:

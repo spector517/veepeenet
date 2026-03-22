@@ -12,6 +12,7 @@ VLESS_OUTBOUND_SPIDER_X = '/'
 VLESS_OUTBOUND_FINGERPRINT = 'chrome'
 
 XRAY_CONFIG_PATH = Path('/usr/local/etc/xray/config.json')
+XRAY_CONFIG_BACKUP_PATH = Path('/usr/local/etc/xray/config.json.bak')
 XRAY_BINARY_PATH = Path('/usr/local/bin/xray')
 XRAY_SERVICE_UNIT_PATH = Path('/etc/systemd/system/xray.service')
 XRAY_ERROR_LOG_PATH = Path('/var/log/xray/error.log')

@@ -99,7 +99,7 @@ def _add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) ->
     if already_existing_names:
         skipped_names = Text(', ', STYLE_REGULAR).join(
             [Text(name, STYLE_ACCENT_NEUTRAL) for name in already_existing_names])
-        stdout_console.print_json(Text.assemble(
+        stdout_console.print(Text.assemble(
             ('These clients ', STYLE_REGULAR),
             ('already exist ', STYLE_WARN),
             ('and will be skipped: ', STYLE_REGULAR),

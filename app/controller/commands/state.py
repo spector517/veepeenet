@@ -19,6 +19,7 @@ from app.controller.common import (
 )
 from app.defaults import (
     XRAY_CONFIG_PATH,
+    XRAY_CONFIG_BACKUP_PATH,
     STYLE_REGULAR,
     EXIT_STATE_ERROR,
     EXIT_STATE_START_FAILED,
@@ -31,7 +32,8 @@ from app.utils import (
     get_xray_distrib_version,
     is_xray_service_running,
     is_xray_service_enabled,
-    get_xray_service_uptime
+    get_xray_service_uptime,
+    is_files_content_same,
 )
 from app.view import ServerView, OutboundView
 
@@ -70,6 +72,7 @@ def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = Fals
         server_status='running' if running else 'stopped',
         enabled=is_xray_service_enabled(),
         uptime=get_xray_service_uptime() if running else None,
+        restart_required=not is_files_content_same(XRAY_CONFIG_PATH, XRAY_CONFIG_BACKUP_PATH),
         server_host=xray_config.veepeenet.host,
         server_port=inbound.port,
         reality_address=inbound.stream_settings.reality_settings.dest,

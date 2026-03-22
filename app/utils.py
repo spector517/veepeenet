@@ -7,6 +7,7 @@ from tempfile import NamedTemporaryFile
 from typing import Literal, TypeVar
 from urllib.parse import quote_plus as safe_url_encode
 from zipfile import ZipFile
+from filecmp import cmp as compare_files
 
 from requests import get as get_request
 
@@ -113,15 +114,19 @@ def get_xray_service_uptime() -> str | None:
 
 
 def stop_xray_service() -> None:
-    run_command('systemctl stop xray -q', check=True)
+    run_command('systemctl stop xray -q')
+
+
+def reset_failed_xray_service() -> None:
+    run_command('systemctl reset-failed xray')
 
 
 def start_xray_service() -> None:
-    run_command('systemctl start xray -q', check=True)
+    run_command('systemctl start xray -q')
 
 
 def restart_xray_service() -> None:
-    run_command('systemctl restart xray -q', check=True)
+    run_command('systemctl restart xray -q')
 
 
 def is_xray_service_enabled() -> bool:
@@ -204,6 +209,14 @@ def write_text_file(file_path: Path, text: str, mode: int = 0) -> None:
         file_path.chmod(mode)
 
 
+def is_files_content_same(path1: Path | None, path2: Path | None) -> bool:
+    if path1 is None or not path1.exists():
+        return False
+    if path2 is None or not path2.exists():
+        return False
+    return compare_files(path1, path2)
+
+
 def remove_duplicates(source: list[_T]) -> list[_T]:
     return list(dict.fromkeys(source))
 
@@ -252,8 +265,7 @@ def validate_xray_config(config_path: Path) -> tuple[bool, str]:
     return False, result[2] or result[1]
 
 
-def backup_config(config_path: Path) -> Path:
-    backup_path = config_path.with_suffix('.json.bak')
+def backup_config(config_path: Path, backup_path: Path) -> Path:
     copy2(config_path, backup_path)
     return backup_path
 

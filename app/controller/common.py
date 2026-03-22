@@ -3,7 +3,7 @@ from functools import wraps
 from os import getuid
 from pathlib import Path
 from time import sleep
-from typing import Self, Callable, Any
+from typing import Self, Callable, Any, Literal
 from urllib.parse import urljoin
 from uuid import uuid4, uuid5, UUID
 
@@ -19,6 +19,7 @@ from app.defaults import (
     XRAY_DOWNLOAD_URL,
     XRAY_ERROR_LOG_PATH,
     XRAY_CONFIG_PATH,
+    XRAY_CONFIG_BACKUP_PATH,
     STATE_PENDING_TIMEOUT,
     STYLE_REGULAR, STYLE_VALUE, STYLE_WARN, STYLE_OK,
     EXIT_NOT_ROOT,
@@ -42,6 +43,7 @@ from app.utils import (
     enable_xray_service,
     start_xray_service,
     restart_xray_service,
+    reset_failed_xray_service,
     validate_xray_config,
     backup_config,
     restore_config,
@@ -166,7 +168,7 @@ def check_distrib(
         stdout_console.print(Text.assemble(
             ('Xray distribution ', STYLE_OK),
             (versions.xray_version, STYLE_VALUE),
-            (' installed successfully', STYLE_OK)
+            (' installed', STYLE_OK)
         ))
 
     if not is_xray_service_installed(unit_path):
@@ -221,7 +223,6 @@ def start_service() -> None:
         return
 
     _test_config_or_fail()
-    backup_path = backup_config(XRAY_CONFIG_PATH) if XRAY_CONFIG_PATH.exists() else None
 
     with stdout_console.status(Text('Starting service', STYLE_REGULAR)):
         start_xray_service()
@@ -229,9 +230,10 @@ def start_service() -> None:
         if not is_xray_service_enabled():
             enable_xray_service()
     if is_xray_service_running():
+        backup_config(XRAY_CONFIG_PATH, XRAY_CONFIG_BACKUP_PATH)
         stdout_console.print(Text('Service started', STYLE_OK))
     else:
-        _handle_service_failure('start', backup_path, False)
+        _handle_service_failure('start', False)
 
 
 def stop_service() -> None:
@@ -253,7 +255,6 @@ def stop_service() -> None:
 def restart_service() -> None:
     _test_config_or_fail()
     was_running = is_xray_service_running()
-    backup_path = backup_config(XRAY_CONFIG_PATH) if XRAY_CONFIG_PATH.exists() else None
 
     with stdout_console.status(Text('Restarting service', STYLE_REGULAR)):
         restart_xray_service()
@@ -261,9 +262,10 @@ def restart_service() -> None:
     if is_xray_service_running():
         if not is_xray_service_enabled():
             enable_xray_service()
+        backup_config(XRAY_CONFIG_PATH, XRAY_CONFIG_BACKUP_PATH)
         stdout_console.print(Text('Service restarted', STYLE_OK))
     else:
-        _handle_service_failure('restart', backup_path, was_running)
+        _handle_service_failure('restart', was_running)
 
 
 def _test_config_or_fail() -> None:
@@ -275,8 +277,7 @@ def _test_config_or_fail() -> None:
         raise RuntimeError(f'Xray config test failed: {output}')
 
 
-def _handle_service_failure(
-        action: str, backup_path: Path | None, was_running: bool) -> None:
+def _handle_service_failure(action: Literal['start', 'restart'], was_running: bool) -> None:
     journal = get_xray_service_journal()
     if journal:
         stderr_console.print(Panel(
@@ -284,16 +285,22 @@ def _handle_service_failure(
             title='Service journal',
             title_align='left',
             border_style='red'))
-    if backup_path and backup_path.exists():
-        restore_config(XRAY_CONFIG_PATH, backup_path)
-        stderr_console.print(Text('Config restored from backup', STYLE_WARN))
+    if XRAY_CONFIG_BACKUP_PATH.exists():
+        restore_config(XRAY_CONFIG_PATH, XRAY_CONFIG_BACKUP_PATH)
+        stderr_console.print(Text('Configuration restored from backup', STYLE_WARN))
         if was_running:
             with stdout_console.status(
                     Text('Starting service from restored config', STYLE_REGULAR)):
+                reset_failed_xray_service()
                 start_xray_service()
                 sleep(STATE_PENDING_TIMEOUT)
             if is_xray_service_running():
+                backup_config(XRAY_CONFIG_PATH, XRAY_CONFIG_BACKUP_PATH)
                 stdout_console.print(Text.assemble(
-                    ('Service started', STYLE_OK),
-                    (' from restored config', STYLE_REGULAR)))
+                    ('Service ', STYLE_WARN),
+                    ('started', STYLE_OK),
+                    (' with restored configuration', STYLE_WARN)))
+                return
+    else:
+        stderr_console.print(Text('No backup available to restore', STYLE_WARN))
     raise RuntimeError(f'Failed to {action} service')
