@@ -116,9 +116,17 @@ Updates `geoip.dat` and `geosite.dat` files used for geo-based routing rules.
 
 ### Update Xray distribution
 ```
-sudo xrayctl update-xray
+sudo xrayctl update-xray [OPTIONS]
 ```
 Updates Xray distribution to a selected or latest version. Shows a list of available releases from GitHub and allows you to choose which version to install.
+
+#### Options
+
+| Option    | Type    | Description                                         |
+|-----------|---------|-----------------------------------------------------|
+| --version | TEXT    | Target version (e.g. v1.8.24 or 1.8.24)             |
+| --list    | FLAG    | List available versions and exit                    |
+| --limit   | INTEGER | Number of versions to show with --list [default: 9] |
 
 ### Show Xray service status
 ```
@@ -136,16 +144,16 @@ sudo xrayctl status [OPTIONS]
 sudo xrayctl status
 ```
 ```
-=========== VeePeeNET v2.1.0 build 0 ===========
-Xray server info:
-  version: v25.12.8
-  status: Stopped
-  address: example.com:443
-  reality_address: microsoft.com:443
-  reality_names: microsoft.com
-  clients: Server has no clients
-  outbounds: freedom, blackhole
-=======================================================
+┌ Xray server information ──────────────────────────┐
+│ status: stopped (disabled)                        │
+│ uptime: n/a                                       │
+│ xray_version: v25.12.8                            │
+│ address: example.com:443                          │
+│ reality_address: microsoft.com:443                │
+│ reality_names: microsoft.com                      │
+│ clients: Server has no clients                    │
+│ outbounds: freedom, blackhole                     │
+└───────────────────────────────VeePeeNET 2.3.0─────┘
 ```
 
 ```commandline
@@ -153,16 +161,23 @@ sudo xrayctl status --json
 ```
 ```json
 {
-  "veepeenet_version": "v2.1.0",
+  "veepeenet_version": "2.3.0",
   "veepeenet_build": 0,
   "xray_version": "v25.12.8",
-  "server_status": "Stopped",
+  "server_status": "stopped",
+  "uptime": null,
+  "enabled": false,
+  "restart_required": false,
   "server_host": "example.com",
   "server_port": 443,
   "reality_address": "microsoft.com:443",
   "reality_names": ["microsoft.com"],
   "clients": [],
-  "outbounds": ["freedom", "blackhole"]
+  "outbounds": [
+    {"name": "freedom"},
+    {"name": "blackhole"},
+    {"name": "dns"}
+  ]
 }
 ```
 
@@ -217,7 +232,7 @@ sudo xrayctl outbounds add NAME [OPTIONS]
 | --uuid        | TEXT    | VLESS client identifier **(required)**                  |
 | --sni         | TEXT    | Server name of target server **(required)**             |
 | --short-id    | TEXT    | One of short_id of target server **(required)**         |
-| --password    | TEXT    | Public key of target server [default: ""]               |
+| --password    | TEXT    | Public key of target server **(required)**              |
 | --spider-x    | TEXT    | Initial path and parameters for the spider [default: /] |
 | --port        | INTEGER | VLESS outbound port [default: 443]                      |
 | --fingerprint | TEXT    | Fingerprint of target server [default: chrome]          |
@@ -252,6 +267,12 @@ sudo xrayctl outbounds change NAME [OPTIONS]
 | --port        | INTEGER | VLESS outbound port                           |
 | --new-name    | TEXT    | New outbound name                             |
 
+#### Set default outbound
+```commandline
+sudo xrayctl outbounds set-default NAME
+```
+Moves the specified outbound to the first position, making it the default.
+
 ---
 
 ### Routing management
@@ -270,18 +291,18 @@ sudo xrayctl routing list [OPTIONS]
 xrayctl routing list
 ```
 ```
-==================== Xray routing  ====================
-  Domain strategy: AsIs
--------------------------------------------------------
-    #10 block-ads: --> blackhole
-      Domains: geosite:category-ads-all
--------------------------------------------------------
--------------------------------------------------------
-    #20 bypass-ru: --> freedom
-      Domains: geosite:category-gov-ru
-      IPs: geoip:ru
--------------------------------------------------------
-=======================================================
+┌──────────────────────────────────────────┐
+│ Domain strategy: AsIs                    │
+└──────────────────────────────────────────┘
+┌ Rule #10 block-ads --> blackhole ────────┐
+│ name: block-ads                          │
+│ domains: geosite:category-ads-all        │
+└──────────────────────────────────────────┘
+┌ Rule #20 bypass-ru --> freedom ──────────┐
+│ name: bypass-ru                          │
+│ domains: geosite:category-gov-ru         │
+│ ips: geoip:ru                            │
+└──────────────────────────────────────────┘
 ```
 
 #### Add routing rule
@@ -334,6 +355,12 @@ Where `ACTION` is either `put` (add values) or `del` (remove values).
 sudo xrayctl routing set-domain-strategy STRATEGY
 ```
 Where `STRATEGY` is one of the available routing domain strategy values (e.g. `AsIs`, `IPIfNonMatch`, `IPOnDemand`).
+
+#### Change rule outbound
+```commandline
+sudo xrayctl routing change-outbound NAME --outbound OUTBOUND_NAME
+```
+Changes the outbound to which the specified rule directs traffic.
 
 ## Removing
 
