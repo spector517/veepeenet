@@ -2,18 +2,25 @@
 
 ## Project Overview
 
-VeePeeNET is a CLI tool (`xrayctl`) for managing an [Xray](https://github.com/xtls/xray-core) VLESS Reality proxy server on Ubuntu. Python 3.12+, built with **Typer** (CLI), **Pydantic** (models), and **Rich** (terminal UI). Installed system-wide into a venv at `/usr/local/lib/veepeenet/`.
+VeePeeNET is a CLI tool (`xrayctl`) for managing an [Xray](https://github.com/xtls/xray-core) VLESS Reality proxy server on Ubuntu. Python 3.12+, built with **Typer** (CLI), **Pydantic** (models), **Rich** (terminal UI), **requests** (HTTP), and **xxhash** (short ID generation). Installed system-wide into a venv at `/usr/local/lib/veepeenet/`.
+
+**Entry points** (defined in `pyproject.toml`):
+- `xrayctl` → `app.main:typer_app` — main CLI
+- `xray-migrate-1-to-2` → `app.migration_1_2:main` — one-shot v1→v2 config migration
 
 ## Architecture
 
 ```
-app/cli.py          — Typer app + sub-typers (clients, routing, outbounds)
-app/main.py         — Entrypoint; imports all command modules to register them
-app/model/          — Pydantic models mirroring Xray JSON config structure
-app/controller/     — Command implementations + shared helpers
-app/view.py         — Pydantic view-models with rich_repr() for terminal output
-app/utils.py        — OS/network helpers (systemctl, file I/O, Xray binary ops)
-app/defaults.py     — Hardcoded paths and default values
+app/cli.py                    — Typer app + sub-typers (clients, routing, outbounds)
+app/main.py                   — Entrypoint; imports all command modules to register them
+app/model/                    — Pydantic models mirroring Xray JSON config structure
+app/controller/common.py      — Shared helpers (load/save config, ClientData, RuleData, error_handler)
+app/controller/completions.py — Shell autocompletion callbacks for client/route/outbound names
+app/controller/commands/      — Command implementations (one file per command group)
+app/view.py                   — Pydantic view-models with rich_repr() for terminal output
+app/utils.py                  — OS/network helpers (systemctl, file I/O, Xray binary ops)
+app/defaults.py               — Hardcoded paths, default values, style constants, exit codes
+app/migration_1_2.py          — Standalone v1→v2 config migration script
 ```
 
 **Data flow:** CLI command → `controller/commands/*.py` → loads Xray JSON config via `common.load_config()` → deserializes into `model/xray.Xray` (Pydantic) → mutates model → serializes back with `model_dump_json(by_alias=True, exclude_none=True, indent=2)` → writes to `/usr/local/etc/xray/config.json`.
@@ -31,7 +38,7 @@ app/defaults.py     — Hardcoded paths and default values
 
 - Every command function must be wrapped with `@error_handler(default_message=..., default_code=...)` for consistent error reporting.
 - Commands requiring root access call `check_root()` first; commands needing an existing config call `check_xray_config()`.
-- Client identity is encoded in email field format: `{name}.{short_id}@{host}` — parsed/built via `ClientData.from_model()` / `ClientData.to_model()`.
+- Client identity is encoded in email field format: `{name}.{short_id}@{host}` — parsed/built via `ClientData.from_model()` / `ClientData.to_model()`. Short IDs are generated via `xxhash.xxh64(name).hexdigest()`. Client UUIDs are deterministic: `uuid5(namespace, name)` where `namespace` is stored in the `veepeenet` config section.
 - Routing rule priority is encoded in the tag: `{name}.{priority}` — parsed/built via `RuleData`.
 
 ## Development
@@ -50,7 +57,7 @@ pylint app/
 python -m build
 ```
 
-Tests mock OS-level calls (`systemctl`, `xray` binary, file I/O) via `pytest-mock`. Test fixtures use JSON configs in `tests/resources/`. Each test file tests one module — naming: `test_{module}.py` or `tests/test_commands_{submodule}.py` for command modules.
+Tests mock OS-level calls (`systemctl`, `xray` binary, file I/O) via `pytest-mock`. Test fixtures use JSON configs in `tests/resources/`. Each test file tests one module — naming: `test_{module}.py` (e.g. `test_utils.py`, `test_controller.py`, `test_completions.py`).
 
 ## Key Files
 

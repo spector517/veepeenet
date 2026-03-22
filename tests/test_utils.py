@@ -30,6 +30,7 @@ from app.utils import (
     is_xray_service_installed,
     install_xray_service,
     stop_xray_service,
+    reset_failed_xray_service,
     start_xray_service,
     run_command,
     detect_veepeenet_versions,
@@ -39,6 +40,11 @@ from app.utils import (
     get_existing_items,
     set_value,
     get_xray_github_releases,
+    validate_xray_config,
+    backup_config,
+    restore_config,
+    get_xray_service_journal,
+    is_files_content_same,
 )
 
 
@@ -210,7 +216,7 @@ class TestRestartXrayService:
 
         restart_xray_service()
 
-        mock_run_command.assert_called_once_with('systemctl restart xray -q', check=True)
+        mock_run_command.assert_called_once_with('systemctl restart xray -q')
 
 
 class TestIsXrayServiceEnabled:
@@ -822,7 +828,7 @@ class TestStopXrayService:
 
         stop_xray_service()
 
-        mock_run_command.assert_called_once_with('systemctl stop xray -q', check=True)
+        mock_run_command.assert_called_once_with('systemctl stop xray -q')
 
 
 class TestStartXrayService:
@@ -832,7 +838,7 @@ class TestStartXrayService:
 
         start_xray_service()
 
-        mock_run_command.assert_called_once_with('systemctl start xray -q', check=True)
+        mock_run_command.assert_called_once_with('systemctl start xray -q')
 
 
 class TestRunCommand:
@@ -1446,3 +1452,216 @@ class TestGetXrayGithubReleases:
         get_xray_github_releases()
 
         mock_response.raise_for_status.assert_called_once()
+
+
+class TestValidateXrayConfig:
+
+    def test_success(self, mocker):
+        mocker.patch('app.utils.run_command', return_value=(0, 'Configuration OK', ''))
+        success, output = validate_xray_config(Path('/tmp/config.json'))
+        assert success is True
+        assert output == 'Configuration OK'
+
+    def test_failure(self, mocker):
+        mocker.patch('app.utils.run_command', return_value=(1, '', 'invalid config'))
+        success, output = validate_xray_config(Path('/tmp/config.json'))
+        assert success is False
+        assert output == 'invalid config'
+
+    def test_failure_stderr_empty_uses_stdout(self, mocker):
+        mocker.patch('app.utils.run_command', return_value=(1, 'stdout error', ''))
+        success, output = validate_xray_config(Path('/tmp/config.json'))
+        assert success is False
+        assert output == 'stdout error'
+
+    def test_calls_xray_run_test(self, mocker):
+        mock_cmd = mocker.patch('app.utils.run_command', return_value=(0, 'ok', ''))
+        validate_xray_config(Path('/etc/xray/config.json'))
+        mock_cmd.assert_called_once_with('xray run -test -config /etc/xray/config.json')
+
+
+class TestBackupConfig:
+
+    def test_backup_creates_bak_file(self, tmp_path):
+        config_path = tmp_path / 'config.json'
+        backup_config_path = tmp_path / 'config.json.bak'
+        config_path.write_text('{"test": true}')
+
+        backup_path = backup_config(config_path, backup_config_path)
+
+        assert backup_path == backup_config_path
+        assert backup_path.exists()
+        assert backup_path.read_text() == '{"test": true}'
+
+    def test_backup_overwrites_existing_bak(self, tmp_path):
+        config_path = tmp_path / 'config.json'
+        backup_config_path = tmp_path / 'config.json.bak'
+        bak_path = config_path.with_suffix('.json.bak')
+        bak_path.write_text('old backup')
+        config_path.write_text('new config')
+
+        backup_config(config_path, backup_config_path)
+
+        assert bak_path.read_text() == 'new config'
+
+
+class TestRestoreConfig:
+
+    def test_restore_overwrites_config_and_deletes_bak(self, tmp_path):
+        config_path = tmp_path / 'config.json'
+        bak_path = tmp_path / 'config.json.bak'
+        config_path.write_text('broken config')
+        bak_path.write_text('good config')
+
+        restore_config(config_path, bak_path)
+
+        assert config_path.read_text() == 'good config'
+        assert not bak_path.exists()
+
+
+class TestGetXrayServiceJournal:
+
+    def test_returns_journal_output(self, mocker):
+        mocker.patch('app.utils.run_command',
+                     return_value=(0, 'Jan 01 xray[123]: some log line', ''))
+        result = get_xray_service_journal(lines=10)
+        assert result == 'Jan 01 xray[123]: some log line'
+
+    def test_returns_none_on_empty_output(self, mocker):
+        mocker.patch('app.utils.run_command', return_value=(0, '', ''))
+        result = get_xray_service_journal()
+        assert result is None
+
+    def test_returns_none_on_failure(self, mocker):
+        mocker.patch('app.utils.run_command', return_value=(1, '', 'error'))
+        result = get_xray_service_journal()
+        assert result is None
+
+    def test_calls_journalctl_with_lines(self, mocker):
+        mock_cmd = mocker.patch('app.utils.run_command', return_value=(0, 'log', ''))
+        get_xray_service_journal(lines=5)
+        mock_cmd.assert_called_once_with('journalctl -u xray -n 5 --no-pager -q')
+
+
+class TestResetFailedXrayService:
+
+    def test_reset_failed_xray_service_calls_correct_command(self, mocker):
+        mock_run_command = mocker.patch('app.utils.run_command', return_value=(0, '', ''))
+
+        reset_failed_xray_service()
+
+        mock_run_command.assert_called_once_with('systemctl reset-failed xray')
+
+    def test_reset_failed_xray_service_returns_none(self, mocker):
+        mocker.patch('app.utils.run_command', return_value=(0, '', ''))
+
+        reset_failed_xray_service()
+
+
+    def test_reset_failed_xray_service_ignores_command_failure(self, mocker):
+        mock_run_command = mocker.patch('app.utils.run_command', return_value=(1, '', 'error'))
+
+        reset_failed_xray_service()
+
+        mock_run_command.assert_called_once_with('systemctl reset-failed xray')
+
+
+class TestIsFilesContentSame:
+
+    def test_returns_true_for_identical_files(self, tmp_path: Path):
+        file1 = tmp_path / 'file1.txt'
+        file2 = tmp_path / 'file2.txt'
+        file1.write_bytes(b'same content')
+        file2.write_bytes(b'same content')
+
+        result = is_files_content_same(file1, file2)
+
+        assert result is True
+
+    def test_returns_false_for_different_files(self, tmp_path: Path):
+        file1 = tmp_path / 'file1.txt'
+        file2 = tmp_path / 'file2.txt'
+        file1.write_bytes(b'content A')
+        file2.write_bytes(b'content B')
+
+        result = is_files_content_same(file1, file2)
+
+        assert result is False
+
+    def test_returns_false_when_path1_is_none(self, tmp_path: Path):
+        file2 = tmp_path / 'file2.txt'
+        file2.write_bytes(b'content')
+
+        result = is_files_content_same(None, file2)
+
+        assert result is False
+
+    def test_returns_false_when_path2_is_none(self, tmp_path: Path):
+        file1 = tmp_path / 'file1.txt'
+        file1.write_bytes(b'content')
+
+        result = is_files_content_same(file1, None)
+
+        assert result is False
+
+    def test_returns_false_when_both_paths_are_none(self):
+        result = is_files_content_same(None, None)
+
+        assert result is False
+
+    def test_returns_false_when_path1_does_not_exist(self, tmp_path: Path):
+        file1 = tmp_path / 'nonexistent.txt'
+        file2 = tmp_path / 'file2.txt'
+        file2.write_bytes(b'content')
+
+        result = is_files_content_same(file1, file2)
+
+        assert result is False
+
+    def test_returns_false_when_path2_does_not_exist(self, tmp_path: Path):
+        file1 = tmp_path / 'file1.txt'
+        file1.write_bytes(b'content')
+        file2 = tmp_path / 'nonexistent.txt'
+
+        result = is_files_content_same(file1, file2)
+
+        assert result is False
+
+    def test_returns_false_when_both_paths_do_not_exist(self, tmp_path: Path):
+        file1 = tmp_path / 'nonexistent1.txt'
+        file2 = tmp_path / 'nonexistent2.txt'
+
+        result = is_files_content_same(file1, file2)
+
+        assert result is False
+
+    def test_returns_true_for_empty_files(self, tmp_path: Path):
+        file1 = tmp_path / 'empty1.txt'
+        file2 = tmp_path / 'empty2.txt'
+        file1.write_bytes(b'')
+        file2.write_bytes(b'')
+
+        result = is_files_content_same(file1, file2)
+
+        assert result is True
+
+    def test_returns_false_for_empty_vs_non_empty_file(self, tmp_path: Path):
+        file1 = tmp_path / 'empty.txt'
+        file2 = tmp_path / 'non_empty.txt'
+        file1.write_bytes(b'')
+        file2.write_bytes(b'content')
+
+        result = is_files_content_same(file1, file2)
+
+        assert result is False
+
+    def test_returns_true_for_large_identical_files(self, tmp_path: Path):
+        data = b'x' * (5 * 1024 * 1024)  # 5 MB
+        file1 = tmp_path / 'large1.bin'
+        file2 = tmp_path / 'large2.bin'
+        file1.write_bytes(data)
+        file2.write_bytes(data)
+
+        result = is_files_content_same(file1, file2)
+
+        assert result is True

@@ -12,6 +12,7 @@ from app.controller.common import (
     check_root,
     stdout_console,
     print_error,
+    save_config,
 )
 from app.controller.completions import complete_outbound_name, complete_vless_outbound_name
 from app.defaults import (
@@ -19,6 +20,17 @@ from app.defaults import (
     VLESS_OUTBOUND_SPIDER_X,
     VLESS_OUTBOUND_FINGERPRINT,
     VLESS_OUTBOUND_PORT,
+    STYLE_REGULAR,
+    STYLE_ACCENT_UP,
+    STYLE_ACCENT_DOWN,
+    STYLE_ACCENT_NEUTRAL,
+    EXIT_OUTBOUND_ERROR,
+    EXIT_OUTBOUND_EXISTS,
+    EXIT_OUTBOUND_INVALID_SHORT_ID,
+    EXIT_OUTBOUND_INVALID_URL,
+    EXIT_OUTBOUND_INVALID_FINGERPRINT,
+    EXIT_OUTBOUND_NOT_FOUND,
+    EXIT_OUTBOUND_NO_CHANGES,
 )
 from app.model.types import FingerprintType
 from app.model.vless_outbound import (
@@ -28,11 +40,12 @@ from app.model.vless_outbound import (
     StreamSettings as OutboundStreamSettings
 )
 from app.model.xray import Outbound
-from app.utils import write_text_file, set_value, is_valid_vless_client_url
+from app.utils import set_value, is_valid_vless_client_url
 
 
 @outbounds.command(help='Add new VLESS outbound to service')
-@error_handler(default_message='Error adding VLESS outbound connection', default_code=40)
+@error_handler(default_message='Error adding VLESS outbound connection',
+               default_code=EXIT_OUTBOUND_ERROR)
 def add(
         name: Annotated[str, Argument(help='Outbound name')],
         address: Annotated[str, Option(help='Outbound address (ip or domain name)')],
@@ -57,12 +70,14 @@ def add(
     for outbound in xray_config.outbounds:
         if outbound.tag == name:
             print_error(Text.assemble(
-                'VLESS outbound ', (f'{name}', 'bold yellow'), ' already exists'))
-            raise Exit(code=41)
+                ('VLESS outbound ', STYLE_REGULAR),
+                (name, STYLE_ACCENT_NEUTRAL),
+                (' already exists', STYLE_REGULAR)))
+            raise Exit(code=EXIT_OUTBOUND_EXISTS)
 
     if len(short_id) % 2 != 0:
-        print_error('Invalid sid (short_id): length must be even')
-        raise Exit(code=42)
+        print_error(Text('Invalid sid (short_id): length must be even', STYLE_REGULAR))
+        raise Exit(code=EXIT_OUTBOUND_INVALID_SHORT_ID)
 
     settings = OutboundSettings(address=address, id=uuid, port=port)
     reality_settings = OutboundRealitySettings(
@@ -81,22 +96,22 @@ def add(
     )
 
     xray_config.outbounds.append(new_outbound)
-    write_text_file(
-        XRAY_CONFIG_PATH,
-        xray_config.model_dump_json(by_alias=True, exclude_none=True, indent=2),
-        0o644)
-    print_error(Text.assemble('Added new outbound ', (f'{name}', 'bold green')))
+    save_config(xray_config, XRAY_CONFIG_PATH)
+    stdout_console.print(Text.assemble(
+        ('Added new outbound ', STYLE_REGULAR),
+        (name, STYLE_ACCENT_UP)))
 
 
 @outbounds.command(help='Add new VLESS outbound to service from URL')
-@error_handler(default_message='Error adding VLESS outbound connection from URL', default_code=40)
+@error_handler(default_message='Error adding VLESS outbound connection from URL',
+               default_code=EXIT_OUTBOUND_ERROR)
 def add_from_url(
         url: Annotated[str, Argument(help='Outbound URL')],
         name: Annotated[str | None, Option(help='Outbound name')] = None,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     if not is_valid_vless_client_url(url):
-        print_error('Unsupported VLESS client URL')
-        raise Exit(code=43)
+        print_error(Text('Unsupported VLESS client URL', STYLE_REGULAR))
+        raise Exit(code=EXIT_OUTBOUND_INVALID_URL)
 
     parsed_url = urlparse(url)
     query_params = parse_qs(parsed_url.query)
@@ -112,9 +127,10 @@ def add_from_url(
     outbound_name = name or parsed_url.fragment
 
     if fingerprint not in get_args(FingerprintType):
-        print_error(
-            Text.assemble('Unsupported fingerprint: ', (fingerprint, 'bold yellow')))
-        raise Exit(code=44)
+        print_error(Text.assemble(
+            ('Unsupported fingerprint: ', STYLE_REGULAR),
+            (fingerprint, STYLE_ACCENT_NEUTRAL)))
+        raise Exit(code=EXIT_OUTBOUND_INVALID_FINGERPRINT)
     fingerprint = cast(FingerprintType, fingerprint)
 
     add(name=outbound_name, address=address, uuid=uuid, sni=sni, password=password,
@@ -124,7 +140,8 @@ def add_from_url(
 
 
 @outbounds.command(help='Remove VLESS outbound from service')
-@error_handler(default_message='Error removing VLESS outbound connection', default_code=40)
+@error_handler(default_message='Error removing VLESS outbound connection',
+               default_code=EXIT_OUTBOUND_ERROR)
 def remove(
         name: Annotated[str, Argument(
             help='Outbound name', autocompletion=complete_vless_outbound_name)],
@@ -136,19 +153,20 @@ def remove(
     for outbound in xray_config.outbounds:
         if outbound.tag == name and outbound.protocol == 'vless':
             xray_config.outbounds.remove(outbound)
-            write_text_file(
-                XRAY_CONFIG_PATH,
-                xray_config.model_dump_json(by_alias=True, exclude_none=True, indent=2),
-                0o644)
-            stdout_console.print(Text.assemble('Removed outbound ', (f'{name}', 'bold red')))
+            save_config(xray_config, XRAY_CONFIG_PATH)
+            stdout_console.print(Text.assemble(
+                ('Removed outbound ', STYLE_REGULAR),
+                (name, STYLE_ACCENT_DOWN)))
             return
-    print_error(
-        Text.assemble('VLESS outbound ', (f'{name}', 'bold yellow'), ' not found'))
-    raise Exit(code=45)
+    print_error(Text.assemble(
+        ('VLESS outbound ', STYLE_REGULAR),
+        (name, STYLE_ACCENT_NEUTRAL),
+        (' not found', STYLE_REGULAR)))
+    raise Exit(code=EXIT_OUTBOUND_NOT_FOUND)
 
 
 @outbounds.command(help='Set outbound as default (move to first position)')
-@error_handler(default_message='Error setting default outbound', default_code=40)
+@error_handler(default_message='Error setting default outbound', default_code=EXIT_OUTBOUND_ERROR)
 def set_default(
         name: Annotated[str, Argument(help='Outbound name', autocompletion=complete_outbound_name)],
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
@@ -162,21 +180,24 @@ def set_default(
             target_outbound = outbound
             break
     if not target_outbound:
-        print_error(Text.assemble('Outbound ', (f'{name}', 'bold yellow'), ' not found'))
-        raise Exit(code=45)
+        print_error(Text.assemble(
+            ('Outbound ', STYLE_REGULAR),
+            (name, STYLE_ACCENT_NEUTRAL),
+            (' not found', STYLE_REGULAR)))
+        raise Exit(code=EXIT_OUTBOUND_NOT_FOUND)
 
     xray_config.outbounds.remove(target_outbound)
     xray_config.outbounds.insert(0, target_outbound)
-    write_text_file(
-        XRAY_CONFIG_PATH,
-        xray_config.model_dump_json(by_alias=True, exclude_none=True, indent=2),
-        0o644)
-    stdout_console.print(
-        Text.assemble('Outbound ', (f'{name}', 'bold green'), ' is now the default'))
+    save_config(xray_config, XRAY_CONFIG_PATH)
+    stdout_console.print(Text.assemble(
+        ('Outbound ', STYLE_REGULAR),
+        (name, STYLE_ACCENT_UP),
+        (' is now the default', STYLE_REGULAR)))
 
 
 @outbounds.command(help='Change VLESS outbound')
-@error_handler(default_message='Error changing VLESS outbound connection', default_code=40)
+@error_handler(default_message='Error changing VLESS outbound connection',
+               default_code=EXIT_OUTBOUND_ERROR)
 def change(
         name: Annotated[str, Argument(
             help='Outbound name', autocompletion=complete_vless_outbound_name)],
@@ -202,14 +223,15 @@ def change(
         if outbound.tag == name and outbound.protocol == 'vless':
             target_outbound = outbound
     if not target_outbound:
-        print_error(
-            Text.assemble('VLESS outbound ', (f'{name}', 'bold yellow'), ' not found'))
-        raise Exit(code=45)
+        print_error(Text.assemble(
+            ('VLESS outbound ', STYLE_REGULAR),
+            (name, STYLE_ACCENT_NEUTRAL),
+            (' not found', STYLE_REGULAR)))
+        raise Exit(code=EXIT_OUTBOUND_NOT_FOUND)
 
     if short_id and len(short_id) % 2 != 0:
-        print_error(
-            'Invalid sid (short_id): length must be even')
-        raise Exit(code=42)
+        print_error(Text('Invalid sid (short_id): length must be even', STYLE_REGULAR))
+        raise Exit(code=EXIT_OUTBOUND_INVALID_SHORT_ID)
 
     results = [set_value(target_outbound, 'tag', new_name),
                set_value(target_outbound.settings, 'address', address),
@@ -220,12 +242,12 @@ def change(
                set_value(target_outbound.stream_settings.reality_settings, 'short_id', short_id),
                set_value(target_outbound.stream_settings.reality_settings, 'spider_x', spider_x)]
     if not any(results):
-        print_error(
-            Text.assemble('No changes found for outbound ', (f'{name}', 'bold yellow')))
-        raise Exit(code=46)
+        print_error(Text.assemble(
+            ('No changes found for outbound ', STYLE_REGULAR),
+            (name, STYLE_ACCENT_NEUTRAL)))
+        raise Exit(code=EXIT_OUTBOUND_NO_CHANGES)
 
-    write_text_file(
-        XRAY_CONFIG_PATH,
-        xray_config.model_dump_json(by_alias=True, exclude_none=True, indent=2),
-        0o644)
-    stdout_console.print(Text.assemble('Changed outbound ', (f'{name}', 'bold green')))
+    save_config(xray_config, XRAY_CONFIG_PATH)
+    stdout_console.print(Text.assemble(
+        ('Changed outbound ', STYLE_REGULAR),
+        (name, STYLE_ACCENT_UP)))

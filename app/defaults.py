@@ -12,10 +12,10 @@ VLESS_OUTBOUND_SPIDER_X = '/'
 VLESS_OUTBOUND_FINGERPRINT = 'chrome'
 
 XRAY_CONFIG_PATH = Path('/usr/local/etc/xray/config.json')
+XRAY_CONFIG_BACKUP_PATH = Path('/usr/local/etc/xray/config.json.bak')
 XRAY_BINARY_PATH = Path('/usr/local/bin/xray')
 XRAY_SERVICE_UNIT_PATH = Path('/etc/systemd/system/xray.service')
 XRAY_ERROR_LOG_PATH = Path('/var/log/xray/error.log')
-XRAY_ACCESS_LOG_PATH = Path('/var/log/xray/access.log')
 
 XRAY_DOWNLOAD_URL = 'https://github.com/XTLS/Xray-core/releases/download/'
 XRAY_ARCHIVE_NAME = 'Xray-linux-64.zip'
@@ -24,3 +24,51 @@ XRAY_GEO_IP_DATA_PATH = Path('/usr/local/share/xray/geoip.dat')
 XRAY_GEO_SITE_DATA_PATH = Path('/usr/local/share/xray/geosite.dat')
 GEO_IP_URL = 'https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat'
 GEO_SITE_URL = 'https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat'
+
+STYLE_OK = 'green'
+STYLE_WARN = 'yellow'
+STYLE_FAIL = 'red'
+
+STYLE_ACCENT_UP = 'bold green'
+STYLE_ACCENT_NEUTRAL = 'bold yellow'
+STYLE_ACCENT_DOWN = 'bold red'
+
+STYLE_VALUE = 'bold cyan'
+STYLE_URL = 'magenta'
+STYLE_REGULAR = 'white'
+STYLE_DIM = 'dim'
+
+EXIT_NOT_ROOT = 1
+EXIT_NO_CONFIG = 2
+
+EXIT_CONFIGURE_ERROR = 10
+EXIT_CONFIGURE_HOST_NOT_DETECTED = 11
+EXIT_CONFIGURE_HOST_REJECTED = 12
+EXIT_CONFIGURE_NO_RELEASES = 13
+EXIT_CONFIGURE_VERSION_NOT_FOUND = 14
+
+EXIT_CLIENTS_ERROR = 20
+
+EXIT_STATE_ERROR = 30
+EXIT_STATE_START_FAILED = 31
+EXIT_STATE_STOP_FAILED = 32
+EXIT_STATE_RESTART_FAILED = 33
+
+EXIT_OUTBOUND_ERROR = 40
+EXIT_OUTBOUND_EXISTS = 41
+EXIT_OUTBOUND_INVALID_SHORT_ID = 42
+EXIT_OUTBOUND_INVALID_URL = 43
+EXIT_OUTBOUND_INVALID_FINGERPRINT = 44
+EXIT_OUTBOUND_NOT_FOUND = 45
+EXIT_OUTBOUND_NO_CHANGES = 46
+
+EXIT_ROUTING_ERROR = 50
+EXIT_ROUTING_OUTBOUND_NOT_FOUND = 51
+EXIT_ROUTING_NO_CONDITIONS = 52
+EXIT_ROUTING_INVALID_PROTOCOLS = 53
+EXIT_ROUTING_INVALID_PORTS = 54
+EXIT_ROUTING_RULE_EXISTS = 55
+EXIT_ROUTING_RULE_NOT_FOUND = 56
+EXIT_ROUTING_RULE_SAME_VALUE = 57
+EXIT_ROUTING_NO_RULES = 58
+EXIT_ROUTING_STRATEGY_SAME = 59

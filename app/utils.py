@@ -1,11 +1,13 @@
 from importlib.resources import files
 from pathlib import Path
 from re import findall, MULTILINE, search, fullmatch
+from shutil import copy2
 from subprocess import run
 from tempfile import NamedTemporaryFile
 from typing import Literal, TypeVar
 from urllib.parse import quote_plus as safe_url_encode
 from zipfile import ZipFile
+from filecmp import cmp as compare_files
 
 from requests import get as get_request
 
@@ -112,15 +114,19 @@ def get_xray_service_uptime() -> str | None:
 
 
 def stop_xray_service() -> None:
-    run_command('systemctl stop xray -q', check=True)
+    run_command('systemctl stop xray -q')
+
+
+def reset_failed_xray_service() -> None:
+    run_command('systemctl reset-failed xray')
 
 
 def start_xray_service() -> None:
-    run_command('systemctl start xray -q', check=True)
+    run_command('systemctl start xray -q')
 
 
 def restart_xray_service() -> None:
-    run_command('systemctl restart xray -q', check=True)
+    run_command('systemctl restart xray -q')
 
 
 def is_xray_service_enabled() -> bool:
@@ -203,6 +209,14 @@ def write_text_file(file_path: Path, text: str, mode: int = 0) -> None:
         file_path.chmod(mode)
 
 
+def is_files_content_same(path1: Path | None, path2: Path | None) -> bool:
+    if path1 is None or not path1.exists():
+        return False
+    if path2 is None or not path2.exists():
+        return False
+    return compare_files(path1, path2, shallow=False)
+
+
 def remove_duplicates(source: list[_T]) -> list[_T]:
     return list(dict.fromkeys(source))
 
@@ -242,6 +256,28 @@ def run_command(command: str, stdin: str = '', check: bool = False, timeout: int
 def detect_veepeenet_versions() -> VersionsView:
     content = app_resources.joinpath('versions.json').read_text('utf-8')
     return VersionsView.model_validate_json(content)
+
+
+def validate_xray_config(config_path: Path) -> tuple[bool, str]:
+    result = run_command(f'xray run -test -config {config_path}')
+    if result[0] == 0:
+        return True, result[1]
+    return False, result[2] or result[1]
+
+
+def backup_config(config_path: Path, backup_path: Path) -> Path:
+    copy2(config_path, backup_path)
+    return backup_path
+
+
+def restore_config(config_path: Path, backup_path: Path) -> None:
+    copy2(backup_path, config_path)
+    backup_path.unlink(missing_ok=True)
+
+
+def get_xray_service_journal(lines: int = 20) -> str | None:
+    result = run_command(f'journalctl -u xray -n {lines} --no-pager -q')
+    return result[1] if result[0] == 0 and result[1] else None
 
 
 def get_xray_github_releases(limit: int = 10) -> list[str]:
