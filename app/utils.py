@@ -214,7 +214,7 @@ def is_files_content_same(path1: Path | None, path2: Path | None) -> bool:
         return False
     if path2 is None or not path2.exists():
         return False
-    return compare_files(path1, path2)
+    return compare_files(path1, path2, shallow=False)
 
 
 def remove_duplicates(source: list[_T]) -> list[_T]:
