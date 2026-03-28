@@ -12,8 +12,6 @@ python3 -m venv "$VENV_PATH"
 ln -sf "$VENV_PATH/bin/xrayctl" /usr/local/bin/xrayctl
 ln -sf "$VENV_PATH/bin/xray-migrate-1-to-2" /usr/local/bin/xray-migrate-1-to-2
 
-/usr/local/bin/xrayctl --install-completion || true
-
 if [ -f /etc/systemd/system/xray.service ]; then
     systemctl daemon-reload || true
     systemctl start xray.service || true
