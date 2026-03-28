@@ -80,6 +80,8 @@ def config(
             list[str],
             Option(help='Available Reality server names.',
                    show_default='Reality host')] = None,
+        name: Annotated[str | None, Option(
+            help='Human-readable server name (used after # in client links).')] = None,
         clean: Annotated[bool, Option(help='Override current configuration')] = False,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_root()
@@ -87,7 +89,7 @@ def config(
 
     if not XRAY_CONFIG_PATH.exists() or clean:
         if not host:
-            host = _detect_host_or_error()
+            host: str = _detect_host_or_error()
         if clean:
             answer = _confirm_config_rewriting()
             if not answer:
@@ -98,11 +100,12 @@ def config(
             port or VLESS_LISTEN_PORT,
             reality_host or REALITY_HOST,
             reality_port or REALITY_PORT,
-            reality_names or [reality_host])
+            reality_names or [reality_host or REALITY_HOST],
+            name)
     else:
         xray_config = load_config(XRAY_CONFIG_PATH)
         _update_config(
-            xray_config, host, port, reality_host, reality_port, reality_names)
+            xray_config, host, port, reality_host, reality_port, reality_names, name)
 
     save_config(xray_config, XRAY_CONFIG_PATH)
     stdout_console.print(Text('VLESS inbound configured', STYLE_REGULAR))
@@ -134,32 +137,36 @@ def update_xray(
         limit: Annotated[
             int,
             Option(help='Number of versions to show with --list')] = 9,
+        json: Annotated[
+            bool,
+            Option('--json', help='Show --list output in JSON format')] = False,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_root()
 
     if list_versions:
-        _print_available_releases(limit)
+        _print_available_releases(limit, json)
         return
 
     selected_version = _select_version(version, limit)
     _install_xray_version(selected_version)
 
 
-def _print_available_releases(limit: int) -> None:
-    with stdout_console.status('Fetching available Xray releases from GitHub'):
-        releases = get_xray_github_releases(limit=limit)
+def _print_available_releases(limit: int, json: bool = False) -> None:
+    releases = _get_xray_releases(limit)
     if not releases:
         print_error(Text('No Xray releases found', STYLE_REGULAR))
         raise Exit(code=EXIT_CONFIGURE_NO_RELEASES)
-    stdout_console.print(XrayReleasesView(releases=releases).rich_repr())
+    view = XrayReleasesView(releases=releases)
+    if json:
+        stdout_console.print_json(view.model_dump_json(), indent=2)
+    else:
+        stdout_console.print(view.rich_repr())
 
 
 def _select_version(version: str | None, limit: int) -> str:
     if version:
         normalized = version if version.startswith('v') else f'v{version}'
-        with stdout_console.status(
-                Text('Fetching available Xray releases from GitHub', STYLE_REGULAR)):
-            releases = get_xray_github_releases(limit=100)
+        releases = _get_xray_releases(100)
         if normalized not in releases:
             print_error(Text.assemble(
                 ('Version ', STYLE_REGULAR),
@@ -168,8 +175,7 @@ def _select_version(version: str | None, limit: int) -> str:
             raise Exit(code=EXIT_CONFIGURE_VERSION_NOT_FOUND)
         return normalized
 
-    with stdout_console.status(Text('Fetching available Xray releases from GitHub', STYLE_REGULAR)):
-        releases = get_xray_github_releases(limit=limit)
+    releases = _get_xray_releases(limit)
     if not releases:
         print_error('No Xray releases found')
         raise Exit(code=EXIT_CONFIGURE_NO_RELEASES)
@@ -190,6 +196,12 @@ def _select_version(version: str | None, limit: int) -> str:
         show_choices=False,
     )
     return releases[int(raw) - 1]
+
+
+def _get_xray_releases(limit: int):
+    with stdout_console.status(
+            Text('Fetching available Xray releases from GitHub', STYLE_REGULAR)):
+        return get_xray_github_releases(limit=limit)
 
 
 def _install_xray_version(selected_version: str) -> None:
@@ -260,7 +272,8 @@ def _confirm_config_rewriting() -> bool:
 
 
 def _create_config(host: str, listen_port: int,
-                    reality_host: str, reality_port: int, reality_names: list[str]) -> Xray:
+                    reality_host: str, reality_port: int, reality_names: list[str],
+                    name: str | None = None) -> Xray:
     vless_inbound = VlessInbound(
         listen=VLESS_LISTEN_INTERFACE,
         port=listen_port,
@@ -270,7 +283,7 @@ def _create_config(host: str, listen_port: int,
                 server_names=reality_names,
                 private_key=gen_xray_private_key(),
                 short_ids=[])))
-    veepeenet = VeePeeNET(host=host, namespace=str(uuid4()))
+    veepeenet = VeePeeNET(host=host, namespace=str(uuid4()), name=name)
     return Xray(veepeenet=veepeenet, inbounds=[vless_inbound])
 
 
@@ -280,7 +293,8 @@ def _update_config(
         listen_port: int | None,
         reality_host: str | None,
         reality_port: int | None,
-        reality_names: list[str] | None
+        reality_names: list[str] | None,
+        name: str | None = None,
 ) -> bool:
     vless_inbound = get_vless_inbound(xray_config)
 
@@ -293,6 +307,7 @@ def _update_config(
 
     changed = (
         set_value(xray_config.veepeenet, 'host', host),
+        set_value(xray_config.veepeenet, 'name', name),
         set_value(vless_inbound, 'port', listen_port),
         set_value(vless_inbound.stream_settings.reality_settings,
                   'dest', f'{dest_reality_host}:{dest_reality_port}'),

@@ -146,11 +146,12 @@ def get_vless_client_url(client_name: str, xray_config: Xray) -> str | None:
     if not inbound:
         raise ValueError('VLESS inbound not found in Xray config')
     for i, client in enumerate(inbound.settings.clients):
-        if client_name == '.'.join(client.email.split('@')[0].split('.')[:-1]):
+        if client.email and client_name == '.'.join(client.email.split('@')[0].split('.')[:-1]):
             sni = inbound.stream_settings.reality_settings.server_names[0]
             password = gen_xray_password(
                 inbound.stream_settings.reality_settings.private_key)
             spx = safe_url_encode(f'/{client_name}')
+            server_name = xray_config.veepeenet.name or xray_config.veepeenet.host
             return (f'vless://{client.id}@{xray_config.veepeenet.host}:'
                     f'{inbound.port}'
                     '?flow=xtls-rprx-vision'
@@ -161,7 +162,7 @@ def get_vless_client_url(client_name: str, xray_config: Xray) -> str | None:
                     f'&pbk={password}'
                     f'&sid={inbound.stream_settings.reality_settings.short_ids[i]}'
                     f'&spx={spx}'
-                    f'#{client_name}@{client.email.split('@')[-1]}')
+                    f'#{client_name}@{server_name}')
     return None
 
 

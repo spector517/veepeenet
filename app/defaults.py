@@ -1,6 +1,8 @@
 # pylint: disable=line-too-long
 from pathlib import Path
 
+from app.model.types import FingerprintType
+
 STATE_PENDING_TIMEOUT = 2
 
 REALITY_HOST = 'microsoft.com'
@@ -9,7 +11,7 @@ VLESS_LISTEN_INTERFACE = '0.0.0.0'
 VLESS_LISTEN_PORT = 443
 VLESS_OUTBOUND_PORT = 443
 VLESS_OUTBOUND_SPIDER_X = '/'
-VLESS_OUTBOUND_FINGERPRINT = 'chrome'
+VLESS_OUTBOUND_FINGERPRINT: FingerprintType = 'chrome'
 
 XRAY_CONFIG_PATH = Path('/usr/local/etc/xray/config.json')
 XRAY_CONFIG_BACKUP_PATH = Path('/usr/local/etc/xray/config.json.bak')

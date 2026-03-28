@@ -5,7 +5,6 @@ from uuid import UUID
 from rich.console import Console
 from rich.text import Text
 from typer import Argument, Option
-from xxhash import xxh64
 
 from app.cli import clients
 from app.controller.common import (
@@ -70,10 +69,11 @@ def show(
     inbound = get_vless_inbound(xray_config)
     host = xray_config.veepeenet.host
 
-    clients_data = [ClientData.from_model(client, host) for client in inbound.settings.clients]
+    clients_data = [ClientData.from_model(client, host, i)
+                    for i, client in enumerate(inbound.settings.clients)]
     clients_views = [ClientView(
         name=client_data.name,
-        url=get_vless_client_url(client_data.name, xray_config))
+        url=get_vless_client_url(client_data.name, xray_config) or 'error')
                      for client_data in clients_data]
     view = ClientsView(clients=clients_views)
 
@@ -90,8 +90,8 @@ def _add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) ->
     reality_settings = inbound.stream_settings.reality_settings
     namespace = UUID(xray_config.veepeenet.namespace)
 
-    existing_clients_data = [ClientData.from_model(client, xray_config.veepeenet.host)
-                             for client in inbound.settings.clients]
+    existing_clients_data = [ClientData.from_model(client, xray_config.veepeenet.host, i)
+                             for i, client in enumerate(inbound.settings.clients)]
     existing_names = [client_data.name for client_data in existing_clients_data]
     new_names = get_new_items(existing_names, remove_duplicates(names))
     already_existing_names = get_existing_items(existing_names, names)
@@ -111,10 +111,9 @@ def _add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) ->
 
     existing_short_ids = [client_data.short_id for client_data in existing_clients_data]
     for name in new_names:
-        short_id = xxh64(name).hexdigest()
-        existing_short_ids.append(short_id)
-        existing_clients_data.append(ClientData(
-            name=name, short_id=short_id, host=xray_config.veepeenet.host, namespace=namespace))
+        data = ClientData(name=name, host=xray_config.veepeenet.host, namespace=namespace)
+        existing_short_ids.append(data.short_id)
+        existing_clients_data.append(data)
 
     inbound.settings.clients = [client_data.to_model() for client_data in existing_clients_data]
     reality_settings.short_ids = existing_short_ids
@@ -132,7 +131,8 @@ def _remove_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH)
     host = xray_config.veepeenet.host
     reality_settings = inbound.stream_settings.reality_settings
 
-    existing_clients_data = [ClientData.from_model(client, host) for client in existing_clients]
+    existing_clients_data = [ClientData.from_model(client, host, i)
+                             for i, client in enumerate(existing_clients)]
     existing_names = [client_data.name for client_data in existing_clients_data]
     removable_names = get_existing_items(existing_names, remove_duplicates(names))
     unknown_names = get_new_items(existing_names, names)

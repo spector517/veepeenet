@@ -71,6 +71,8 @@ class TestCompleteRouteName:
         mocker.patch('app.controller.completions.load_config', return_value=config)
 
         results = list(complete_route_name(_ctx(), [], ''))
+        assert config.routing is not None
+        assert config.routing.rules is not None
         assert len(results) == len(config.routing.rules)
 
     def test_no_match_returns_empty(self, mocker: MockFixture):
@@ -96,7 +98,7 @@ class TestCompleteOutboundName:
         results = set(complete_outbound_name(_ctx(), [], ''))
         expected_tags = {
             o.get('tag') if isinstance(o, dict) else o.tag
-            for o in config.outbounds
+            for o in config.outbounds or []
             if (o.get('tag') if isinstance(o, dict) else o.tag)
         }
         assert results == expected_tags

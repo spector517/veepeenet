@@ -21,7 +21,7 @@ from app.defaults import (
 def joined_bold(items: list[str], fallback: str | None = None) -> Text:
     if not items:
         return Text(fallback or '', STYLE_ACCENT_NEUTRAL)
-    return Text(', ', no_wrap=True).join(Text(item, STYLE_VALUE) for item in items)
+    return Text(', ').join(Text(item, STYLE_VALUE) for item in items)
 
 def row(label: Text, value: Text) -> Text:
     return Text.assemble(label, value)
@@ -74,11 +74,12 @@ class ServerView(BaseModel):
     uptime: str | None = Field(default=None)
     restart_required: bool
     server_host: str
-    server_port: int
+    server_port: str
     reality_address: str
     reality_names: list[str]
     clients: list[str]
     outbounds: list[OutboundView]
+    server_name: str | None = Field(default=None)
 
     def rich_repr(self) -> Panel:
         run_status = Text(
@@ -121,6 +122,13 @@ class ServerView(BaseModel):
             border_style = STYLE_DIM
 
         title = Text('Xray server information')
+        if self.server_name:
+            title = Text.assemble(
+                ('[', STYLE_DIM),
+                (self.server_name, STYLE_VALUE),
+                ('] ', STYLE_DIM),
+                title
+            )
         if self.restart_required:
             title.append(Text(' (configuration changes detected, restart required)'))
 
@@ -186,7 +194,7 @@ class RoutingView(BaseModel):
         content_parts: list[Group | Text | Panel] = [
             Panel(Text.assemble(
                 ('Domain strategy: ', STYLE_REGULAR),
-                (self.domain_strategy, STYLE_VALUE)
+                (self.domain_strategy or 'AsIs', STYLE_VALUE)
             ))
         ]
 

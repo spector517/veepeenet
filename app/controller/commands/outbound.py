@@ -67,7 +67,7 @@ def add(
     check_xray_config()
 
     xray_config = load_config(XRAY_CONFIG_PATH)
-    for outbound in xray_config.outbounds:
+    for outbound in xray_config.outbounds or []:
         if outbound.tag == name:
             print_error(Text.assemble(
                 ('VLESS outbound ', STYLE_REGULAR),
@@ -95,7 +95,10 @@ def add(
         )
     )
 
-    xray_config.outbounds.append(new_outbound)
+    if xray_config.outbounds is None:
+        xray_config.outbounds = [new_outbound]
+    else:
+        xray_config.outbounds.append(new_outbound)
     save_config(xray_config, XRAY_CONFIG_PATH)
     stdout_console.print(Text.assemble(
         ('Added new outbound ', STYLE_REGULAR),
@@ -150,7 +153,7 @@ def remove(
     check_xray_config()
 
     xray_config = load_config(XRAY_CONFIG_PATH)
-    for outbound in xray_config.outbounds:
+    for outbound in xray_config.outbounds or []:
         if outbound.tag == name and outbound.protocol == 'vless':
             xray_config.outbounds.remove(outbound)
             save_config(xray_config, XRAY_CONFIG_PATH)
@@ -175,7 +178,7 @@ def set_default(
 
     xray_config = load_config(XRAY_CONFIG_PATH)
     target_outbound: Outbound | None = None
-    for outbound in xray_config.outbounds:
+    for outbound in xray_config.outbounds or []:
         if outbound.tag == name:
             target_outbound = outbound
             break
@@ -219,8 +222,8 @@ def change(
 
     xray_config = load_config(XRAY_CONFIG_PATH)
     target_outbound: VlessOutbound | None = None
-    for outbound in xray_config.outbounds:
-        if outbound.tag == name and outbound.protocol == 'vless':
+    for outbound in xray_config.outbounds or []:
+        if outbound.tag == name and isinstance(outbound, VlessOutbound):
             target_outbound = outbound
     if not target_outbound:
         print_error(Text.assemble(
