@@ -8,6 +8,8 @@ Required non-default plugins:
 2. Pipeline Utility Steps
 3. Build Name and Description Setter
 
+Build agent requirements: wget, unzip, dpkg-deb
+
 Required parameters list:
 
 1. NODE
@@ -16,9 +18,9 @@ Required parameters list:
 4. XRAY_VERSION
 5. REPO_CLONE_URL
 6. REPO_BRANCH
-8. CREATE_RELEASE_URL
-9. UPLOAD_ASSETS_URL
-10.AUTH_TOKEN
+7. CREATE_RELEASE_URL
+8. UPLOAD_ASSETS_URL
+9. AUTH_TOKEN
 
 */
 
@@ -47,10 +49,8 @@ node(params.NODE) {
 
     repoDir = "${pwd()}/veepeenet"
     venvPath = "${pwd()}/venv"
-    distribName = "veepeenet-$DISTRIB_VERSION"
-    distribPath = "${pwd()}/$distribName"
-    archiveDistribName = "veepeenet.tar.gz"
-    archiveDistribPath = "${pwd()}/$archiveDistribName"
+    debName = "veepeenet_${DISTRIB_VERSION}_amd64.deb"
+    debPath = "${pwd()}/$debName"
 
     stage("Sources") {
         dir(repoDir) {
@@ -124,27 +124,35 @@ node(params.NODE) {
                 log "Building wheel successfully"
             }
         }
+
+        log "Downloading Xray binary v${XRAY_VERSION}"
+        sh "wget -q 'https://github.com/XTLS/Xray-core/releases/download/v${XRAY_VERSION}/Xray-linux-64.zip' -O '${repoDir}/dist/xray.zip'"
+        sh "unzip -o '${repoDir}/dist/xray.zip' xray -d '${repoDir}/dist/'"
+        sh "rm -f '${repoDir}/dist/xray.zip'"
+        sh "chmod 755 '${repoDir}/dist/xray'"
+        log "Xray binary downloaded"
     }
 
     stage("Distrib") {
-        log "Building distrib"
-        dir(distribPath) {
-            log "Copy required components"
-            [
-                "$repoDir/dist/*.whl",
-                "$repoDir/install.sh",
-                "$repoDir/uninstall.sh",
-                "$repoDir/LICENSE"
-            ].each { component ->
-                sh "cp $component ./"
-            }
-            sh "chmod 755 *.sh"
-            log "Required components successfully copied"
+        log "Building deb package"
+        pkgDir = "${pwd()}/pkg"
+
+        sh "mkdir -p ${pkgDir}/DEBIAN"
+        sh "mkdir -p ${pkgDir}/usr/local/lib/veepeenet"
+        sh "mkdir -p ${pkgDir}/usr/local/bin"
+
+        sh "cp ${repoDir}/dist/*.whl ${pkgDir}/usr/local/lib/veepeenet/"
+        sh "cp ${repoDir}/dist/xray ${pkgDir}/usr/local/bin/"
+
+        ["postinst", "prerm", "postrm"].each { script ->
+            sh "cp ${repoDir}/debian/${script} ${pkgDir}/DEBIAN/${script}"
+            sh "chmod 755 ${pkgDir}/DEBIAN/${script}"
         }
-        log "Archiving distrib"
-        tar file: archiveDistribPath, archive: true, compress: true, glob: "$distribName/**"
-        archiveArtifacts artifacts: archiveDistribName
-        log "Archive created"
+        sh "sed 's/^Version:.*/Version: ${DISTRIB_VERSION}/' ${repoDir}/debian/control > ${pkgDir}/DEBIAN/control"
+
+        sh "dpkg-deb --build --root-owner-group ${pkgDir} ${debPath}"
+        archiveArtifacts artifacts: debName
+        log "Deb package built: ${debName}"
     }
 
     if (params.CREATE_RELEASE) {
@@ -169,15 +177,15 @@ node(params.NODE) {
                 releaseId = readJSON(text: releaseResponse.content)["id"]
                 log "Release draft created (id: $releaseId)"
 
-                log "Uploading archive distrib to release draft"
-                httpRequest url: "$UPLOAD_ASSETS_URL/$releaseId/assets?name=$archiveDistribName", httpMode: 'POST',
+                log "Uploading deb package to release draft"
+                httpRequest url: "$UPLOAD_ASSETS_URL/$releaseId/assets?name=$debName", httpMode: 'POST',
                     contentType: "APPLICATION_OCTETSTREAM",
                     customHeaders: [
                         [name: "Authorization", value: "Bearer $github_token"],
                     ],
-                    uploadFile: archiveDistribPath,
+                    uploadFile: debPath,
                     wrapAsMultipart: false
-                log "Archive distrib uploaded"
+                log "Deb package uploaded"
             }
         }
     } else {

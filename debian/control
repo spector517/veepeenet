@@ -1,0 +1,6 @@
+Package: veepeenet
+Version: 0.0.0
+Architecture: amd64
+Maintainer: spector517
+Depends: python3.12-venv
+Description: VeePeeNET - CLI tool for managing Xray VLESS Reality proxy server on Ubuntu

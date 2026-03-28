@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set -e
+
+case "$1" in
+    remove|purge)
+        rm -rf /usr/local/lib/veepeenet
+        ;;
+esac
+
+case "$1" in
+    purge)
+        rm -rf /usr/local/etc/xray
+        ;;
+esac
+

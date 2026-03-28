@@ -1,80 +1,27 @@
 - name: Deploy and install veepeenet on remote hosts
   hosts: all
   tasks:
-    - name: Create temporary directory on master host
-      ansible.builtin.tempfile:
-        state: directory
-        suffix: veepeenet
-      register: temp_dir
-      run_once: true
-      delegate_to: localhost
-      check_mode: false
-
-    - name: Download VeePeeNET release archive
-      ansible.builtin.get_url:
-        url: "https://github.com/spector517/veepeenet/releases/download/{{ release_version }}/veepeenet.tar.gz"
-        dest: "{{ temp_dir.path }}/veepeenet.tar.gz"
-        mode: '0755'
-      run_once: true
-      delegate_to: localhost
-      check_mode: false
-      when:
-        - release_version is defined and release_version | length > 0
-
-    - name: Define veepeenet version
-      ansible.builtin.set_fact:
-        veepeenet_version: "{{ release_version }}"
-      when:
-        - release_version is defined and release_version | length > 0
-
-    - name: Use custom distrib archive
-      ansible.builtin.copy:
-        src: "{{ distrib_path }}"
-        dest: "{{ temp_dir.path }}/veepeenet.tar.gz"
-        remote_src: true
-        mode: '0755'
-      run_once: true
-      delegate_to: localhost
-      check_mode: false
-      when:
-        - distrib_path is defined and distrib_path | length > 0
-
-    - name: Define veepeenet version
-      ansible.builtin.set_fact:
-        veepeenet_version: "{{ distrib_version }}"
-      when:
-        - distrib_version is defined and distrib_version | length > 0
-
-    - name: Create temporary directory on remote hosts
+    - name: Create temporary directory on remote host
       ansible.builtin.tempfile:
         state: directory
         suffix: veepeenet
       register: remote_temp_dir
       check_mode: false
 
-    - name: Unpack VeePeeNET archive
-      ansible.builtin.unarchive:
-        src: "{{ temp_dir.path }}/veepeenet.tar.gz"
-        dest: "{{ remote_temp_dir.path }}"
-        mode: '0755'
+    - name: Download VeePeeNET deb package
+      ansible.builtin.get_url:
+        url: "https://github.com/spector517/veepeenet/releases/download/{{ release_version }}/veepeenet_{{ release_version }}_amd64.deb"
+        dest: "{{ remote_temp_dir.path }}/veepeenet_{{ release_version }}_amd64.deb"
+        mode: '0644'
       check_mode: false
 
-    - name: Install components
-      ansible.builtin.shell:
-        chdir: "{{ remote_temp_dir.path }}/veepeenet-{{ veepeenet_version }}"
-        cmd: "./install.sh"
+    - name: Install VeePeeNET deb package
+      ansible.builtin.apt:
+        deb: "{{ remote_temp_dir.path }}/veepeenet_{{ release_version }}_amd64.deb"
       become: true
-      changed_when: true
 
-    - name: Clean up temporary files on remote hosts
+    - name: Clean up temporary files
       ansible.builtin.file:
         path: "{{ remote_temp_dir.path }}"
         state: absent
       check_mode: false
-
-    - name: Remove temporary directory
-      ansible.builtin.file:
-        path: "{{ temp_dir.path }}"
-        state: absent
-      check_mode: false
-      delegate_to: localhost

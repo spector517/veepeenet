@@ -1,0 +1,27 @@
+#!/bin/bash
+
+set -e
+
+case "$1" in
+    remove|purge|deconfigure)
+        if systemctl is-active --quiet xray.service 2>/dev/null; then
+            systemctl stop xray.service || true
+        fi
+        if systemctl is-enabled --quiet xray.service 2>/dev/null; then
+            systemctl disable xray.service || true
+        fi
+        if [ -f /etc/systemd/system/xray.service ]; then
+            rm -f /etc/systemd/system/xray.service
+            systemctl daemon-reload || true
+        fi
+        ;;
+    upgrade)
+        if systemctl is-active --quiet xray.service 2>/dev/null; then
+            systemctl stop xray.service || true
+        fi
+        ;;
+esac
+
+rm -f /usr/local/bin/xrayctl
+rm -f /usr/local/bin/xray-migrate-1-to-2
+
