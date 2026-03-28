@@ -125,8 +125,8 @@ node(params.NODE) {
             }
         }
 
-        log "Downloading Xray binary v${XRAY_VERSION}"
-        sh "wget -q 'https://github.com/XTLS/Xray-core/releases/download/v${XRAY_VERSION}/Xray-linux-64.zip' -O '${repoDir}/dist/xray.zip'"
+        log "Downloading Xray binary ${XRAY_VERSION}"
+        sh "wget -q 'https://github.com/XTLS/Xray-core/releases/download/${XRAY_VERSION}/Xray-linux-64.zip' -O '${repoDir}/dist/xray.zip'"
         sh "unzip -o '${repoDir}/dist/xray.zip' xray -d '${repoDir}/dist/'"
         sh "rm -f '${repoDir}/dist/xray.zip'"
         sh "chmod 755 '${repoDir}/dist/xray'"
