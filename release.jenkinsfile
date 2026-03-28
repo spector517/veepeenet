@@ -148,7 +148,8 @@ node(params.NODE) {
             sh "cp ${repoDir}/debian/${script} ${pkgDir}/DEBIAN/${script}"
             sh "chmod 755 ${pkgDir}/DEBIAN/${script}"
         }
-        sh "sed 's/^Version:.*/Version: ${DISTRIB_VERSION}/' ${repoDir}/debian/control > ${pkgDir}/DEBIAN/control"
+        pkgVersion = "${DISTRIB_VERSION.replaceAll('^v', '')}"
+        sh "sed 's/^Version:.*/Version: ${pkgVersion}/' ${repoDir}/debian/control > ${pkgDir}/DEBIAN/control"
 
         sh "dpkg-deb --build --root-owner-group ${pkgDir} ${debPath}"
         archiveArtifacts artifacts: debName
