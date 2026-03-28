@@ -51,7 +51,7 @@ from app.utils import (
     get_xray_service_journal,
 )
 
-stdout_console = Console(soft_wrap=True)
+stdout_console = Console()
 stderr_console = Console(stderr=True)
 
 @dataclass
