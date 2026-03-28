@@ -49,7 +49,8 @@ node(params.NODE) {
 
     repoDir = "${pwd()}/veepeenet"
     venvPath = "${pwd()}/venv"
-    debName = "veepeenet_${DISTRIB_VERSION}_amd64.deb"
+    pkgVersion = "${DISTRIB_VERSION.replaceAll('^v', '')}"
+    debName = "veepeenet_${pkgVersion}_amd64.deb"
     debPath = "${pwd()}/$debName"
 
     stage("Sources") {
@@ -148,7 +149,6 @@ node(params.NODE) {
             sh "cp ${repoDir}/debian/${script} ${pkgDir}/DEBIAN/${script}"
             sh "chmod 755 ${pkgDir}/DEBIAN/${script}"
         }
-        pkgVersion = "${DISTRIB_VERSION.replaceAll('^v', '')}"
         sh "sed 's/^Version:.*/Version: ${pkgVersion}/' ${repoDir}/debian/control > ${pkgDir}/DEBIAN/control"
 
         sh "dpkg-deb --build --root-owner-group ${pkgDir} ${debPath}"
