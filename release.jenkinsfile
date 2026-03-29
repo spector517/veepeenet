@@ -120,6 +120,9 @@ node(params.NODE) {
                 sh "rm -f $versionsPath"
                 writeJSON file: versionsPath, json: versions
                 log "Write versions file success"
+                log "Update version in pyproject.toml"
+                sh "sed -i 's/^version = .*/version = \"${pkgVersion}\"/' pyproject.toml"
+                log "pyproject.toml version updated to ${pkgVersion}"
                 log "Building wheel"
                 sh "$venvPath/bin/python -m build ./"
                 log "Building wheel successfully"
