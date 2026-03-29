@@ -135,6 +135,11 @@ node(params.NODE) {
         whlPath = "${repoDir}/dist/${whlName}"
         log "Wheel package: ${whlName}"
 
+        log "Downloading pip and package dependencies"
+        sh "$venvPath/bin/pip download pip -d '${repoDir}/dist/wheels/'"
+        sh "$venvPath/bin/pip download -d '${repoDir}/dist/wheels/' '${whlPath}'"
+        log "Dependencies downloaded"
+
         log "Downloading Xray binary ${XRAY_VERSION}"
         sh "wget -q 'https://github.com/XTLS/Xray-core/releases/download/${XRAY_VERSION}/Xray-linux-64.zip' -O '${repoDir}/dist/xray.zip'"
         sh "unzip -o '${repoDir}/dist/xray.zip' xray -d '${repoDir}/dist/'"
@@ -148,10 +153,11 @@ node(params.NODE) {
         pkgDir = "${pwd()}/pkg"
 
         sh "mkdir -p ${pkgDir}/DEBIAN"
-        sh "mkdir -p ${pkgDir}/usr/local/lib/veepeenet"
+        sh "mkdir -p ${pkgDir}/usr/local/lib/veepeenet/wheels"
         sh "mkdir -p ${pkgDir}/usr/local/bin"
 
         sh "cp ${repoDir}/dist/*.whl ${pkgDir}/usr/local/lib/veepeenet/"
+        sh "cp ${repoDir}/dist/wheels/*.whl ${pkgDir}/usr/local/lib/veepeenet/wheels/"
         sh "cp ${repoDir}/dist/xray ${pkgDir}/usr/local/bin/"
 
         ["postinst", "prerm", "postrm"].each { script ->
