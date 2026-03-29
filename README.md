@@ -23,7 +23,7 @@ Download and install the latest `.deb` package:
 rm -rf /tmp/veepeenet \
     && mkdir /tmp/veepeenet \
     && (cd /tmp/veepeenet \
-        && curl -LO https://github.com/spector517/veepeenet/releases/latest/download/veepeenet_2.4.0_amd64.deb \
+        && curl -LO https://github.com/spector517/veepeenet/releases/download/v2.4.0/veepeenet_2.4.0_amd64.deb \
         && sudo apt install -y ./veepeenet_2.4.0_amd64.deb
     )
 ```

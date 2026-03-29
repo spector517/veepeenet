@@ -10,7 +10,7 @@
 
     - name: Download VeePeeNET deb package
       ansible.builtin.get_url:
-        url: "https://github.com/spector517/veepeenet/releases/download/{{ release_version }}/veepeenet_{{ release_version }}_amd64.deb"
+        url: "https://github.com/spector517/veepeenet/releases/download/v{{ release_version }}/veepeenet_{{ release_version }}_amd64.deb"
         dest: "{{ remote_temp_dir.path }}/veepeenet_{{ release_version }}_amd64.deb"
         mode: '0644'
       check_mode: false
