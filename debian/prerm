@@ -10,10 +10,6 @@ case "$1" in
         if systemctl is-enabled --quiet xray.service 2>/dev/null; then
             systemctl disable xray.service || true
         fi
-        if [ -f /etc/systemd/system/xray.service ]; then
-            rm -f /etc/systemd/system/xray.service
-            systemctl daemon-reload || true
-        fi
         ;;
     upgrade)
         if systemctl is-active --quiet xray.service 2>/dev/null; then

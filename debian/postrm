@@ -4,6 +4,7 @@ set -e
 
 case "$1" in
     remove|purge)
+        systemctl daemon-reload || true
         rm -rf /usr/local/lib/veepeenet
         ;;
 esac

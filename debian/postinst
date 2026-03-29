@@ -14,7 +14,9 @@ ln -sf "$VENV_PATH/bin/xray-migrate-1-to-2" /usr/local/bin/xray-migrate-1-to-2
 
 if [ -f /etc/systemd/system/xray.service ]; then
     systemctl daemon-reload || true
-    systemctl start xray.service || true
+    if [ -f /usr/local/etc/xray/config.json ]; then
+        systemctl start xray.service || true
+    fi
 fi
 
 echo 'VeePeeNET successfully installed'

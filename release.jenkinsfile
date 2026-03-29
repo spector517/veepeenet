@@ -155,10 +155,12 @@ node(params.NODE) {
         sh "mkdir -p ${pkgDir}/DEBIAN"
         sh "mkdir -p ${pkgDir}/usr/local/lib/veepeenet/wheels"
         sh "mkdir -p ${pkgDir}/usr/local/bin"
+        sh "mkdir -p ${pkgDir}/etc/systemd/system"
 
         sh "cp ${repoDir}/dist/*.whl ${pkgDir}/usr/local/lib/veepeenet/"
         sh "cp ${repoDir}/dist/wheels/*.whl ${pkgDir}/usr/local/lib/veepeenet/wheels/"
         sh "cp ${repoDir}/dist/xray ${pkgDir}/usr/local/bin/"
+        sh "cp ${repoDir}/app/resources/xray.service ${pkgDir}/etc/systemd/system/xray.service"
 
         ["postinst", "prerm", "postrm"].each { script ->
             sh "cp ${repoDir}/debian/${script} ${pkgDir}/DEBIAN/${script}"
