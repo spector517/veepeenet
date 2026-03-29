@@ -15,6 +15,7 @@ ln -sf "$VENV_PATH/bin/xray-migrate-1-to-2" /usr/local/bin/xray-migrate-1-to-2
 if [ -f /etc/systemd/system/xray.service ]; then
     systemctl daemon-reload || true
     if [ -f /usr/local/etc/xray/config.json ]; then
+        systemctl enable xray.service || true
         systemctl start xray.service || true
     fi
 fi
