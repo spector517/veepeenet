@@ -99,14 +99,15 @@ sudo xrayctl config [OPTIONS]
 ```
 
 #### Options
-| Option           | Type    | Description                                                                                              |
-|------------------|---------|----------------------------------------------------------------------------------------------------------|
-| --host           | TEXT    | Public interface of server. Using `hostname -i` if not specified. It is recommended to specify manually. |
-| --port           | INTEGER | Inbound port. [default: 443]                                                                             |
-| --reality-host   | TEXT    | Reality host. [default: microsoft.com]                                                                   |
-| --reality-port   | INTEGER | Reality port. [default: 443]                                                                             |
-| --reality-names  | TEXT    | Available Reality server names. [default: Reality host]                                                  |
-| --clean          | FLAG    | Override current configuration (All clients will be removed) [default: no-clean]                         |
+| Option          | Type    | Description                                                                                              |
+|-----------------|---------|----------------------------------------------------------------------------------------------------------|
+| --host          | TEXT    | Public interface of server. Using `hostname -i` if not specified. It is recommended to specify manually. |
+| --port          | INTEGER | Inbound port. [default: 443]                                                                             |
+| --reality-host  | TEXT    | Reality host. [default: microsoft.com]                                                                   |
+| --reality-port  | INTEGER | Reality port. [default: 443]                                                                             |
+| --reality-names | TEXT    | Available Reality server names. [default: Reality host]                                                  |
+| --name          | TEXT    | Human-readable server name (used after # in client links).                                               |
+| --clean         | FLAG    | Override current configuration (All clients will be removed) [default: no-clean]                         |
 
 ### Update geodata
 ```
