@@ -131,6 +131,10 @@ node(params.NODE) {
             }
         }
 
+        whlName = sh(script: "ls ${repoDir}/dist/*.whl | xargs basename", returnStdout: true).trim()
+        whlPath = "${repoDir}/dist/${whlName}"
+        log "Wheel package: ${whlName}"
+
         log "Downloading Xray binary ${XRAY_VERSION}"
         sh "wget -q 'https://github.com/XTLS/Xray-core/releases/download/${XRAY_VERSION}/Xray-linux-64.zip' -O '${repoDir}/dist/xray.zip'"
         sh "unzip -o '${repoDir}/dist/xray.zip' xray -d '${repoDir}/dist/'"
@@ -157,8 +161,11 @@ node(params.NODE) {
         sh "sed 's/^Version:.*/Version: ${pkgVersion}/' ${repoDir}/debian/control > ${pkgDir}/DEBIAN/control"
 
         sh "dpkg-deb --build --root-owner-group ${pkgDir} ${debPath}"
+
         archiveArtifacts artifacts: debName
-        log "Deb package built: ${debName}"
+        log "Deb package archived: ${debName}"
+        archiveArtifacts artifacts: "veepeenet/dist/${whlName}"
+        log "Wheel package archived: ${whlName}"
     }
 
     if (params.CREATE_RELEASE) {
@@ -192,6 +199,16 @@ node(params.NODE) {
                     uploadFile: debPath,
                     wrapAsMultipart: false
                 log "Deb package uploaded"
+
+                log "Uploading wheel package to release draft"
+                httpRequest url: "$UPLOAD_ASSETS_URL/$releaseId/assets?name=$whlName", httpMode: 'POST',
+                    contentType: "APPLICATION_OCTETSTREAM",
+                    customHeaders: [
+                        [name: "Authorization", value: "Bearer $github_token"],
+                    ],
+                    uploadFile: whlPath,
+                    wrapAsMultipart: false
+                log "Wheel package uploaded"
             }
         }
     } else {
