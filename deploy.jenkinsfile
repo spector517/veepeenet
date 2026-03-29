@@ -68,7 +68,7 @@ node {
                 credentialsId: params.HOST_SSH_CRED,
                 disableHostKeyChecking: true,
                 extraVars: [
-                    release_version: params.VEEPEENET_VERSION,
+                    release_version: params.VEEPEENET_VERSION.replaceAll('^v', ''),
                     ansible_port: params.HOST_SSH_PORT
                 ],
                 extras: "${if (params.CHECK) '--check' else ''}",
