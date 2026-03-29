@@ -13,8 +13,8 @@ def complete_client_name(_ctx: Context, _args: list[str], incomplete: str) -> It
         config = load_config(XRAY_CONFIG_PATH)
         vless_inbound = config.get_vless_inbound()
         clients = vless_inbound.settings.clients if vless_inbound else []
-        clients_names = (ClientData.from_model(client, config.veepeenet.host, i).name
-                         for i, client in enumerate(clients))
+        clients_names = (ClientData.from_model(client, i).name
+                         for i, client in enumerate(clients or []))
         for name in clients_names:
             if name.startswith(incomplete):
                 yield name

@@ -52,8 +52,8 @@ def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = Fals
     running = is_xray_service_running()
 
     client_names: list[str] = []
-    for i, client in enumerate(inbound.settings.clients):
-        client_data = ClientData.from_model(client, xray_config.veepeenet.host, i)
+    for i, client in enumerate(inbound.settings.clients or []):
+        client_data = ClientData.from_model(client, i)
         client_names.append(client_data.name)
 
     outbounds: list[OutboundView] = []

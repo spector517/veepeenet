@@ -21,8 +21,12 @@ from app.defaults import (
     XRAY_ERROR_LOG_PATH,
     XRAY_CONFIG_PATH,
     XRAY_CONFIG_BACKUP_PATH,
+    VLESS_LISTEN_INTERFACE,
     STATE_PENDING_TIMEOUT,
-    STYLE_REGULAR, STYLE_VALUE, STYLE_WARN, STYLE_OK,
+    STYLE_REGULAR,
+    STYLE_VALUE,
+    STYLE_WARN,
+    STYLE_OK,
     EXIT_NOT_ROOT,
     EXIT_NO_CONFIG,
 )
@@ -58,18 +62,15 @@ stderr_console = Console(stderr=True)
 class ClientData:
     name: str
     short_id: str
-    host: str
     uuid: UUID
 
     def __init__(
             self, name: str,
-            host: str,
             short_id: str | None = None,
             namespace: UUID | None = None,
             uuid: UUID | None = None) -> None:
         self.name = name
         self.short_id = short_id or xxh64(name).hexdigest()
-        self.host = host
         if uuid:
             self.uuid = uuid
         elif namespace:
@@ -78,7 +79,7 @@ class ClientData:
             self.uuid = uuid4()
 
     @classmethod
-    def from_model(cls, client: Client, host: str, index: int):
+    def from_model(cls, client: Client, index: int):
         if client.email:
             name = '.'.join(client.email.split('@')[0].split('.')[:-1])
             short_id = client.email.split('@')[0].split('.')[-1]
@@ -86,12 +87,12 @@ class ClientData:
             name = f'client_{index}'
             short_id = xxh64(name).hexdigest()
         uuid = UUID(client.id)
-        return ClientData(name=name, short_id=short_id, host=host, uuid=uuid)
+        return ClientData(name=name, short_id=short_id, uuid=uuid)
 
     def to_model(self) -> Client:
         return Client(
             id=str(self.uuid),
-            email=f'{self.name}.{self.short_id}@{self.host}'
+            email=f'{self.name}.{self.short_id}@{VLESS_LISTEN_INTERFACE}'
         )
 
 
