@@ -18,13 +18,13 @@ Install and configure personal anti-censorship service [Xray](https://github.com
 - Geodata updates for geoip/geosite based routing
 
 ## Installation
-Run a simple command:
+Download and install the latest `.deb` package:
 ```text
 rm -rf /tmp/veepeenet \
     && mkdir /tmp/veepeenet \
     && (cd /tmp/veepeenet \
-        && curl -LO https://github.com/spector517/veepeenet/releases/latest/download/veepeenet.tar.gz \
-        && tar -xf veepeenet.tar.gz && (cd veepeenet-* && sudo ./install.sh)
+        && curl -LO https://github.com/spector517/veepeenet/releases/latest/download/veepeenet_2.4.0_amd64.deb \
+        && sudo apt install -y ./veepeenet_2.4.0_amd64.deb
     )
 ```
 
@@ -99,14 +99,15 @@ sudo xrayctl config [OPTIONS]
 ```
 
 #### Options
-| Option           | Type    | Description                                                                                              |
-|------------------|---------|----------------------------------------------------------------------------------------------------------|
-| --host           | TEXT    | Public interface of server. Using `hostname -i` if not specified. It is recommended to specify manually. |
-| --port           | INTEGER | Inbound port. [default: 443]                                                                             |
-| --reality-host   | TEXT    | Reality host. [default: microsoft.com]                                                                   |
-| --reality-port   | INTEGER | Reality port. [default: 443]                                                                             |
-| --reality-names  | TEXT    | Available Reality server names. [default: Reality host]                                                  |
-| --clean          | FLAG    | Override current configuration (All clients will be removed) [default: no-clean]                         |
+| Option          | Type    | Description                                                                                              |
+|-----------------|---------|----------------------------------------------------------------------------------------------------------|
+| --host          | TEXT    | Public interface of server. Using `hostname -i` if not specified. It is recommended to specify manually. |
+| --port          | INTEGER | Inbound port. [default: 443]                                                                             |
+| --reality-host  | TEXT    | Reality host. [default: microsoft.com]                                                                   |
+| --reality-port  | INTEGER | Reality port. [default: 443]                                                                             |
+| --reality-names | TEXT    | Available Reality server names. [default: Reality host]                                                  |
+| --name          | TEXT    | Human-readable server name (used after # in client links).                                               |
+| --clean         | FLAG    | Override current configuration (All clients will be removed) [default: no-clean]                         |
 
 ### Update geodata
 ```
@@ -127,6 +128,7 @@ Updates Xray distribution to a selected or latest version. Shows a list of avail
 | --version | TEXT    | Target version (e.g. v1.8.24 or 1.8.24)             |
 | --list    | FLAG    | List available versions and exit                    |
 | --limit   | INTEGER | Number of versions to show with --list [default: 9] |
+| --json    |         | Show --list output in JSON format                   |
 
 ### Show Xray service status
 ```
@@ -144,7 +146,7 @@ sudo xrayctl status [OPTIONS]
 sudo xrayctl status
 ```
 ```
-┌ Xray server information ──────────────────────────┐
+┌ [My Server] Xray server information ──────────────┐
 │ status: stopped (disabled)                        │
 │ uptime: n/a                                       │
 │ xray_version: v25.12.8                            │
@@ -177,7 +179,8 @@ sudo xrayctl status --json
     {"name": "freedom"},
     {"name": "blackhole"},
     {"name": "dns"}
-  ]
+  ],
+  "server_name": "My Server"
 }
 ```
 
@@ -364,14 +367,8 @@ Changes the outbound to which the specified rule directs traffic.
 
 ## Removing
 
-Run a simple command:
-```text
-rm -rf /tmp/veepeenet \
-    && mkdir /tmp/veepeenet \
-    && (cd /tmp/veepeenet \
-        && curl -LO https://github.com/spector517/veepeenet/releases/latest/download/veepeenet.tar.gz \
-        && tar -xf veepeenet.tar.gz && (cd veepeenet-* && sudo ./uninstall.sh)
-    )
+```commandline
+sudo apt remove veepeenet
 ```
 
 # License

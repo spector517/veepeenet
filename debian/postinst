@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -e
+
+VENV_PATH=/usr/local/lib/veepeenet/venv
+LIB_PATH=/usr/local/lib/veepeenet
+
+python3 -m venv "$VENV_PATH"
+"$VENV_PATH/bin/pip3" install --no-index --find-links "$LIB_PATH/wheels" --upgrade pip -q
+"$VENV_PATH/bin/pip3" install --no-index --find-links "$LIB_PATH/wheels" "$LIB_PATH"/veepeenet-*.whl -q
+
+ln -sf "$VENV_PATH/bin/xrayctl" /usr/local/bin/xrayctl
+ln -sf "$VENV_PATH/bin/xray-migrate-1-to-2" /usr/local/bin/xray-migrate-1-to-2
+
+if [ -f /etc/systemd/system/xray.service ]; then
+    systemctl daemon-reload || true
+    if [ -f /usr/local/etc/xray/config.json ]; then
+        systemctl enable xray.service || true
+        systemctl start xray.service || true
+    fi
+fi
+
+echo 'VeePeeNET successfully installed'

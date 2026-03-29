@@ -1,14 +1,12 @@
 /* 
 
-Jenkins Release pipeline
+Jenkins Deploy pipeline
 
 Required non-default plugins:
 
-1. HTTP Request
-2. Pipeline Utility Steps
-3. AnsiColor
-4. Build Name and Description Setter
-5. Ansible
+1. AnsiColor
+2. Build Name and Description Setter
+3. Ansible
 
 Required parameters list:
 
@@ -45,9 +43,8 @@ node {
     repoDir = "${pwd()}/veepeenet"
     inventoryPath = "${pwd()}/inventory.ini"
     deployPlaybookPath = "$repoDir/deploy-playbook.yml"
-    distribFilePath = "${pwd()}/veepeenet.tar.gz"
 
-    buildName "#$BUILD_NUMBER ${if (params.VEEPEENET_VERSION) params.VEEPEENET_VERSION else 'CUSTOM'}"
+    buildName "#$BUILD_NUMBER $params.VEEPEENET_VERSION"
 
     stage("Sources") {
         dir(repoDir) {
@@ -72,7 +69,7 @@ node {
                 disableHostKeyChecking: true,
                 extraVars: [
                     release_version: params.VEEPEENET_VERSION,
-                    ansible_port:params.HOST_SSH_PORT
+                    ansible_port: params.HOST_SSH_PORT
                 ],
                 extras: "${if (params.CHECK) '--check' else ''}",
                 colorized: true

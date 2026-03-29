@@ -290,6 +290,28 @@ class TestGetVlessClientUrl:
 
         assert actual_url is None
 
+    def test_get_vless_client_url_uses_server_name_in_fragment(
+            self, mocker: MockFixture, valid_xray_config_with_clients_path: Path):
+        mocker.patch('app.utils.gen_xray_password', return_value='random-password-1')
+        expected_client_url = (
+            'vless://random-uuid-1@0.0.0.0:443?flow=xtls-rprx-vision'
+            '&type=raw'
+            '&security=reality'
+            '&fp=chrome'
+            '&sni=yahoo.com'
+            '&pbk=random-password-1'
+            '&sid=0001'
+            '&spx=%2Fc1.client'
+            '#c1.client@My VPN Server'
+        )
+        xray_config = Xray.model_validate_json(
+            valid_xray_config_with_clients_path.read_text(encoding='utf-8'))
+        xray_config.veepeenet.name = 'My VPN Server'
+
+        actual_url = get_vless_client_url('c1.client', xray_config)
+
+        assert actual_url == expected_client_url
+
 
 class TestIsValidVlessClientUrl:
 

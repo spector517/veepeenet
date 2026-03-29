@@ -60,7 +60,11 @@ def show(
     else:
         domain_strategy = _get_domain_strategy(xray_config)
         rules_view: list[RuleView] = []
-        for i, rule in enumerate(xray_config.routing.rules):
+        if xray_config.routing and xray_config.routing.rules:
+            rules = xray_config.routing.rules
+        else:
+            rules = []
+        for i, rule in enumerate(rules):
             rule_data = RuleData.from_model(rule, i)
             rule_view = RuleView(
                 name=rule_data.name,
@@ -393,12 +397,12 @@ def _is_outbound_exists(xray_config: Xray, outbound_name: str) -> bool:
             return True
     return False
 
-def _is_correct_ports_format(ports: str) -> bool:
+def _is_correct_ports_format(ports: str | None) -> bool:
     if not ports:
         return True
     return fullmatch(r'\d{1,5}(?:-\d{1,5})?(?:,\d{1,5}(?:-\d{1,5})?)*', ports) is not None
 
-def _is_correct_protocols(protocols: list[str]) -> bool:
+def _is_correct_protocols(protocols: list[str] | None) -> bool:
     if not protocols:
         return True
     return all(protocol in get_args(RuleProtocolType) for protocol in protocols)

@@ -70,3 +70,24 @@ class TestCreateConfig:
             by_alias=True, exclude_none=True, indent=2)
 
         assert actual_xray_config_content == expected_xray_config_content
+
+    def test_create_config_with_name(self,
+                                     non_existent_config_path: Path,
+                                     mocker: MockFixture):
+
+        mocker.patch(
+            'app.controller.commands.configure.gen_xray_private_key',
+            return_value='very-secret-key')
+        mocker.patch('app.controller.commands.configure.uuid4', return_value='some-uuid')
+        save_config_mock = mocker.patch('app.controller.commands.configure.save_config')
+        mocker.patch('app.controller.commands.configure.check_root')
+        mocker.patch('app.controller.commands.configure.check_distrib')
+        mocker.patch(
+            'app.controller.commands.configure.XRAY_CONFIG_PATH', non_existent_config_path)
+
+        config('1.1.1.1', 8443, 'example.com', 443, name='My Server')
+
+        save_config_mock.assert_called_once()
+        actual_xray_config = save_config_mock.call_args[0][0]
+
+        assert actual_xray_config.veepeenet.name == 'My Server'

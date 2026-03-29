@@ -52,33 +52,35 @@ def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = Fals
     running = is_xray_service_running()
 
     client_names: list[str] = []
-    for client in inbound.settings.clients:
-        client_data = ClientData.from_model(client, xray_config.veepeenet.host)
+    for i, client in enumerate(inbound.settings.clients or []):
+        client_data = ClientData.from_model(client, i)
         client_names.append(client_data.name)
 
     outbounds: list[OutboundView] = []
-    for outbound in xray_config.outbounds:
+    for i, outbound in enumerate(xray_config.outbounds or []):
+        default_name = f'outbound_{i}'
         if isinstance(outbound, VlessOutbound):
             outbounds.append(OutboundView(
-                name=outbound.tag,
+                name=outbound.tag or default_name,
                 address=f'{outbound.settings.address}:{outbound.settings.port}'))
         else:
-            outbounds.append(OutboundView(name=outbound.tag))
+            outbounds.append(OutboundView(name=outbound.tag or default_name))
 
     server_view = ServerView(
         veepeenet_version=versions.veepeenet_version,
         veepeenet_build=versions.veepeenet_build,
-        xray_version=xray_version,
+        xray_version=xray_version or 'None',
         server_status='running' if running else 'stopped',
         enabled=is_xray_service_enabled(),
         uptime=get_xray_service_uptime() if running else None,
         restart_required=not is_files_content_same(XRAY_CONFIG_PATH, XRAY_CONFIG_BACKUP_PATH),
         server_host=xray_config.veepeenet.host,
-        server_port=inbound.port,
+        server_port=str(inbound.port),
         reality_address=inbound.stream_settings.reality_settings.dest,
         reality_names=inbound.stream_settings.reality_settings.server_names,
         clients=client_names,
-        outbounds=outbounds)
+        outbounds=outbounds,
+        server_name=xray_config.veepeenet.name)
     if json:
         stdout_console.print_json(
             server_view.model_dump_json(exclude_none=True),

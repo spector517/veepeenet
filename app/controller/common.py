@@ -3,7 +3,7 @@ from functools import wraps
 from os import getuid
 from pathlib import Path
 from time import sleep
-from typing import Self, Callable, Any, Literal
+from typing import Callable, Any, Literal
 from urllib.parse import urljoin
 from uuid import uuid4, uuid5, UUID
 
@@ -11,6 +11,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 from typer import Exit
+from xxhash import xxh64
 
 from app.defaults import (
     XRAY_BINARY_PATH,
@@ -20,8 +21,12 @@ from app.defaults import (
     XRAY_ERROR_LOG_PATH,
     XRAY_CONFIG_PATH,
     XRAY_CONFIG_BACKUP_PATH,
+    VLESS_LISTEN_INTERFACE,
     STATE_PENDING_TIMEOUT,
-    STYLE_REGULAR, STYLE_VALUE, STYLE_WARN, STYLE_OK,
+    STYLE_REGULAR,
+    STYLE_VALUE,
+    STYLE_WARN,
+    STYLE_OK,
     EXIT_NOT_ROOT,
     EXIT_NO_CONFIG,
 )
@@ -50,25 +55,22 @@ from app.utils import (
     get_xray_service_journal,
 )
 
-stdout_console = Console(soft_wrap=True)
+stdout_console = Console()
 stderr_console = Console(stderr=True)
 
 @dataclass
 class ClientData:
     name: str
     short_id: str
-    host: str
     uuid: UUID
 
     def __init__(
             self, name: str,
-            short_id: str,
-            host: str,
+            short_id: str | None = None,
             namespace: UUID | None = None,
             uuid: UUID | None = None) -> None:
         self.name = name
-        self.short_id = short_id
-        self.host = host
+        self.short_id = short_id or xxh64(name).hexdigest()
         if uuid:
             self.uuid = uuid
         elif namespace:
@@ -77,16 +79,20 @@ class ClientData:
             self.uuid = uuid4()
 
     @classmethod
-    def from_model(cls, client: Client, host: str) -> Self:
-        name = '.'.join(client.email.split('@')[0].split('.')[:-1])
+    def from_model(cls, client: Client, index: int):
+        if client.email:
+            name = '.'.join(client.email.split('@')[0].split('.')[:-1])
+            short_id = client.email.split('@')[0].split('.')[-1]
+        else:
+            name = f'client_{index}'
+            short_id = xxh64(name).hexdigest()
         uuid = UUID(client.id)
-        short_id = client.email.split('@')[0].split('.')[-1]
-        return ClientData(name=name, short_id=short_id, host=host, uuid=uuid)
+        return ClientData(name=name, short_id=short_id, uuid=uuid)
 
     def to_model(self) -> Client:
         return Client(
             id=str(self.uuid),
-            email=f'{self.name}.{self.short_id}@{self.host}'
+            email=f'{self.name}.{self.short_id}@{VLESS_LISTEN_INTERFACE}'
         )
 
 
@@ -101,7 +107,7 @@ class RuleData:
     priority: int
 
     @classmethod
-    def from_model(cls, rule: Rule, number: int = 0) -> Self:
+    def from_model(cls, rule: Rule, number: int = 0):
         try:
             split_name = rule.tag.split('.') if rule.tag else ''
             priority = int(split_name[-1])

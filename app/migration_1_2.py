@@ -21,7 +21,7 @@ def migrate_xray_config(
         xray_config_content = source_xray_config_path.read_text('utf-8')
         xray = Xray.model_validate_json(xray_config_content)
         inbound = xray.get_vless_inbound()
-        clients = inbound.settings.clients
+        clients = inbound.settings.clients or []
         short_ids = inbound.stream_settings.reality_settings.short_ids
 
         xray.veepeenet.host = host
@@ -31,8 +31,7 @@ def migrate_xray_config(
             raise ValueError("Number of clients does not match number of short IDs.")
         for client, short_id in zip(clients, short_ids):
             name = f'{client.email.split('@')[0]}.{short_id}'
-            domain = client.email.split('@')[1]
-            client.email = f'{name}@{domain}'
+            client.email = f'{name}@{VLESS_LISTEN_INTERFACE}'
 
         xray.outbounds = [FreedomOutbound(), BlackholeOutbound()]
 
