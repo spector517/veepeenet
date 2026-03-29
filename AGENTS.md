@@ -37,7 +37,9 @@ app/migration_1_2.py          — Standalone v1→v2 config migration script
 ## Controller Conventions
 
 - Every command function must be wrapped with `@error_handler(default_message=..., default_code=...)` for consistent error reporting.
-- Commands requiring root access call `check_root()` first; commands needing an existing config call `check_xray_config()`.
+- Every command accepts a hidden `_debug: Annotated[bool, Option('--debug', hidden=True)] = False` parameter — when `True`, `error_handler` re-raises exceptions instead of pretty-printing them.
+- Commands requiring root access call `check_root()` first; commands needing an existing config call `check_xray_config()`. Commands interacting with the running service (`config`, `status`, `start`, `stop`, `restart`) also call `check_distrib()` which auto-installs the Xray binary and systemd unit if missing.
+- Exit codes in `defaults.py` are grouped by command module: 1–2 general, 10–14 configure, 20 clients, 30–33 state, 40–46 outbound, 50–59 routing. New command groups should allocate the next tens range.
 - Client identity is encoded in email field format: `{name}.{short_id}@{host}` — parsed/built via `ClientData.from_model()` / `ClientData.to_model()`. Short IDs are generated via `xxhash.xxh64(name).hexdigest()`. Client UUIDs are deterministic: `uuid5(namespace, name)` where `namespace` is stored in the `veepeenet` config section.
 - Routing rule priority is encoded in the tag: `{name}.{priority}` — parsed/built via `RuleData`.
 
