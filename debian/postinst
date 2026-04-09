@@ -16,7 +16,7 @@ if [ -f /etc/systemd/system/xray.service ]; then
     systemctl daemon-reload || true
     if [ -f /usr/local/etc/xray/config.json ]; then
         systemctl enable xray.service || true
-        systemctl start xray.service || true
+        systemctl restart xray.service || true
     fi
 fi
 

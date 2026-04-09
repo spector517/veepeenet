@@ -29,6 +29,7 @@ class StreamSettings(XrayModel):
 
 class VlessOutbound(XrayModel):
     tag: str | None = Field(default=None)
+    send_through: str | None = Field(default=None)
     protocol: Literal['vless'] = 'vless'
     settings: Settings
     stream_settings: StreamSettings

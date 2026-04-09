@@ -4,27 +4,26 @@ Install and configure personal anti-censorship service [Xray](https://github.com
 
 ## Requirements
 
-1. Ubuntu Server (24.04+)
-2. Python 3.12+
-3. Internet connection
+1. Ubuntu Server 24.04+ (amd64) 
+2. Internet connection
 
 ## Features
 
 - Installing Xray
-- Creating and changing XRAY server configuration (VLESS with Reality)
-- Adding and removing XRAY server clients
-- Managing outbound VLESS connections
+- Creating and changing Xray server configuration (Vless with Reality)
+- Adding and removing Xray server clients
+- Managing outbound Vless connections
 - Flexible routing rules management
 - Geodata updates for geoip/geosite based routing
 
 ## Installation
-Download and install the latest `.deb` package:
+Download and install the `.deb` package:
 ```text
 rm -rf /tmp/veepeenet \
     && mkdir /tmp/veepeenet \
     && (cd /tmp/veepeenet \
-        && curl -LO https://github.com/spector517/veepeenet/releases/download/v2.4.0/veepeenet_2.4.0_amd64.deb \
-        && sudo apt install -y ./veepeenet_2.4.0_amd64.deb
+        && curl -LO https://github.com/spector517/veepeenet/releases/download/v2.4.1/veepeenet_2.4.1_amd64.deb \
+        && sudo apt install -y ./veepeenet_2.4.1_amd64.deb
     )
 ```
 
@@ -32,10 +31,12 @@ rm -rf /tmp/veepeenet \
 
 ### Configure and add clients
 
-Configure XRAY server on host **my.domain.com**:
+Configure Xray server on host **my.domain.com**:
 ```commandline
 sudo xrayctl config --host my.domain.com
 ```
+The `host` may be a **public** IP address or a domain name. 
+It is recommended to specify it manually, as the automatic detection may not work correctly in some environments (e.g. behind NAT).
 
 Create client configurations
 **my_client1** and **my_client2** and print share links:
@@ -91,16 +92,20 @@ Show rich help message:
 sudo xrayctl --help
 ```
 
+### GUI client
+You can use [Happ](https://www.happ.su/main) GUI client to connect to the server. Just import the generated share link and connect.
+Or you can use any other client recommended by [Xray project](https://github.com/XTLS/Xray-core/blob/main/README.md#gui-clients)
+
 ## Commands
 
-### Configure Xray VLESS server with Reality
+### Configure Xray Vless server with Reality
 ```
 sudo xrayctl config [OPTIONS]
 ```
 
 #### Options
 | Option          | Type    | Description                                                                                              |
-|-----------------|---------|----------------------------------------------------------------------------------------------------------|
+| --------------- | ------- | -------------------------------------------------------------------------------------------------------- |
 | --host          | TEXT    | Public interface of server. Using `hostname -i` if not specified. It is recommended to specify manually. |
 | --port          | INTEGER | Inbound port. [default: 443]                                                                             |
 | --reality-host  | TEXT    | Reality host. [default: microsoft.com]                                                                   |
@@ -124,7 +129,7 @@ Updates Xray distribution to a selected or latest version. Shows a list of avail
 #### Options
 
 | Option    | Type    | Description                                         |
-|-----------|---------|-----------------------------------------------------|
+| --------- | ------- | --------------------------------------------------- |
 | --version | TEXT    | Target version (e.g. v1.8.24 or 1.8.24)             |
 | --list    | FLAG    | List available versions and exit                    |
 | --limit   | INTEGER | Number of versions to show with --list [default: 9] |
@@ -138,7 +143,7 @@ sudo xrayctl status [OPTIONS]
 #### Options
 
 | Option | Type | Description         |
-|--------|------|---------------------|
+| ------ | ---- | ------------------- |
 | --json | FLAG | Show in JSON-format |
 
 #### Examples
@@ -217,58 +222,62 @@ sudo xrayctl clients list [OPTIONS]
 ```
 
 | Option | Type | Description         |
-|--------|------|---------------------|
+| ------ | ---- | ------------------- |
 | --json | FLAG | Show in JSON-format |
 
 ---
 
 ### Outbounds management
 
-#### Add VLESS outbound
+#### Add Vless outbound
 ```text
 sudo xrayctl outbounds add NAME [OPTIONS]
 ```
 
 | Option        | Type    | Description                                             |
-|---------------|---------|---------------------------------------------------------|
+| ------------- | ------- | ------------------------------------------------------- |
 | --address     | TEXT    | Outbound address (IP or domain name) **(required)**     |
-| --uuid        | TEXT    | VLESS client identifier **(required)**                  |
+| --uuid        | TEXT    | Vless client identifier **(required)**                  |
 | --sni         | TEXT    | Server name of target server **(required)**             |
 | --short-id    | TEXT    | One of short_id of target server **(required)**         |
 | --password    | TEXT    | Public key of target server **(required)**              |
 | --spider-x    | TEXT    | Initial path and parameters for the spider [default: /] |
-| --port        | INTEGER | VLESS outbound port [default: 443]                      |
-| --fingerprint | TEXT    | Fingerprint of target server [default: chrome]          |
+| --port        | INTEGER | Vless outbound port [default: 443]                      |
+| --fingerprint | TEXT    | Browser TLS Client Hello fingerprint [default: chrome]  |
+| --interface   | TEXT    | Send through interface [default: 0.0.0.0]               |
 
-#### Add VLESS outbound from URL
+#### Add Vless outbound from URL
 ```text
 sudo xrayctl outbounds add-from-url 'URL' [OPTIONS]
 ```
 
-| Option | Type | Description                                        |
-|--------|------|----------------------------------------------------|
-| --name | TEXT | Outbound name (uses URL fragment if not specified) |
+| Option      | Type | Description                                        |
+| ----------- | ---- | -------------------------------------------------- |
+| --name      | TEXT | Outbound name (uses URL fragment if not specified) |
+| --interface | TEXT | Send through interface [default: 0.0.0.0]          |
 
-#### Remove VLESS outbound
+#### Remove Vless outbound
 ```commandline
 sudo xrayctl outbounds remove NAME
 ```
 
-#### Change VLESS outbound
+#### Change Vless outbound
 ```text
 sudo xrayctl outbounds change NAME [OPTIONS]
 ```
 
-| Option        | Type    | Description                                   |
-|---------------|---------|-----------------------------------------------|
-| --address     | TEXT    | Outbound address (IP or domain name)          |
-| --uuid        | TEXT    | VLESS client identifier                       |
-| --sni         | TEXT    | Server name of target server                  |
-| --password    | TEXT    | Public key of target server                   |
-| --short-id    | TEXT    | One of short_id of target server              |
-| --spider-x    | TEXT    | Initial path and parameters for the spider    |
-| --port        | INTEGER | VLESS outbound port                           |
-| --new-name    | TEXT    | New outbound name                             |
+| Option        | Type    | Description                                            |
+| ------------- | ------- | ------------------------------------------------------ |
+| --address     | TEXT    | Outbound address (IP or domain name)                   |
+| --uuid        | TEXT    | Vless client identifier                                |
+| --sni         | TEXT    | Server name of target server                           |
+| --password    | TEXT    | Public key of target server                            |
+| --short-id    | TEXT    | One of short_id of target server                       |
+| --spider-x    | TEXT    | Initial path and parameters for the spider             |
+| --port        | INTEGER | Vless outbound port                                    |
+| --fingerprint | TEXT    | Browser TLS Client Hello fingerprint [default: chrome] |
+| --interface   | TEXT    | Send through interface [default: 0.0.0.0]              |
+| --new-name    | TEXT    | New outbound name                                      |
 
 #### Set default outbound
 ```commandline
@@ -286,7 +295,7 @@ sudo xrayctl routing list [OPTIONS]
 ```
 
 | Option | Type | Description         |
-|--------|------|---------------------|
+| ------ | ---- | ------------------- |
 | --json | FLAG | Show in JSON-format |
 
 ##### Example
@@ -313,14 +322,14 @@ xrayctl routing list
 xrayctl routing add-rule NAME [OPTIONS]
 ```
 
-| Option     | Type    | Description                                                         |
-|------------|---------|---------------------------------------------------------------------|
-| --outbound | TEXT    | Outbound name to which the rule will direct traffic **(required)**  |
-| --domain   | TEXT    | List of domain patterns to match (e.g. "domain:example.com")        |
-| --ip       | TEXT    | List of IPs or IP ranges to match (e.g. "123.123.123.123")          |
-| --ports    | TEXT    | Port or port range to match (e.g. "53,443,60-89")                   |
-| --protocol | TEXT    | List of protocols to match: http, tls, quic or bittorrent           |
-| --priority | INTEGER | Priority of the rule (lower value means higher priority)            |
+| Option     | Type    | Description                                                        |
+| ---------- | ------- | ------------------------------------------------------------------ |
+| --outbound | TEXT    | Outbound name to which the rule will direct traffic **(required)** |
+| --domain   | TEXT    | List of domain patterns to match (e.g. "domain:example.com")       |
+| --ip       | TEXT    | List of IPs or IP ranges to match (e.g. "123.123.123.123")         |
+| --ports    | TEXT    | Port or port range to match (e.g. "53,443,60-89")                  |
+| --protocol | TEXT    | List of protocols to match: http, tls, quic or bittorrent          |
+| --priority | INTEGER | Priority of the rule (lower value means higher priority)           |
 
 At least one condition (`--domain`, `--ip`, `--ports`, `--protocol`) must be specified.
 
@@ -347,7 +356,7 @@ sudo xrayctl routing change-rule NAME ACTION [OPTIONS]
 Where `ACTION` is either `put` (add values) or `del` (remove values).
 
 | Option     | Type | Description                                                    |
-|------------|------|----------------------------------------------------------------|
+| ---------- | ---- | -------------------------------------------------------------- |
 | --domain   | TEXT | List of domain patterns to add/remove                          |
 | --ip       | TEXT | List of IPs or IP ranges to add/remove                         |
 | --ports    | TEXT | Port or port range to add/remove                               |

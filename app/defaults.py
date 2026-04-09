@@ -8,6 +8,7 @@ STATE_PENDING_TIMEOUT = 2
 REALITY_HOST = 'microsoft.com'
 REALITY_PORT = 443
 VLESS_LISTEN_INTERFACE = '0.0.0.0'
+VLESS_SEND_INTERFACE = '0.0.0.0'
 VLESS_LISTEN_PORT = 443
 VLESS_OUTBOUND_PORT = 443
 VLESS_OUTBOUND_SPIDER_X = '/'
@@ -17,7 +18,8 @@ XRAY_CONFIG_PATH = Path('/usr/local/etc/xray/config.json')
 XRAY_CONFIG_BACKUP_PATH = Path('/usr/local/etc/xray/config.json.bak')
 XRAY_BINARY_PATH = Path('/usr/local/bin/xray')
 XRAY_SERVICE_UNIT_PATH = Path('/etc/systemd/system/xray.service')
-XRAY_ERROR_LOG_PATH = Path('/var/log/xray/error.log')
+XRAY_LOGS_PATH = Path('/var/log/xray')
+XRAY_ERROR_LOG_PATH = XRAY_LOGS_PATH / 'error.log'
 
 XRAY_DOWNLOAD_URL = 'https://github.com/XTLS/Xray-core/releases/download/'
 XRAY_ARCHIVE_NAME = 'Xray-linux-64.zip'

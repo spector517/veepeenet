@@ -25,6 +25,7 @@ from app.defaults import (
     REALITY_HOST,
     REALITY_PORT,
     XRAY_CONFIG_PATH,
+    XRAY_LOGS_PATH,
     GEO_IP_URL,
     GEO_SITE_URL,
     XRAY_GEO_IP_DATA_PATH,
@@ -89,7 +90,7 @@ def config(
 
     if not XRAY_CONFIG_PATH.exists() or clean:
         if not host:
-            host: str = _detect_host_or_error()
+            host = _detect_host_or_error()
         if clean:
             answer = _confirm_config_rewriting()
             if not answer:
@@ -102,6 +103,7 @@ def config(
             reality_port or REALITY_PORT,
             reality_names or [reality_host or REALITY_HOST],
             name)
+        XRAY_LOGS_PATH.mkdir(parents=True, exist_ok=True)
     else:
         xray_config = load_config(XRAY_CONFIG_PATH)
         _update_config(

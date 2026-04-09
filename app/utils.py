@@ -97,7 +97,8 @@ def gen_xray_password(private_key: str) -> str:
         raise RuntimeError(
             f'Error generating password.'
             f' code:{gen_result[0]}, stdout:{gen_result[1]}, stderr:{gen_result[2]}')
-    password = findall(r'(?<=Password: ).+$', gen_result[1], MULTILINE)
+    password = (findall(r'(?<=Password:\s).+$', gen_result[1], MULTILINE)
+                or findall(r'(?<=Password\s\(PublicKey\):\s).+$', gen_result[1], MULTILINE))
     if not password:
         raise RuntimeError('Error generating password. Unexpected stdout')
     return password[0]

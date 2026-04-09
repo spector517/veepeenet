@@ -20,6 +20,7 @@ from app.defaults import (
     VLESS_OUTBOUND_SPIDER_X,
     VLESS_OUTBOUND_FINGERPRINT,
     VLESS_OUTBOUND_PORT,
+    VLESS_SEND_INTERFACE,
     STYLE_REGULAR,
     STYLE_ACCENT_UP,
     STYLE_ACCENT_DOWN,
@@ -61,7 +62,9 @@ def add(
             Option(help='VLESS outbound port')] = VLESS_OUTBOUND_PORT,
         fingerprint: Annotated[
             FingerprintType,
-            Option(help='Fingerprint of target server')] = VLESS_OUTBOUND_FINGERPRINT,
+            Option(help='Browser TLS Client Hello fingerprint')] = VLESS_OUTBOUND_FINGERPRINT,
+        interface: Annotated[
+            str, Option(help='Send through interface')] = VLESS_SEND_INTERFACE,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_root()
     check_xray_config()
@@ -89,6 +92,7 @@ def add(
     )
     new_outbound = VlessOutbound(
         tag=name,
+        send_through=interface,
         settings=settings,
         stream_settings=OutboundStreamSettings(
             reality_settings=reality_settings,
@@ -111,6 +115,8 @@ def add(
 def add_from_url(
         url: Annotated[str, Argument(help='Outbound URL')],
         name: Annotated[str | None, Option(help='Outbound name')] = None,
+        interface: Annotated[
+            str, Option(help='Send through interface')] = VLESS_SEND_INTERFACE,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     if not is_valid_vless_client_url(url):
         print_error(Text('Unsupported VLESS client URL', STYLE_REGULAR))
@@ -138,7 +144,7 @@ def add_from_url(
 
     add(name=outbound_name, address=address, uuid=uuid, sni=sni, password=password,
         short_id=short_id, spider_x=spider_x, port=port,
-        fingerprint=fingerprint, _debug=_debug)
+        fingerprint=fingerprint, interface=interface, _debug=_debug)
 
 
 
@@ -215,6 +221,11 @@ def change(
         port: Annotated[
             int | None,
             Option(help='VLESS outbound port')] = None,
+        fingerprint: Annotated[
+            FingerprintType | None,
+            Option(help='Browser TLS Client Hello fingerprint')] = VLESS_OUTBOUND_FINGERPRINT,
+        interface: Annotated[
+            str | None, Option(help='Send through interface')] = None,
         new_name: Annotated[str | None, Option(help='New outbound name')] = None,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_root()
@@ -237,13 +248,15 @@ def change(
         raise Exit(code=EXIT_OUTBOUND_INVALID_SHORT_ID)
 
     results = [set_value(target_outbound, 'tag', new_name),
+               set_value(target_outbound, 'send_through', interface),
                set_value(target_outbound.settings, 'address', address),
                set_value(target_outbound.settings, 'port', port),
                set_value(target_outbound.settings, 'id', uuid),
                set_value(target_outbound.stream_settings.reality_settings, 'server_name', sni),
                set_value(target_outbound.stream_settings.reality_settings, 'password', password),
                set_value(target_outbound.stream_settings.reality_settings, 'short_id', short_id),
-               set_value(target_outbound.stream_settings.reality_settings, 'spider_x', spider_x)]
+               set_value(target_outbound.stream_settings.reality_settings, 'spider_x', spider_x),
+               set_value(target_outbound.stream_settings.reality_settings, 'fingerprint', fingerprint)]
     if not any(results):
         print_error(Text.assemble(
             ('No changes found for outbound ', STYLE_REGULAR),

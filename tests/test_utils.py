@@ -102,11 +102,22 @@ class TestGenXrayPrivateKey:
 
 class TestGenXrayPassword:
 
-    def test_gen_xray_password_success(self, mocker):
+    def test_gen_xray_password_success_0(self, mocker):
         private_key = 'aAbBcCdDeEfF123456789gGhHiIjJkKlL=='
         expected_pass = 'xXyYzZ987654321aBcDeFgHiJkLmNoOpP=='
         mock_run_command = mocker.patch(
             'app.utils.run_command', return_value=(0, f'Password: {expected_pass}', ''))
+
+        result = gen_xray_password(private_key)
+
+        assert result == expected_pass
+        mock_run_command.assert_called_once_with(f'xray x25519 -i {private_key}')
+
+    def test_gen_xray_password_success_1(self, mocker):
+        private_key = 'aAbBcCdDeEfF123456789gGhHiIjJkKlL=='
+        expected_pass = 'xXyYzZ987654321aBcDeFgHiJkLmNoOpP=='
+        mock_run_command = mocker.patch(
+            'app.utils.run_command', return_value=(0, f'Password (PublicKey): {expected_pass}', ''))
 
         result = gen_xray_password(private_key)
 
