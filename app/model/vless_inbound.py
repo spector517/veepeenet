@@ -19,7 +19,7 @@ class RealitySettings(XrayModel):
 
 
 class Settings(XrayModel):
-    clients: list[Client] | None = Field(default_factory=list)
+    clients: list[Client] | None = Field(default_factory=lambda: [])
     decryption: Literal['none'] = 'none'
 
 

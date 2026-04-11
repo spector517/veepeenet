@@ -19,12 +19,12 @@ _REQUIRED_OUTBOUNDS: list[type] = [FreedomOutbound, BlackholeOutbound, DnsOutbou
 
 
 class Xray(XrayModel):
-    veepeenet: VeePeeNET = Field(default=None)
+    veepeenet: VeePeeNET | None = Field(default=None)
     log: Log | None = Field(default_factory=Log)
     dns: Dns | None = Field(default=None)
-    inbounds: list[VlessInbound | dict] | None = Field(default=None)
+    inbounds: list[VlessInbound | dict[str, Any]] | None = Field(default=None)
     routing: Routing | None = Field(default=None)
-    outbounds: list[Outbound] | list[dict] | None = Field(
+    outbounds: list[Outbound | dict[str, Any]] | None = Field(
         default_factory=lambda: [FreedomOutbound(), BlackholeOutbound(), DnsOutbound()])
 
     def get_vless_inbound(self) -> VlessInbound | None:
@@ -49,7 +49,7 @@ class Xray(XrayModel):
             return self
         inbound = self.get_vless_inbound()
         if not inbound:
-            raise ValueError('VLESS inbound is required to auto fill VeePeeNET config')
+            raise ValueError('Vless inbound is required to auto fill VeePeeNET config')
         self.veepeenet = VeePeeNET(
             host=inbound.listen or VLESS_LISTEN_INTERFACE,
             namespace=str(uuid4()))

@@ -21,7 +21,6 @@ app = Typer()
 
 @app.callback()
 def show_version(
-        # pylint: disable=unused-argument
         _version: Annotated[
             bool, Option('--version', help='Show version and exit.',
                          callback=_version_callback, is_eager=True)] = False,

@@ -139,7 +139,7 @@ def error_handler(
     def wrapper_func(func: Callable[..., Any]) -> Callable[..., Any]:
 
         @wraps(func)
-        def wrapper(*args, **kwargs) -> Any | None:
+        def wrapper(*args: list[Any] | None, **kwargs: dict[Any, Any] | None) -> Any | None:
             try:
                 return func(*args, **kwargs)
             except Exit:
@@ -218,7 +218,7 @@ def get_vless_inbound(xray_config: Xray) -> VlessInbound:
     inbound = xray_config.get_vless_inbound()
     if inbound:
         return inbound
-    raise ValueError('VLESS inbound not found in config')
+    raise ValueError('Vless inbound not found in config')
 
 
 def start_service() -> None:

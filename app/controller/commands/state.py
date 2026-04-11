@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from rich.console import Text
+from rich.text import Text
 from typer import Option, Exit
 
 from app.cli import app
@@ -64,7 +64,11 @@ def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = Fals
                 name=outbound.tag or default_name,
                 address=f'{outbound.settings.address}:{outbound.settings.port}'))
         else:
-            outbounds.append(OutboundView(name=outbound.tag or default_name))
+            outbounds.append(OutboundView(name=getattr(outbound, 'tag', None) or default_name))
+
+    if not xray_config.veepeenet:
+        print_error(Text('Invalid configuration: missing veepeenet section', STYLE_REGULAR))
+        raise Exit(code=EXIT_STATE_ERROR)
 
     server_view = ServerView(
         veepeenet_version=versions.veepeenet_version,

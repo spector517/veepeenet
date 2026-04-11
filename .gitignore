@@ -6,3 +6,6 @@ venv
 *__pycache__
 *.log
 .vscode
+*egg-info
+test_real_config.py
+.ruff_cache

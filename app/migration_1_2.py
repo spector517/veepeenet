@@ -21,15 +21,20 @@ def migrate_xray_config(
         xray_config_content = source_xray_config_path.read_text('utf-8')
         xray = Xray.model_validate_json(xray_config_content)
         inbound = xray.get_vless_inbound()
+        if not inbound:
+            raise ValueError("No Vless inbound found in the Xray config.")
         clients = inbound.settings.clients or []
         short_ids = inbound.stream_settings.reality_settings.short_ids
 
-        xray.veepeenet.host = host
+        if xray.veepeenet:
+            xray.veepeenet.host = host
         inbound.listen = VLESS_LISTEN_INTERFACE
 
         if len(clients) != len(short_ids):
             raise ValueError("Number of clients does not match number of short IDs.")
         for client, short_id in zip(clients, short_ids):
+            if not client.email:
+                raise ValueError("Client email is missing.")
             name = f'{client.email.split('@')[0]}.{short_id}'
             client.email = f'{name}@{VLESS_LISTEN_INTERFACE}'
 

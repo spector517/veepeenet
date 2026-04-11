@@ -1,5 +1,5 @@
 from re import fullmatch
-from typing import Annotated, Literal, get_args
+from typing import Annotated, Literal, Any, get_args
 
 from rich.text import Text
 from typer import Option, Argument, Exit
@@ -12,9 +12,9 @@ from app.controller.common import (
     check_xray_config,
     check_root,
     get_vless_inbound,
-    stdout_console,
     print_error,
     save_config,
+    stdout_console,
 )
 from app.controller.completions import complete_route_name, complete_outbound_name
 from app.defaults import (
@@ -71,7 +71,7 @@ def show(
                 domains=rule_data.domains,
                 ips=rule_data.ips,
                 ports=rule_data.ports,
-                protocols=rule_data.protocols,
+                protocols=rule_data.protocols, # pyright: ignore[reportArgumentType]
                 outbound_name=rule_data.outbound_name,
                 priority=rule_data.priority
             )
@@ -93,19 +93,19 @@ def add_rule(
             Option(help='Outbound name to which the rule will direct traffic',
                    autocompletion=complete_outbound_name)],
         domain: Annotated[
-            list[str],
+            list[str] | None,
             Option(help='List of domain patterns to match (e.g. "domain:example.com")')] = None,
         ip: Annotated[
-            list[str],
+            list[str] | None,
             Option(help='List of IPs or IP ranges to match (e.g. "123.123.123.123')] = None,
         ports: Annotated[
-            str,
+            str | None,
             Option(help='Port or port range to match (e.g. "53,443,60-89", "1000-2000")')] = None,
         protocol: Annotated[
-            list[str],
+            list[str] | None,
             Option(help='List of protocols to match: http, tls, quic or bittorrent')] = None,
         priority: Annotated[
-            int,
+            int | None,
             Option(
                 help='Priority of the rule (lower value means higher priority)')] = None,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
@@ -118,12 +118,14 @@ def add_rule(
             (outbound, STYLE_ACCENT_NEUTRAL),
             (' not found', STYLE_REGULAR)))
         raise Exit(code=EXIT_ROUTING_OUTBOUND_NOT_FOUND)
+
     if not (domain or ip or ports or protocol):
         print_error(Text(
             'At least one condition (domain, ip, ports, protocol) must be specified',
             STYLE_REGULAR))
         raise Exit(code=EXIT_ROUTING_NO_CONDITIONS)
-    if not _is_correct_protocols(protocol):
+
+    if protocol and not _is_correct_protocols(protocol):
         allowed_protocols = ', '.join(get_args(RuleProtocolType))
         print_error(Text.assemble(
             ('Invalid protocols: ', STYLE_REGULAR),
@@ -131,7 +133,8 @@ def add_rule(
             ('. Allowed values: ', STYLE_REGULAR),
             (allowed_protocols, STYLE_VALUE)))
         raise Exit(code=EXIT_ROUTING_INVALID_PROTOCOLS)
-    if not _is_correct_ports_format(ports):
+
+    if ports and not _is_correct_ports_format(ports):
         print_error(Text.assemble(
             ('Invalid ports format: ', STYLE_REGULAR),
             (ports, STYLE_ACCENT_NEUTRAL)))
@@ -145,7 +148,8 @@ def add_rule(
             (' already exists', STYLE_REGULAR)))
         raise Exit(code=EXIT_ROUTING_RULE_EXISTS)
 
-    new_rule = RuleData(name=name, outbound_name=outbound, protocols=protocol,
+    new_rule = RuleData(name=name, outbound_name=outbound,
+                        protocols=protocol, # pyright: ignore[reportArgumentType]
                         ports=ports, domains=domain, ips=ip,
                         priority=priority or (len(all_rules) + 1) * 10)
     all_rules.append(new_rule)
@@ -261,16 +265,16 @@ def change_rule(
             Argument(help='Change type: "put" - add new values, "del" - delete values')
         ],
         domain: Annotated[
-            list[str],
+            list[str] | None,
             Option(help='List of domain patterns to match (e.g. "domain:example.com")')] = None,
         ip: Annotated[
-            list[str],
-            Option(help='List of IPs or IP ranges to match (e.g. "')] = None,
+            list[str] | None,
+            Option(help='List of IPs or IP ranges to match (e.g. "123.123.123.123")')] = None,
         ports: Annotated[
-            str,
+            str | None,
             Option(help='Port or port range to match (e.g. "53", "1000-2000")')] = None,
         protocol: Annotated[
-            list[str],
+            list[str] | None,
             Option(help='List of protocols to match: http, tls, quic or bittorrent')] = None,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_root()
@@ -281,7 +285,7 @@ def change_rule(
             'At least one condition (domain, ip, ports, protocol) must be specified',
             STYLE_REGULAR))
         raise Exit(code=EXIT_ROUTING_NO_CONDITIONS)
-    if not _is_correct_protocols(protocol):
+    if protocol and not _is_correct_protocols(protocol):
         allowed_protocols = ', '.join(get_args(RuleProtocolType))
         print_error(Text.assemble(
             ('Invalid protocols: ', STYLE_REGULAR),
@@ -306,9 +310,9 @@ def change_rule(
         raise Exit(code=EXIT_ROUTING_RULE_NOT_FOUND)
 
     if action == 'put':
-        _add_conditions(rule_to_change, domain, ip, ports, protocol)
+        _add_conditions(rule_to_change, domain, ip, ports, protocol) # pyright: ignore[reportArgumentType]
     else:
-        _remove_conditions(rule_to_change, domain, ip, ports, protocol)
+        _remove_conditions(rule_to_change, domain, ip, ports, protocol) # pyright: ignore[reportArgumentType]
 
     _save_rules(xray_config, all_rules)
     stdout_console.print(Text.assemble(
@@ -392,8 +396,8 @@ def change_outbound(
 
 
 def _is_outbound_exists(xray_config: Xray, outbound_name: str) -> bool:
-    for outbound in xray_config.outbounds:
-        if outbound.tag == outbound_name:
+    for outbound in xray_config.outbounds or []:
+        if getattr(outbound, 'tag', None) == outbound_name:
             return True
     return False
 
@@ -415,7 +419,8 @@ def _get_domain_strategy(xray_config: Xray) -> RoutingDomainStrategyType:
 def _get_existing_rules(xray_config: Xray) -> list[RuleData]:
     if xray_config.routing is None:
         return []
-    return [RuleData.from_model(rule, i) for i, rule in enumerate(xray_config.routing.rules)]
+    return [RuleData.from_model(rule, i)
+            for i, rule in enumerate(xray_config.routing and xray_config.routing.rules or [])]
 
 
 def _init_and_load_config() -> Xray:
@@ -517,7 +522,7 @@ def _subtract_ports(current: str, to_remove: str) -> str | None:
     return ','.join(sorted(result, key=lambda x: int(x.split('-')[0]))) if result else None
 
 
-def _add_unique_items(existing: list, new_items: list) -> list:
+def _add_unique_items(existing: list[Any], new_items: list[Any]) -> list[Any]:
     existing_set = set(existing)
     result = list(existing)
     for item in new_items:
