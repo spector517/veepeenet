@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 from pathlib import Path
 
 from app.model.types import FingerprintType

@@ -1,5 +1,5 @@
 from contextlib import suppress
-from typing import Iterator
+from typing import Iterator, Any
 
 from typer import Context
 
@@ -57,7 +57,7 @@ def complete_vless_outbound_name(_ctx: Context, _args: list[str], incomplete: st
                 yield str(tag)
 
 
-def _get_outbounds(incomplete: str) -> Iterator[Outbound | dict]:
+def _get_outbounds(incomplete: str) -> Iterator[Outbound | dict[str, Any]]:
     config = load_config(XRAY_CONFIG_PATH)
     outbounds = config.outbounds or []
     for outbound in outbounds:

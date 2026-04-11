@@ -16,4 +16,4 @@ class Rule(XrayModel):
 
 class Routing(XrayModel):
     domain_strategy: RoutingDomainStrategyType | None = Field(default=None)
-    rules: list[Rule] | None = Field(default_factory=list)
+    rules: list[Rule] | None = Field(default_factory=lambda: [])

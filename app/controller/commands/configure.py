@@ -15,9 +15,9 @@ from app.controller.common import (
     get_vless_inbound,
     start_service,
     stop_service,
-    stdout_console,
     print_error,
     save_config,
+    stdout_console,
 )
 from app.defaults import (
     VLESS_LISTEN_INTERFACE,
@@ -63,7 +63,7 @@ from app.utils import (
 from app.view import XrayReleasesView
 
 
-@app.command(help='Configure inbound VLESS Reality Xray service')
+@app.command(help='Configure inbound Vless Reality Xray service')
 @error_handler(default_message='Error during configuration service',
                default_code=EXIT_CONFIGURE_ERROR)
 def config(
@@ -78,9 +78,9 @@ def config(
         reality_port: Annotated[int | None, Option(
             help='Reality port.', show_default=str(REALITY_PORT))] = None,
         reality_names: Annotated[
-            list[str],
+            list[str] | None,
             Option(help='Available Reality server names.',
-                   show_default='Reality host')] = None,
+                   show_default='Reality host value')] = None,
         name: Annotated[str | None, Option(
             help='Human-readable server name (used after # in client links).')] = None,
         clean: Annotated[bool, Option(help='Override current configuration')] = False,
@@ -110,7 +110,7 @@ def config(
             xray_config, host, port, reality_host, reality_port, reality_names, name)
 
     save_config(xray_config, XRAY_CONFIG_PATH)
-    stdout_console.print(Text('VLESS inbound configured', STYLE_REGULAR))
+    stdout_console.print(Text('Vless inbound configured', STYLE_REGULAR))
 
 
 @app.command(help='Update geodata (geoip.dat and geosite.dat) for Xray')

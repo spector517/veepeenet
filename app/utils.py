@@ -145,15 +145,15 @@ def disable_xray_service() -> None:
 def get_vless_client_url(client_name: str, xray_config: Xray) -> str | None:
     inbound = xray_config.get_vless_inbound()
     if not inbound:
-        raise ValueError('VLESS inbound not found in Xray config')
-    for i, client in enumerate(inbound.settings.clients):
+        raise ValueError('Vless inbound not found in Xray config')
+    for i, client in enumerate(inbound.settings.clients or []):
         if client.email and client_name == '.'.join(client.email.split('@')[0].split('.')[:-1]):
             sni = inbound.stream_settings.reality_settings.server_names[0]
             password = gen_xray_password(
                 inbound.stream_settings.reality_settings.private_key)
             spx = safe_url_encode(f'/{client_name}')
-            server_name = xray_config.veepeenet.name or xray_config.veepeenet.host
-            return (f'vless://{client.id}@{xray_config.veepeenet.host}:'
+            server_name = xray_config.veepeenet and (xray_config.veepeenet.name or xray_config.veepeenet.host)
+            return (f'vless://{client.id}@{xray_config.veepeenet and xray_config.veepeenet.host}:'
                     f'{inbound.port}'
                     '?flow=xtls-rprx-vision'
                     '&type=raw'

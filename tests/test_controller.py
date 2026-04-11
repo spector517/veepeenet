@@ -47,6 +47,7 @@ class TestCreateConfig:
     def test_create_config(self,
                            initial_config_path: Path,
                            non_existent_config_path: Path,
+                           tmp_path: Path,
                            mocker: MockFixture):
 
         mocker.patch(
@@ -58,6 +59,8 @@ class TestCreateConfig:
         mocker.patch('app.controller.commands.configure.check_distrib')
         mocker.patch(
             'app.controller.commands.configure.XRAY_CONFIG_PATH', non_existent_config_path)
+        mocker.patch(
+            'app.controller.commands.configure.XRAY_LOGS_PATH', tmp_path / 'logs')
 
         with open(initial_config_path, 'rt', encoding='utf-8') as config_file:
             expected_xray_config_content = config_file.read()
@@ -73,6 +76,7 @@ class TestCreateConfig:
 
     def test_create_config_with_name(self,
                                      non_existent_config_path: Path,
+                                     tmp_path: Path,
                                      mocker: MockFixture):
 
         mocker.patch(
@@ -84,6 +88,8 @@ class TestCreateConfig:
         mocker.patch('app.controller.commands.configure.check_distrib')
         mocker.patch(
             'app.controller.commands.configure.XRAY_CONFIG_PATH', non_existent_config_path)
+        mocker.patch(
+            'app.controller.commands.configure.XRAY_LOGS_PATH', tmp_path / 'logs')
 
         config('1.1.1.1', 8443, 'example.com', 443, name='My Server')
 

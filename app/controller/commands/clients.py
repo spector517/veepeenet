@@ -13,8 +13,8 @@ from app.controller.common import (
     check_xray_config,
     check_root,
     get_vless_inbound,
-    stdout_console,
     save_config,
+    stdout_console,
     ClientData,
 )
 from app.controller.completions import complete_client_name
@@ -50,7 +50,7 @@ def add(client_names: Annotated[list[str],
 @error_handler(default_message='Error removing clients from service',
                default_code=EXIT_CLIENTS_ERROR)
 def remove(client_names: Annotated[list[str],
-        Argument(help='List of clients to remove from Xray VLESS Reality server',
+        Argument(help='List of clients to remove from Xray Vless Reality server',
                  autocompletion=complete_client_name)],
            _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_root()
@@ -87,7 +87,7 @@ def _add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) ->
     xray_config = load_config(xray_config_path)
     inbound = get_vless_inbound(xray_config)
     reality_settings = inbound.stream_settings.reality_settings
-    namespace = UUID(xray_config.veepeenet.namespace)
+    namespace = UUID(xray_config.veepeenet and xray_config.veepeenet.namespace)
 
     existing_clients_data = [ClientData.from_model(client, i)
                              for i, client in enumerate(inbound.settings.clients or [])]
