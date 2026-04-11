@@ -61,6 +61,8 @@ class TestCreateConfig:
             'app.controller.commands.configure.XRAY_CONFIG_PATH', non_existent_config_path)
         mocker.patch(
             'app.controller.commands.configure.XRAY_LOGS_PATH', tmp_path / 'logs')
+        mocker.patch(
+            'app.controller.commands.configure.XRAY_CONFIG_BACKUP_PATH', tmp_path / 'backup.json')
 
         with open(initial_config_path, 'rt', encoding='utf-8') as config_file:
             expected_xray_config_content = config_file.read()
@@ -90,6 +92,8 @@ class TestCreateConfig:
             'app.controller.commands.configure.XRAY_CONFIG_PATH', non_existent_config_path)
         mocker.patch(
             'app.controller.commands.configure.XRAY_LOGS_PATH', tmp_path / 'logs')
+        mocker.patch(
+            'app.controller.commands.configure.XRAY_CONFIG_BACKUP_PATH', tmp_path / 'backup.json')
 
         config('1.1.1.1', 8443, 'example.com', 443, name='My Server')
 
