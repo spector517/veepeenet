@@ -33,6 +33,7 @@ app/migration_1_2.py          — Standalone v1→v2 config migration script
 - Use **Python snake_case** field names in code; Pydantic auto-converts to **camelCase** for JSON via aliases.
 - Outbound types are discriminated unions via `Field(discriminator='protocol')` — see `app/model/xray.py:Outbound`.
 - Required outbounds (`FreedomOutbound`, `BlackholeOutbound`, `DnsOutbound`) are auto-injected during serialization by `Xray._ensure_required_outbounds`.
+- **Serialization standard** — save: `model.model_dump_json(by_alias=True, exclude_none=True, indent=2)`; load: `Model.model_validate_json(content, by_alias=True)`. Both `by_alias=True` calls are required — omitting them breaks camelCase round-trips.
 
 ## Controller Conventions
 
@@ -65,7 +66,19 @@ pytest --cov=app
 python -m build
 ```
 
-Tests mock OS-level calls (`systemctl`, `xray` binary, file I/O) via `pytest-mock`. Test fixtures use JSON configs in `tests/resources/`. Each test file tests one module — naming: `test_{module}.py` (e.g. `test_utils.py`, `test_controller.py`, `test_completions.py`). Exception: `migration_1_2_test.py`.
+Tests mock OS-level calls (`systemctl`, `xray` binary, file I/O) via `pytest-mock`. Test fixtures use JSON configs in `tests/resources/`. Each test file tests one module — naming: `test_{module}.py` (e.g. `test_utils.py`, `test_controller.py`, `test_completions.py`). Exception: `migration_1_2_test.py`. No `conftest.py` — fixtures are defined inline in each test file.
+
+**Key mock patterns:**
+```python
+# Subprocess commands
+mocker.patch('app.utils.run_command', return_value=(0, 'stdout', 'stderr'))
+# File writes (assert no disk I/O)
+mocker.patch('app.utils.write_text_file')
+# Streaming HTTP responses
+mock_response.iter_content.return_value = iter([chunk1, chunk2])
+```
+
+**Pylint config** (`.pylintrc`): max line length **111**. Disabled rules: `C0114`, `C0115`, `C0116` (module/class/function docstrings), `R0903` (too-few-public-methods), `R0913`, `R0917` (argument counts). Do not add docstrings to existing undocumented code.
 
 ## Key Files
 
