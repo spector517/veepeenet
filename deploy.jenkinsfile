@@ -25,10 +25,10 @@ node {
     cleanWs()
 
     stage("Checks") {
-        requiredParametersNames = [
+        def requiredParametersNames = [
             "NODE", "VEEPEENET_VERSION", "HOSTS", "HOST_SSH_CRED", "REPO_CLONE_URL", "REPO_BRANCH"
         ]
-        undefinedParams = []
+        def undefinedParams = []
         requiredParametersNames.each { paramName ->
             if (!params[paramName]) {
                 undefinedParams << paramName
@@ -39,9 +39,9 @@ node {
         }
     }
 
-    repoDir = "${pwd()}/veepeenet"
-    inventoryPath = "${pwd()}/inventory.ini"
-    deployPlaybookPath = "$repoDir/deploy-playbook.yml"
+    def repoDir = "${pwd()}/veepeenet"
+    def inventoryPath = "${pwd()}/inventory.ini"
+    def deployPlaybookPath = "$repoDir/deploy-playbook.yml"
 
     buildName "#$BUILD_NUMBER $params.VEEPEENET_VERSION"
 
@@ -55,17 +55,17 @@ node {
 
     stage("Prepare") {
         log("Generating inventory.ini")
-        lines = params.HOSTS.split(',').collect { entry ->
-            trimmed = entry.trim()
-            userParts = trimmed.split('@', 2)
-            user = userParts.size() > 1 ? userParts[0].trim() : 'root'
-            hostAndPort = userParts.size() > 1 ? userParts[1].trim() : userParts[0].trim()
-            portParts = hostAndPort.split(':', 2)
-            host = portParts[0].trim()
-            port = portParts.size() > 1 ? portParts[1].trim() : '22'
-            "$host ansible_port=$port ansible_user=$user ansible_ssh_user=$user"
+        def lines = params.HOSTS.split(',').collect { entry ->
+            def trimmed = entry.trim()
+            def userParts = trimmed.split('@', 2)
+            def user = userParts.size() > 1 ? userParts[0].trim() : 'root'
+            def hostAndPort = userParts.size() > 1 ? userParts[1].trim() : userParts[0].trim()
+            def portParts = hostAndPort.split(':', 2)
+            def host = portParts[0].trim()
+            def port = portParts.size() > 1 ? portParts[1].trim() : '22'
+            "$host ansible_port=$port ansible_user=$user"
         }
-        inventoryContent = "[all]\n" + lines.join('\n') + "\n"
+        def inventoryContent = "[all]\n" + lines.join('\n') + "\n"
         writeFile file: inventoryPath, text: inventoryContent
         log("inventory.ini generated")
     }
