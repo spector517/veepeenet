@@ -12,12 +12,11 @@ Required parameters list:
 
 1. NODE
 2. VEEPEENET_VERSION
-3. HOST
-4. HOST_SSH_PORT
-5. HOST_SSH_CRED
-6. CHECK
-7. REPO_CLONE_URL
-8. REPO_BRANCH
+3. HOSTS (format: <host>[:<port>],... — port is optional, default: 22)
+4. HOST_SSH_CRED
+5. CHECK
+6. REPO_CLONE_URL
+7. REPO_BRANCH
 
 */
 
@@ -27,7 +26,7 @@ node {
 
     stage("Checks") {
         requiredParametersNames = [
-            "NODE", "VEEPEENET_VERSION", "HOST", "HOST_SSH_PORT", "HOST_SSH_CRED", "REPO_CLONE_URL", "REPO_BRANCH"
+            "NODE", "VEEPEENET_VERSION", "HOSTS", "HOST_SSH_CRED", "REPO_CLONE_URL", "REPO_BRANCH"
         ]
         undefinedParams = []
         requiredParametersNames.each { paramName ->
@@ -56,7 +55,14 @@ node {
 
     stage("Prepare") {
         log("Generating inventory.ini")
-        writeFile file: inventoryPath, text: params.HOST
+        lines = params.HOSTS.split(',').collect { entry ->
+            parts = entry.trim().split(':')
+            host = parts[0].trim()
+            port = parts.size() > 1 ? parts[1].trim() : '22'
+            "$host ansible_port=$port"
+        }
+        inventoryContent = "[all]\n" + lines.join('\n') + "\n"
+        writeFile file: inventoryPath, text: inventoryContent
         log("inventory.ini generated")
     }
 
@@ -68,8 +74,7 @@ node {
                 credentialsId: params.HOST_SSH_CRED,
                 disableHostKeyChecking: true,
                 extraVars: [
-                    release_version: params.VEEPEENET_VERSION.replaceAll('^v', ''),
-                    ansible_port: params.HOST_SSH_PORT
+                    release_version: params.VEEPEENET_VERSION.replaceAll('^v', '')
                 ],
                 extras: "${if (params.CHECK) '--check' else ''}",
                 colorized: true
