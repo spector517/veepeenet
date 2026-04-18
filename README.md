@@ -22,8 +22,8 @@ Download and install the `.deb` package:
 rm -rf /tmp/veepeenet \
     && mkdir /tmp/veepeenet \
     && (cd /tmp/veepeenet \
-        && curl -LO https://github.com/spector517/veepeenet/releases/download/v2.4.1/veepeenet_2.4.1_amd64.deb \
-        && sudo apt install -y ./veepeenet_2.4.1_amd64.deb
+        && curl -LO https://github.com/spector517/veepeenet/releases/download/v2.4.2/veepeenet_2.4.2_amd64.deb \
+        && sudo apt install -y ./veepeenet_2.4.2_amd64.deb
     )
 ```
 
@@ -159,8 +159,9 @@ sudo xrayctl status
 │ reality_address: microsoft.com:443                │
 │ reality_names: microsoft.com                      │
 │ clients: Server has no clients                    │
+│ rules: No routing rules configured                │
 │ outbounds: freedom, blackhole                     │
-└───────────────────────────────VeePeeNET 2.3.0─────┘
+└───────────────────────────────VeePeeNET 2.4.2─────┘
 ```
 
 ```commandline
@@ -168,18 +169,20 @@ sudo xrayctl status --json
 ```
 ```json
 {
-  "veepeenet_version": "2.3.0",
+  "veepeenet_version": "2.4.2",
   "veepeenet_build": 0,
   "xray_version": "v25.12.8",
   "server_status": "stopped",
-  "uptime": null,
   "enabled": false,
   "restart_required": false,
   "server_host": "example.com",
-  "server_port": 443,
+  "server_port": "443",
   "reality_address": "microsoft.com:443",
   "reality_names": ["microsoft.com"],
-  "clients": [],
+  "clients": {
+    "clients": []
+  },
+  "routing": {},
   "outbounds": [
     {"name": "freedom"},
     {"name": "blackhole"},

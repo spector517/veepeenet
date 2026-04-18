@@ -6,6 +6,8 @@ from pytest_mock import MockFixture
 
 from app.controller.common import load_config
 from app.controller.commands.configure import config
+from app.controller.commands.outbound import remove
+from app.model.xray import Xray
 
 
 @fixture(name='valid_config_path')
@@ -101,3 +103,49 @@ class TestCreateConfig:
         actual_xray_config = save_config_mock.call_args[0][0]
 
         assert actual_xray_config.veepeenet.name == 'My Server'
+
+
+class TestOutboundRemove:
+
+    @fixture(name='valid_config')
+    def fixture_valid_config(self):
+        return load_config(Path('tests/resources/valid_xray_config.json'))
+
+    def test_remove_outbound_used_in_routing_fails(
+            self, valid_config: Xray, mocker: MockFixture):
+        mocker.patch('app.controller.commands.outbound.check_root')
+        mocker.patch('app.controller.commands.outbound.check_xray_config')
+        mocker.patch('app.controller.commands.outbound.load_config', return_value=valid_config)
+        save_config_mock = mocker.patch('app.controller.commands.outbound.save_config')
+
+        with raises(BaseException):
+            remove('vless')
+
+        save_config_mock.assert_not_called()
+
+    def test_remove_outbound_not_in_routing_succeeds(
+            self, valid_config: Xray, mocker: MockFixture):
+        rules = valid_config.routing and valid_config.routing.rules or []
+        valid_config.routing.rules = [ # type: ignore
+            r for r in rules if r.outbound_tag != 'vless'
+        ]
+        mocker.patch('app.controller.commands.outbound.check_root')
+        mocker.patch('app.controller.commands.outbound.check_xray_config')
+        mocker.patch('app.controller.commands.outbound.load_config', return_value=valid_config)
+        save_config_mock = mocker.patch('app.controller.commands.outbound.save_config')
+
+        remove('vless')
+
+        save_config_mock.assert_called_once()
+
+    def test_remove_outbound_not_found(
+            self, valid_config: Xray, mocker: MockFixture):
+        mocker.patch('app.controller.commands.outbound.check_root')
+        mocker.patch('app.controller.commands.outbound.check_xray_config')
+        mocker.patch('app.controller.commands.outbound.load_config', return_value=valid_config)
+        save_config_mock = mocker.patch('app.controller.commands.outbound.save_config')
+
+        with raises(BaseException):
+            remove('nonexistent')
+
+        save_config_mock.assert_not_called()
