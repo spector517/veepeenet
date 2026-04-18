@@ -25,6 +25,7 @@ from app.defaults import (
     STYLE_ACCENT_UP,
     STYLE_ACCENT_DOWN,
     STYLE_ACCENT_NEUTRAL,
+    STYLE_VALUE,
     EXIT_OUTBOUND_ERROR,
     EXIT_OUTBOUND_EXISTS,
     EXIT_OUTBOUND_INVALID_SHORT_ID,
@@ -32,7 +33,9 @@ from app.defaults import (
     EXIT_OUTBOUND_INVALID_FINGERPRINT,
     EXIT_OUTBOUND_NOT_FOUND,
     EXIT_OUTBOUND_NO_CHANGES,
+    EXIT_OUTBOUND_IN_USE,
 )
+from app.controller.commands.routing import get_routing_view
 from app.model.types import FingerprintType
 from app.model.vless_outbound import (
     Settings as OutboundSettings,
@@ -201,6 +204,17 @@ def remove(
     outs = xray_config.outbounds or []
     for outbound in outs:
         if isinstance(outbound, VlessOutbound) and outbound.tag == name:
+            routing_view = get_routing_view(xray_config)
+            used_in_rules = [rule.name for rule in (routing_view.rules or [])
+                             if rule.outbound_name == name]
+            if used_in_rules:
+                print_error(Text.assemble(
+                    ('Vless outbound ', STYLE_REGULAR),
+                    (name, STYLE_ACCENT_NEUTRAL),
+                    (' is used in rules: ', STYLE_REGULAR),
+                    (', '.join(used_in_rules), STYLE_VALUE),
+                    ('. Remove the rules first.', STYLE_REGULAR)))
+                raise Exit(code=EXIT_OUTBOUND_IN_USE)
             outs.remove(outbound)
             save_config(xray_config, XRAY_CONFIG_PATH)
             stdout_console.print(Text.assemble(
