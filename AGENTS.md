@@ -50,6 +50,9 @@ app/migration_1_2.py          — Standalone v1→v2 config migration script
 # Install dev dependencies
 pip install -e ".[dev]"
 
+# Run all tests 
+pytest tests -v --tb=short
+
 # Run tests
 pytest
 
