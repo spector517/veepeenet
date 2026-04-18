@@ -15,8 +15,11 @@ from app.controller.common import (
     stop_service,
     restart_service,
     print_error,
-    ClientData, stdout_console,
+    stdout_console,
 )
+from app.controller.commands.routing import get_routing_view
+from app.controller.commands.clients import get_clients_view
+from app.controller.commands.outbound import get_outbounds_view
 from app.defaults import (
     XRAY_CONFIG_PATH,
     XRAY_CONFIG_BACKUP_PATH,
@@ -26,7 +29,6 @@ from app.defaults import (
     EXIT_STATE_STOP_FAILED,
     EXIT_STATE_RESTART_FAILED,
 )
-from app.model.vless_outbound import VlessOutbound
 from app.utils import (
     detect_veepeenet_versions,
     get_xray_distrib_version,
@@ -35,7 +37,7 @@ from app.utils import (
     get_xray_service_uptime,
     is_files_content_same,
 )
-from app.view import ServerView, OutboundView
+from app.view import ServerView
 
 
 @app.command(help='Show service status')
@@ -50,21 +52,6 @@ def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = Fals
     versions = detect_veepeenet_versions()
     xray_version = get_xray_distrib_version()
     running = is_xray_service_running()
-
-    client_names: list[str] = []
-    for i, client in enumerate(inbound.settings.clients or []):
-        client_data = ClientData.from_model(client, i)
-        client_names.append(client_data.name)
-
-    outbounds: list[OutboundView] = []
-    for i, outbound in enumerate(xray_config.outbounds or []):
-        default_name = f'outbound_{i}'
-        if isinstance(outbound, VlessOutbound):
-            outbounds.append(OutboundView(
-                name=outbound.tag or default_name,
-                address=f'{outbound.settings.address}:{outbound.settings.port}'))
-        else:
-            outbounds.append(OutboundView(name=getattr(outbound, 'tag', None) or default_name))
 
     if not xray_config.veepeenet:
         print_error(Text('Invalid configuration: missing veepeenet section', STYLE_REGULAR))
@@ -82,13 +69,12 @@ def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = Fals
         server_port=str(inbound.port),
         reality_address=inbound.stream_settings.reality_settings.dest,
         reality_names=inbound.stream_settings.reality_settings.server_names,
-        clients=client_names,
-        outbounds=outbounds,
+        routing=get_routing_view(xray_config),
+        clients=get_clients_view(xray_config),
+        outbounds=get_outbounds_view(xray_config).outbounds,
         server_name=xray_config.veepeenet.name)
     if json:
-        stdout_console.print_json(
-            server_view.model_dump_json(exclude_none=True),
-            indent=2)
+        stdout_console.print_json(server_view.model_dump_json(exclude_none=True), indent=2)
     else:
         stdout_console.print(server_view.rich_repr())
 

@@ -27,6 +27,7 @@ from app.defaults import (
     STYLE_ACCENT_DOWN,
     EXIT_CLIENTS_ERROR,
 )
+from app.model.xray import Xray
 from app.utils import (
     get_new_items,
     get_vless_client_url,
@@ -64,8 +65,17 @@ def show(
         json: Annotated[bool, Option(help='Show JSON formatted info')] = False,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_xray_config()
-
     xray_config = load_config(XRAY_CONFIG_PATH)
+
+    view = get_clients_view(xray_config)
+    if json:
+        stdout_console.print_json(view.model_dump_json(exclude_none=True), indent=2)
+    else:
+        url_console = Console(soft_wrap=True, width=2**15)
+        url_console.print(view.rich_repr())
+
+
+def get_clients_view(xray_config: Xray) -> ClientsView:
     inbound = get_vless_inbound(xray_config)
 
     clients_data = [ClientData.from_model(client, i)
@@ -74,13 +84,7 @@ def show(
         name=client_data.name,
         url=get_vless_client_url(client_data.name, xray_config) or 'error')
                      for client_data in clients_data]
-    view = ClientsView(clients=clients_views)
-
-    if json:
-        stdout_console.print_json(view.model_dump_json(exclude_none=True), indent=2)
-    else:
-        url_console = Console(soft_wrap=True, width=2**15)
-        url_console.print(view.rich_repr())
+    return ClientsView(clients=clients_views)
 
 
 def _add_clients(names: list[str], xray_config_path: Path = XRAY_CONFIG_PATH) -> None:

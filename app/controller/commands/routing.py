@@ -53,35 +53,36 @@ def show(
         json: Annotated[bool, Option(help='Show JSON formatted info')] = False,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     xray_config = _init_and_load_config()
-
-    view: RoutingView
-    if xray_config.routing is None:
-        view = RoutingView()
-    else:
-        domain_strategy = _get_domain_strategy(xray_config)
-        rules_view: list[RuleView] = []
-        if xray_config.routing and xray_config.routing.rules:
-            rules = xray_config.routing.rules
-        else:
-            rules = []
-        for i, rule in enumerate(rules):
-            rule_data = RuleData.from_model(rule, i)
-            rule_view = RuleView(
-                name=rule_data.name,
-                domains=rule_data.domains,
-                ips=rule_data.ips,
-                ports=rule_data.ports,
-                protocols=rule_data.protocols, # pyright: ignore[reportArgumentType]
-                outbound_name=rule_data.outbound_name,
-                priority=rule_data.priority
-            )
-            rules_view.append(rule_view)
-        view = RoutingView(domain_strategy=domain_strategy, rules=rules_view)
+    view = get_routing_view(xray_config)
 
     if json:
         stdout_console.print_json(view.model_dump_json(exclude_none=True, indent=2))
     else:
         stdout_console.print(view.rich_repr())
+
+
+def get_routing_view(xray_config: Xray) -> RoutingView:
+    if xray_config.routing is None:
+        return RoutingView()
+    domain_strategy = _get_domain_strategy(xray_config)
+    rules_view: list[RuleView] = []
+    if xray_config.routing and xray_config.routing.rules:
+        rules = xray_config.routing.rules
+    else:
+        rules = []
+    for i, rule in enumerate(rules):
+        rule_data = RuleData.from_model(rule, i)
+        rule_view = RuleView(
+            name=rule_data.name,
+            domains=rule_data.domains,
+            ips=rule_data.ips,
+            ports=rule_data.ports,
+            protocols=rule_data.protocols, # pyright: ignore[reportArgumentType]
+            outbound_name=rule_data.outbound_name,
+            priority=rule_data.priority
+        )
+        rules_view.append(rule_view)
+    return RoutingView(domain_strategy=domain_strategy, rules=rules_view)
 
 
 @routing.command(help='Add rule to service')

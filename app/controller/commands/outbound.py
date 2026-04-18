@@ -40,8 +40,47 @@ from app.model.vless_outbound import (
     VlessOutbound,
     StreamSettings as OutboundStreamSettings
 )
-from app.model.xray import Outbound
+from app.model.xray import Outbound, Xray
 from app.utils import set_value, is_valid_vless_client_url
+from app.view import OutboundsView, OutboundView
+
+
+@outbounds.command(help='Show Vless outbounds', name='list')
+@error_handler(default_message='Error retrieving Vless outbounds', default_code=EXIT_OUTBOUND_ERROR)
+def show(
+        json: Annotated[bool, Option(help='Show JSON formatted info')] = False,
+        _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+    check_xray_config()
+    xray_config = load_config(XRAY_CONFIG_PATH)
+
+    view = get_outbounds_view(xray_config)
+
+    if json:
+        stdout_console.print_json(view.model_dump_json(exclude_none=True, indent=2))
+    else:
+        stdout_console.print(view.rich_repr())
+
+
+def get_outbounds_view(xray_config: Xray) -> OutboundsView:
+    outbound_views: list[OutboundView] = []
+    for i, outbound in enumerate(xray_config.outbounds or []):
+        default_name = f'outbound_{i}'
+        if isinstance(outbound, VlessOutbound):
+            outbound_views.append(OutboundView(
+                name=outbound.tag or default_name,
+                address=outbound.settings.address,
+                port=outbound.settings.port,
+                uuid=outbound.settings.id,
+                sni=outbound.stream_settings.reality_settings.server_name,
+                short_id=outbound.stream_settings.reality_settings.short_id,
+                password=outbound.stream_settings.reality_settings.password,
+                spider_x=outbound.stream_settings.reality_settings.spider_x,
+                fingerprint=outbound.stream_settings.reality_settings.fingerprint,
+                interface=outbound.send_through,
+            ))
+        else:
+            outbound_views.append(OutboundView(name=getattr(outbound, 'tag', None) or default_name))
+    return OutboundsView(outbounds=outbound_views)
 
 
 @outbounds.command(help='Add new Vless outbound to service')
