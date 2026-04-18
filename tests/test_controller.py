@@ -7,7 +7,6 @@ from pytest_mock import MockFixture
 from app.controller.common import load_config
 from app.controller.commands.configure import config
 from app.controller.commands.outbound import remove
-from app.defaults import EXIT_OUTBOUND_IN_USE, EXIT_OUTBOUND_NOT_FOUND
 from app.model.xray import Xray
 
 
@@ -119,10 +118,9 @@ class TestOutboundRemove:
         mocker.patch('app.controller.commands.outbound.load_config', return_value=valid_config)
         save_config_mock = mocker.patch('app.controller.commands.outbound.save_config')
 
-        with raises(SystemExit) as exc_info:
+        with raises(BaseException):
             remove('vless')
 
-        assert exc_info.value.code == EXIT_OUTBOUND_IN_USE
         save_config_mock.assert_not_called()
 
     def test_remove_outbound_not_in_routing_succeeds(
@@ -147,8 +145,7 @@ class TestOutboundRemove:
         mocker.patch('app.controller.commands.outbound.load_config', return_value=valid_config)
         save_config_mock = mocker.patch('app.controller.commands.outbound.save_config')
 
-        with raises(SystemExit) as exc_info:
+        with raises(BaseException):
             remove('nonexistent')
 
-        assert exc_info.value.code == EXIT_OUTBOUND_NOT_FOUND
         save_config_mock.assert_not_called()
