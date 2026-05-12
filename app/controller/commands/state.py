@@ -16,6 +16,8 @@ from app.controller.common import (
     restart_service,
     print_error,
     stdout_console,
+    get_runtime_stats,
+    get_stored_stats,
 )
 from app.controller.commands.routing import get_routing_view
 from app.controller.commands.clients import get_clients_view
@@ -37,7 +39,7 @@ from app.utils import (
     get_xray_service_uptime,
     is_files_content_same,
 )
-from app.view import ServerView
+from app.view import ServerView, TrafficStatsView
 
 
 @app.command(help='Show service status')
@@ -52,6 +54,14 @@ def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = Fals
     versions = detect_veepeenet_versions()
     xray_version = get_xray_distrib_version()
     running = is_xray_service_running()
+
+    display_stats = get_stored_stats(xray_config)
+    display_stats += get_runtime_stats()
+
+    inbound_tag = inbound.tag or 'vless-inbound'
+    inbound_ts = display_stats.inbound.get(inbound_tag)
+    inbound_stats_view = TrafficStatsView(
+        uplink=inbound_ts.uplink, downlink=inbound_ts.downlink) if inbound_ts else None
 
     if not xray_config.veepeenet:
         print_error(Text('Invalid configuration: missing veepeenet section', STYLE_REGULAR))
@@ -70,9 +80,10 @@ def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = Fals
         reality_address=inbound.stream_settings.reality_settings.dest,
         reality_names=inbound.stream_settings.reality_settings.server_names,
         routing=get_routing_view(xray_config),
-        clients=get_clients_view(xray_config),
-        outbounds=get_outbounds_view(xray_config).outbounds,
-        server_name=xray_config.veepeenet.name)
+        clients=get_clients_view(xray_config, display_stats),
+        outbounds=get_outbounds_view(xray_config, display_stats).outbounds,
+        server_name=xray_config.veepeenet.name,
+        inbound_stats=inbound_stats_view)
     if json:
         stdout_console.print_json(server_view.model_dump_json(exclude_none=True), indent=2)
     else:

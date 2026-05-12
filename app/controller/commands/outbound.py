@@ -13,6 +13,8 @@ from app.controller.common import (
     print_error,
     save_config,
     stdout_console,
+    get_runtime_stats,
+    get_stored_stats,
 )
 from app.controller.completions import complete_outbound_name, complete_vless_outbound_name
 from app.defaults import (
@@ -44,8 +46,12 @@ from app.model.vless_outbound import (
     StreamSettings as OutboundStreamSettings
 )
 from app.model.xray import Outbound, Xray
-from app.utils import set_value, is_valid_vless_client_url
-from app.view import OutboundsView, OutboundView
+from app.model.veepeenet import VeePeeNetStats
+from app.utils import (
+    set_value,
+    is_valid_vless_client_url,
+)
+from app.view import OutboundsView, OutboundView, TrafficStatsView
 
 
 @outbounds.command(help='Show Vless outbounds', name='list')
@@ -55,8 +61,10 @@ def show(
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_xray_config()
     xray_config = load_config(XRAY_CONFIG_PATH)
+    display_stats = get_stored_stats(xray_config)
+    display_stats += get_runtime_stats()
 
-    view = get_outbounds_view(xray_config)
+    view = get_outbounds_view(xray_config, display_stats)
 
     if json:
         stdout_console.print_json(view.model_dump_json(exclude_none=True, indent=2))
@@ -64,10 +72,14 @@ def show(
         stdout_console.print(view.rich_repr())
 
 
-def get_outbounds_view(xray_config: Xray) -> OutboundsView:
+def get_outbounds_view(xray_config: Xray, stats: VeePeeNetStats | None = None) -> OutboundsView:
     outbound_views: list[OutboundView] = []
     for i, outbound in enumerate(xray_config.outbounds or []):
         default_name = f'outbound_{i}'
+        tag = getattr(outbound, 'tag', None) or default_name
+        outbound_ts = stats.outbound.get(tag) if stats else None
+        outbound_stats = TrafficStatsView(
+            uplink=outbound_ts.uplink, downlink=outbound_ts.downlink) if outbound_ts else None
         if isinstance(outbound, VlessOutbound):
             outbound_views.append(OutboundView(
                 name=outbound.tag or default_name,
@@ -80,9 +92,13 @@ def get_outbounds_view(xray_config: Xray) -> OutboundsView:
                 spider_x=outbound.stream_settings.reality_settings.spider_x,
                 fingerprint=outbound.stream_settings.reality_settings.fingerprint,
                 interface=outbound.send_through,
+                stats=outbound_stats,
             ))
         else:
-            outbound_views.append(OutboundView(name=getattr(outbound, 'tag', None) or default_name))
+            outbound_views.append(OutboundView(
+                name=getattr(outbound, 'tag', None) or default_name,
+                stats=outbound_stats,
+            ))
     return OutboundsView(outbounds=outbound_views)
 
 

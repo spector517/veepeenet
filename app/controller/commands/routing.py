@@ -5,7 +5,7 @@ from rich.text import Text
 from typer import Option, Argument, Exit
 
 from app.cli import routing
-from app.controller.common import RuleData
+from app.controller.data import RuleData
 from app.controller.common import (
     error_handler,
     load_config,

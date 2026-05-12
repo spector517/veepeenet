@@ -1,7 +1,12 @@
 {
   "veepeenet": {
     "host": "126.6.6.6",
-    "namespace": "some-uuid"
+    "namespace": "some-uuid",
+    "stats": {
+      "client": {},
+      "inbound": {},
+      "outbound": {}
+    }
   },
   "log": {
     "access": "none",
@@ -72,5 +77,27 @@
         "nonIPQuery": "skip"
       }
     }
-  ]
+  ],
+  "api": {
+    "tag": "api",
+    "listen": "127.0.0.1:10085",
+    "services": [
+      "StatsService"
+    ]
+  },
+  "policy": {
+    "levels": {
+      "0": {
+        "statsUserUplink": true,
+        "statsUserDownlink": true
+      }
+    },
+    "system": {
+      "statsInboundUplink": true,
+      "statsInboundDownlink": true,
+      "statsOutboundUplink": true,
+      "statsOutboundDownlink": true
+    }
+  },
+  "stats": {}
 }

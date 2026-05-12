@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import Field, field_validator
 
-from app.defaults import XRAY_ERROR_LOG_PATH
+from app.defaults import XRAY_ERROR_LOG_PATH, XRAY_API_HOST, XRAY_API_PORT
 from app.model.base import XrayModel
 
 XrayLogLevel = Literal['none', 'off', 'error', 'info', 'warning', 'debug']
@@ -55,3 +55,31 @@ class FreedomOutbound(XrayModel):
 class BlackholeOutbound(XrayModel):
     tag: str | None = 'blackhole'
     protocol: Literal['blackhole'] = 'blackhole'
+
+
+class PolicyLevel(XrayModel):
+    stats_user_uplink: bool = True
+    stats_user_downlink: bool = True
+
+
+class SystemPolicy(XrayModel):
+    stats_inbound_uplink: bool = True
+    stats_inbound_downlink: bool = True
+    stats_outbound_uplink: bool = True
+    stats_outbound_downlink: bool = True
+
+
+class Policy(XrayModel):
+    levels: dict[str, PolicyLevel] = Field(default_factory=lambda: {'0': PolicyLevel()})
+    system: SystemPolicy = Field(default_factory=SystemPolicy)
+
+
+class ApiConfig(XrayModel):
+    tag: str = 'api'
+    listen: str = Field(default_factory=lambda: f'{XRAY_API_HOST}:{XRAY_API_PORT}')
+    services: list[str] = Field(default_factory=lambda: ['StatsService'])
+
+
+
+class StatsConfig(XrayModel):
+    pass

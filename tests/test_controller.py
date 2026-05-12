@@ -149,3 +149,40 @@ class TestOutboundRemove:
             remove('nonexistent')
 
         save_config_mock.assert_not_called()
+
+
+class TestCollectAndSaveStats:
+
+    def test_does_nothing_if_service_not_running(self, mocker: MockFixture):
+        mocker.patch('app.controller.common.is_xray_service_running', return_value=False)
+        load_config_mock = mocker.patch('app.controller.common.load_config')
+
+        from app.controller.common import _store_runtime_stats # type: ignore # pylint: disable=import-outside-toplevel
+        _store_runtime_stats()
+
+        load_config_mock.assert_not_called()
+
+    def test_saves_accumulated_stats_when_running(self, mocker: MockFixture):
+        from app.model.veepeenet import TrafficStats, VeePeeNetStats # pylint: disable=import-outside-toplevel
+        from app.controller.common import _store_runtime_stats # type: ignore # pylint: disable=import-outside-toplevel
+
+        config_path = Path('tests/resources/valid_xray_config_with_clients.json')
+        xray_config = load_config(config_path)
+
+        mocker.patch('app.controller.common.is_xray_service_running', return_value=True)
+        mocker.patch('app.controller.common.XRAY_CONFIG_PATH', config_path)
+        mocker.patch('app.controller.common.load_config', return_value=xray_config)
+        save_mock = mocker.patch('app.controller.common.save_config')
+        runtime_stats = VeePeeNetStats(
+            client={'c1.client': TrafficStats(uplink=100, downlink=200)}
+        )
+        mocker.patch('app.controller.common.get_runtime_stats', return_value=runtime_stats)
+
+        _store_runtime_stats()
+
+        save_mock.assert_called_once()
+        saved_config: Xray = save_mock.call_args[0][0]
+        assert saved_config.veepeenet is not None
+        assert saved_config.veepeenet.stats.client.get('c1.client') is not None
+        assert saved_config.veepeenet.stats.client['c1.client'].uplink == 100
+        assert saved_config.veepeenet.stats.client['c1.client'].downlink == 200

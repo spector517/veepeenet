@@ -12,6 +12,7 @@ from filecmp import cmp as compare_files
 from requests import get as get_request
 
 from app.model.xray import Xray
+from app.model.api import Api, Stats
 from app.view import VersionsView
 
 _T = TypeVar('_T')
@@ -280,6 +281,16 @@ def restore_config(config_path: Path, backup_path: Path) -> None:
 def get_xray_service_journal(lines: int = 20) -> str | None:
     result = run_command(f'journalctl -u xray -n {lines} --no-pager -q')
     return result[1] if result[0] == 0 and result[1] else None
+
+
+def query_xray_stats(host: str, port: int, reset: bool = False) -> list[Stats]:
+    result = run_command(f'xray api statsquery --server={host}:{port} -reset={str(reset).lower()}')
+    if result[0] != 0:
+        return []
+    try:
+        return Api.model_validate_json(result[1]).stat
+    except (KeyError, ValueError):
+        return []
 
 
 def get_xray_github_releases(limit: int = 10) -> list[str]:

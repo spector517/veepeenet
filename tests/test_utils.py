@@ -9,6 +9,9 @@ import pytest
 from pytest_mock import MockFixture
 from requests import HTTPError
 
+from app.model.api import Stats
+from app.model.veepeenet import TrafficStats, VeePeeNetStats
+from app.model.vless_inbound import VlessInbound, Client, Settings, StreamSettings, RealitySettings
 from app.model.xray import Xray
 from app.utils import (
     gen_xray_private_key,
@@ -45,6 +48,7 @@ from app.utils import (
     restore_config,
     get_xray_service_journal,
     is_files_content_same,
+    query_xray_stats,
 )
 
 
@@ -1698,3 +1702,98 @@ class TestIsFilesContentSame:
         result = is_files_content_same(file1, file2)
 
         assert result is True
+
+
+class TestQueryXrayStats:
+
+    def test_returns_parsed_stats(self, mocker: MockFixture):
+        import json
+        raw_json = json.dumps({'stat': [
+            {'name': 'inbound>>>vless-inbound>>>traffic>>>uplink', 'value': 1000},
+            {'name': 'user>>>alice.abc@0.0.0.0>>>traffic>>>downlink', 'value': 500},
+        ]})
+        mocker.patch('app.utils.run_command', return_value=(0, raw_json, ''))
+
+        result = query_xray_stats('127.0.0.1', 10085)
+
+        assert len(result) == 2
+        assert result[0].name == 'inbound>>>vless-inbound>>>traffic>>>uplink'
+        assert result[0].value == 1000
+        assert result[1].name == 'user>>>alice.abc@0.0.0.0>>>traffic>>>downlink'
+        assert result[1].value == 500
+
+    def test_returns_empty_on_command_failure(self, mocker: MockFixture):
+        mocker.patch('app.utils.run_command', return_value=(1, '', 'connection refused'))
+
+        result = query_xray_stats('127.0.0.1', 10085)
+
+        assert result == []
+
+    def test_returns_empty_on_invalid_json(self, mocker: MockFixture):
+        mocker.patch('app.utils.run_command', return_value=(0, 'not json', ''))
+
+        result = query_xray_stats('127.0.0.1', 10085)
+
+        assert result == []
+
+    def test_passes_reset_true(self, mocker: MockFixture):
+        mock_run = mocker.patch('app.utils.run_command', return_value=(0, '{}', ''))
+
+        query_xray_stats('127.0.0.1', 10085, reset=True)
+
+        args = mock_run.call_args[0][0]
+        assert '-reset=true' in args
+
+    def test_passes_reset_false_by_default(self, mocker: MockFixture):
+        mock_run = mocker.patch('app.utils.run_command', return_value=(0, '{}', ''))
+
+        query_xray_stats('127.0.0.1', 10085)
+
+        args = mock_run.call_args[0][0]
+        assert '-reset=false' in args
+
+    def test_empty_stat_list(self, mocker: MockFixture):
+        mocker.patch('app.utils.run_command', return_value=(0, '{"stat": []}', ''))
+
+        result = query_xray_stats('127.0.0.1', 10085)
+
+        assert result == []
+
+
+class TestVeePeeNetStatsIadd:
+
+    def test_iadd_accumulates_values(self):
+        a = VeePeeNetStats(
+            client={'alice': TrafficStats(uplink=100, downlink=200)},
+            inbound={'vless-in': TrafficStats(uplink=500, downlink=1000)},
+        )
+        b = VeePeeNetStats(
+            client={'alice': TrafficStats(uplink=50, downlink=75)},
+            outbound={'direct': TrafficStats(uplink=300, downlink=0)},
+        )
+        a += b
+        assert a.client['alice'].uplink == 150
+        assert a.client['alice'].downlink == 275
+        assert a.inbound['vless-in'].uplink == 500
+        assert a.outbound['direct'].uplink == 300
+
+    def test_iadd_returns_self(self):
+        a = VeePeeNetStats(client={'alice': TrafficStats(uplink=10, downlink=0)})
+        b = VeePeeNetStats(client={'alice': TrafficStats(uplink=5, downlink=0)})
+        original_id = id(a)
+        a += b
+        assert id(a) == original_id
+
+    def test_iadd_empty_with_empty(self):
+        a = VeePeeNetStats()
+        a += VeePeeNetStats()
+        assert a.client == {}
+        assert a.inbound == {}
+        assert a.outbound == {}
+
+    def test_iadd_disjoint_keys_merged(self):
+        a = VeePeeNetStats(client={'alice': TrafficStats(uplink=100, downlink=0)})
+        b = VeePeeNetStats(client={'bob': TrafficStats(uplink=200, downlink=50)})
+        a += b
+        assert a.client['alice'].uplink == 100
+        assert a.client['bob'].uplink == 200
