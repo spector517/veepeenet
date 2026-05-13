@@ -79,7 +79,7 @@ def get_outbounds_view(xray_config: Xray, stats: VeePeeNetStats | None = None) -
         tag = getattr(outbound, 'tag', None) or default_name
         outbound_ts = stats.outbound.get(tag) if stats else None
         outbound_stats = TrafficStatsView(
-            uplink=outbound_ts.uplink, downlink=outbound_ts.downlink) if outbound_ts else None
+            uplink=outbound_ts.uplink, downlink=outbound_ts.downlink) if outbound_ts else TrafficStatsView()
         if isinstance(outbound, VlessOutbound):
             outbound_views.append(OutboundView(
                 name=outbound.tag or default_name,

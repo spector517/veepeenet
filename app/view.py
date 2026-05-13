@@ -39,36 +39,36 @@ def format_traffic_bytes(n: int) -> str:
     return f'{n / 1_000_000_000_000:.2f} TB'
 
 class TrafficStatsView(BaseModel):
-    uplink: int
-    downlink: int
+    uplink: int = Field(default=0)
+    downlink: int = Field(default=0)
 
     def rich_repr_short(self) -> Text:
         return Text.assemble(
-            ('\u2191 ', STYLE_STATS_UP),
-            (format_traffic_bytes(self.uplink), STYLE_STATS_UP),
-            ('  \u2193 ', STYLE_STATS_DOWN),
-            (format_traffic_bytes(self.downlink), STYLE_STATS_DOWN),
+            ('⬇ ', STYLE_STATS_UP),
+            (format_traffic_bytes(self.downlink), STYLE_STATS_UP),
+            ' | ',
+            ('⬆ ', STYLE_STATS_DOWN),
+            (format_traffic_bytes(self.uplink), STYLE_STATS_DOWN),
         )
 
 
 class ClientView(BaseModel):
     name: str
     url: str
-    stats: TrafficStatsView | None = Field(default=None)
+    stats: TrafficStatsView = Field(default_factory=TrafficStatsView)
 
     def rich_repr_short(self) -> Text:
-        t = Text(self.name, STYLE_VALUE)
-        if self.stats:
-            t = Text.assemble(t, ' (', self.stats.rich_repr_short(), ')')
-        return t
+        return Text(self.name, STYLE_VALUE)
 
     def rich_repr(self) -> Group:
         parts: list[Text] = [
-            Text(self.name, STYLE_VALUE),
+            Text.assemble(
+                Text(self.name, STYLE_VALUE),
+                Text(' [', STYLE_REGULAR),
+                self.stats.rich_repr_short(),
+                Text(']', STYLE_REGULAR)),
             Text(self.url, STYLE_URL, no_wrap=True),
         ]
-        if self.stats:
-            parts.append(row(Text('traffic: ', STYLE_REGULAR), self.stats.rich_repr_short()))
         return Group(*parts)
 
 
@@ -179,15 +179,13 @@ class OutboundView(BaseModel):
     port: int | None = Field(default=None)
     fingerprint: FingerprintType | None = Field(default=None)
     interface: str | None = Field(default=None)
-    stats: TrafficStatsView | None = Field(default=None)
+    stats: TrafficStatsView = Field(default_factory=TrafficStatsView)
 
     def rich_text_short(self) -> Text:
         if self.address:
             return Text.assemble(
                 (self.name, STYLE_VALUE),
-                ('(', ''),
-                (self.address + (f':{self.port}' if self.port else ''), STYLE_URL),
-                (')', ''))
+                '(', (self.address + (f':{self.port}' if self.port else ''), STYLE_URL), ')')
         return Text(self.name, STYLE_VALUE)
 
     def rich_text(self) -> Panel:
@@ -211,13 +209,11 @@ class OutboundView(BaseModel):
                 row(Text('fingerprint: ', STYLE_REGULAR), Text(self.fingerprint, STYLE_VALUE)))
         if self.interface:
             content_lines.append(row(Text('interface: ', STYLE_REGULAR), Text(self.interface, STYLE_VALUE)))
-        if self.stats:
-            content_lines.append(row(Text('traffic: ', STYLE_REGULAR), self.stats.rich_repr_short()))
 
         content = Text('\n').join(content_lines) if content_lines else Text('No details', STYLE_DIM)
         return Panel(
             content,
-            title=Text(self.name, STYLE_ACCENT_UP),
+            title=Text.assemble(Text(self.name, STYLE_ACCENT_UP), ' [', self.stats.rich_repr_short(), ']'),
             title_align='left',
         )
 
@@ -247,7 +243,7 @@ class ServerView(BaseModel):
     routing: RoutingView
     outbounds: list[OutboundView]
     server_name: str | None = Field(default=None)
-    inbound_stats: TrafficStatsView | None = Field(default=None)
+    inbound_stats: TrafficStatsView = Field(default_factory=TrafficStatsView)
 
     def rich_repr(self) -> Panel:
         run_status = Text(
@@ -269,14 +265,12 @@ class ServerView(BaseModel):
             row(Text('status: ', STYLE_REGULAR), Text.assemble(run_status, ' (', enabled_status, ')')),
             row(Text('uptime: ', STYLE_REGULAR), Text(
                 self.uptime, STYLE_ACCENT_UP) if self.uptime else Text('n/a', STYLE_ACCENT_DOWN)),
+            row(Text('traffic: ', STYLE_REGULAR), self.inbound_stats.rich_repr_short()),
             row(Text('xray_version: ', STYLE_REGULAR),Text(self.xray_version, STYLE_VALUE)),
             row(Text('address: ', STYLE_REGULAR),
                 Text(f'{self.server_host}:{self.server_port}', STYLE_VALUE)),
             row(Text('reality_address: ', STYLE_REGULAR), Text(self.reality_address, STYLE_VALUE)),
             row(Text('reality_names: ', STYLE_REGULAR), joined_bold(self.reality_names)),
-            row(Text('inbound traffic: ', STYLE_REGULAR),
-                self.inbound_stats.rich_repr_short() if self.inbound_stats
-                else Text('n/a', STYLE_DIM)),
             row(Text('clients: ', STYLE_REGULAR), self.clients.rich_repr_short()),
             row(Text('rules: ', STYLE_REGULAR), self.routing.rich_repr_short()),
             row(Text('outbounds: ', STYLE_REGULAR), outbounds_text),

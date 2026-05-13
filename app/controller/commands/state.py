@@ -61,7 +61,7 @@ def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = Fals
     inbound_tag = inbound.tag or 'vless-inbound'
     inbound_ts = display_stats.inbound.get(inbound_tag)
     inbound_stats_view = TrafficStatsView(
-        uplink=inbound_ts.uplink, downlink=inbound_ts.downlink) if inbound_ts else None
+        uplink=inbound_ts.uplink, downlink=inbound_ts.downlink) if inbound_ts else TrafficStatsView()
 
     if not xray_config.veepeenet:
         print_error(Text('Invalid configuration: missing veepeenet section', STYLE_REGULAR))

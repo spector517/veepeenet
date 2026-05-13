@@ -31,13 +31,13 @@ class Xray(XrayModel):
     veepeenet: VeePeeNet | None = Field(default=None)
     log: Log | None = Field(default_factory=Log)
     dns: Dns | None = Field(default=None)
+    api: ApiConfig | None = Field(default=None)
+    policy: Policy | None = Field(default=None)
+    stats: StatsConfig | None = Field(default=None)
     inbounds: list[VlessInbound | dict[str, Any]] | None = Field(default=None)
     routing: Routing | None = Field(default=None)
     outbounds: list[Outbound | dict[str, Any]] | None = Field(
         default_factory=lambda: [FreedomOutbound(), BlackholeOutbound(), DnsOutbound()])
-    api: ApiConfig | None = Field(default=None)
-    policy: Policy | None = Field(default=None)
-    stats: StatsConfig | None = Field(default=None)
 
     def get_vless_inbound(self) -> VlessInbound | None:
         for inbound in self.inbounds or []:

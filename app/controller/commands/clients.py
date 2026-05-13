@@ -92,8 +92,7 @@ def get_clients_view(xray_config: Xray, stats: VeePeeNetStats | None = None) -> 
             name=client_data.name,
             url=get_vless_client_url(client_data.name, xray_config) or 'error',
             stats=TrafficStatsView(
-                uplink=client_ts.uplink, downlink=client_ts.downlink) if client_ts else None,
-        ))
+                uplink=client_ts.uplink, downlink=client_ts.downlink) if client_ts else TrafficStatsView()))
     return ClientsView(clients=clients_views)
 
 
