@@ -1,4 +1,6 @@
 # pylint: disable=too-many-lines
+# pyright: reportUnknownParameterType=false, reportMissingParameterType=false, reportUnknownVariableType=false, reportUnknownMemberType=false, reportUnknownArgumentType=false, reportMissingTypeArgument=false
+import json
 from io import BytesIO
 from pathlib import Path
 from time import sleep
@@ -9,9 +11,7 @@ import pytest
 from pytest_mock import MockFixture
 from requests import HTTPError
 
-from app.model.api import Stats
 from app.model.veepeenet import TrafficStats, VeePeeNetStats
-from app.model.vless_inbound import VlessInbound, Client, Settings, StreamSettings, RealitySettings
 from app.model.xray import Xray
 from app.utils import (
     gen_xray_private_key,
@@ -75,7 +75,7 @@ def _make_streaming_mock(data: bytes, chunk_size: int = 1024 * 1024) -> MagicMoc
 
 class TestGenXrayPrivateKey:
 
-    def test_gen_xray_private_key_success(self, mocker):
+    def test_gen_xray_private_key_success(self, mocker: MockFixture):
         expected_key = 'aAbBcCdDeEfF123456789gGhHiIjJkKlL=='
         mock_run_command = mocker.patch(
             'app.utils.run_command', return_value=(0, f'PrivateKey: {expected_key}', ''))
@@ -85,7 +85,7 @@ class TestGenXrayPrivateKey:
         assert result == expected_key
         mock_run_command.assert_called_once_with('xray x25519')
 
-    def test_gen_xray_private_key_command_failure(self, mocker):
+    def test_gen_xray_private_key_command_failure(self, mocker: MockFixture):
         mocker.patch('app.utils.run_command', return_value=(1, '', 'Error message'))
 
         with pytest.raises(RuntimeError, match='Error generating private key') as exc_info:
@@ -95,7 +95,7 @@ class TestGenXrayPrivateKey:
         assert 'code:1' in error_text
         assert 'Error message' in error_text
 
-    def test_gen_xray_private_key_unexpected_output(self, mocker):
+    def test_gen_xray_private_key_unexpected_output(self, mocker: MockFixture):
         mocker.patch('app.utils.run_command', return_value=(0, 'Unexpected output', ''))
 
         with pytest.raises(RuntimeError) as exc_info:
@@ -106,7 +106,7 @@ class TestGenXrayPrivateKey:
 
 class TestGenXrayPassword:
 
-    def test_gen_xray_password_success_0(self, mocker):
+    def test_gen_xray_password_success_0(self, mocker: MockFixture):
         private_key = 'aAbBcCdDeEfF123456789gGhHiIjJkKlL=='
         expected_pass = 'xXyYzZ987654321aBcDeFgHiJkLmNoOpP=='
         mock_run_command = mocker.patch(
@@ -117,7 +117,7 @@ class TestGenXrayPassword:
         assert result == expected_pass
         mock_run_command.assert_called_once_with(f'xray x25519 -i {private_key}')
 
-    def test_gen_xray_password_success_1(self, mocker):
+    def test_gen_xray_password_success_1(self, mocker: MockFixture):
         private_key = 'aAbBcCdDeEfF123456789gGhHiIjJkKlL=='
         expected_pass = 'xXyYzZ987654321aBcDeFgHiJkLmNoOpP=='
         mock_run_command = mocker.patch(
@@ -128,7 +128,7 @@ class TestGenXrayPassword:
         assert result == expected_pass
         mock_run_command.assert_called_once_with(f'xray x25519 -i {private_key}')
 
-    def test_gen_xray_password_command_failure(self, mocker):
+    def test_gen_xray_password_command_failure(self, mocker: MockFixture):
         mocker.patch('app.utils.run_command', return_value=(1, '', 'Error message'))
 
         with pytest.raises(RuntimeError, match='Error generating password') as exc_info:
@@ -137,7 +137,7 @@ class TestGenXrayPassword:
         error_text = str(exc_info.value)
         assert 'Error message' in error_text
 
-    def test_gen_xray_password_unexpected_output(self, mocker):
+    def test_gen_xray_password_unexpected_output(self, mocker: MockFixture):
         mocker.patch('app.utils.run_command', return_value=(0, 'Unexpected output', ''))
 
         with pytest.raises(RuntimeError) as exc_info:
@@ -148,7 +148,7 @@ class TestGenXrayPassword:
 
 class TestIsXrayRunning:
 
-    def test_is_xray_running_true(self, mocker):
+    def test_is_xray_running_true(self, mocker: MockFixture):
         mock_run_command = mocker.patch('app.utils.run_command', return_value=(0, '', ''))
 
         result = is_xray_service_running()
@@ -156,7 +156,7 @@ class TestIsXrayRunning:
         assert result is True
         mock_run_command.assert_called_once_with('systemctl is-active xray -q')
 
-    def test_is_xray_running_false(self, mocker):
+    def test_is_xray_running_false(self, mocker: MockFixture):
         mocker.patch('app.utils.run_command', return_value=(1, '', ''))
 
         result = is_xray_service_running()
@@ -173,7 +173,7 @@ class TestGetXrayServiceUptime:
         '   Main PID: 1234 (xray)\n'
     )
 
-    def test_returns_uptime_hours_minutes(self, mocker):
+    def test_returns_uptime_hours_minutes(self, mocker: MockFixture):
         stdout = self._STATUS_TEMPLATE.format(uptime='2h 30min')
         mocker.patch('app.utils.run_command', return_value=(0, stdout, ''))
 
@@ -181,7 +181,7 @@ class TestGetXrayServiceUptime:
 
         assert result == '2h 30min'
 
-    def test_returns_uptime_days(self, mocker):
+    def test_returns_uptime_days(self, mocker: MockFixture):
         stdout = self._STATUS_TEMPLATE.format(uptime='3 days 4h 5min')
         mocker.patch('app.utils.run_command', return_value=(0, stdout, ''))
 
@@ -189,7 +189,7 @@ class TestGetXrayServiceUptime:
 
         assert result == '3 days 4h 5min'
 
-    def test_returns_uptime_seconds(self, mocker):
+    def test_returns_uptime_seconds(self, mocker: MockFixture):
         stdout = self._STATUS_TEMPLATE.format(uptime='45s')
         mocker.patch('app.utils.run_command', return_value=(0, stdout, ''))
 
@@ -197,7 +197,7 @@ class TestGetXrayServiceUptime:
 
         assert result == '45s'
 
-    def test_returns_none_when_active_line_missing(self, mocker):
+    def test_returns_none_when_active_line_missing(self, mocker: MockFixture):
         stdout = (
             '● xray.service - Xray Service\n'
             '     Loaded: loaded (/etc/systemd/system/xray.service; enabled)\n'
@@ -209,14 +209,14 @@ class TestGetXrayServiceUptime:
 
         assert result is None
 
-    def test_returns_none_when_stdout_empty(self, mocker):
+    def test_returns_none_when_stdout_empty(self, mocker: MockFixture):
         mocker.patch('app.utils.run_command', return_value=(1, '', ''))
 
         result = get_xray_service_uptime()
 
         assert result is None
 
-    def test_calls_correct_command(self, mocker):
+    def test_calls_correct_command(self, mocker: MockFixture):
         mock_run_command = mocker.patch('app.utils.run_command', return_value=(0, '', ''))
 
         get_xray_service_uptime()
@@ -226,7 +226,7 @@ class TestGetXrayServiceUptime:
 
 class TestRestartXrayService:
 
-    def test_restart_xray_service_success(self, mocker):
+    def test_restart_xray_service_success(self, mocker: MockFixture):
         mock_run_command = mocker.patch('app.utils.run_command', return_value=(0, '', ''))
 
         restart_xray_service()
@@ -236,7 +236,7 @@ class TestRestartXrayService:
 
 class TestIsXrayServiceEnabled:
 
-    def test_is_xray_service_enabled_true(self, mocker):
+    def test_is_xray_service_enabled_true(self, mocker: MockFixture):
         mock_run_command = mocker.patch('app.utils.run_command', return_value=(0, '', ''))
 
         result = is_xray_service_enabled()
@@ -244,7 +244,7 @@ class TestIsXrayServiceEnabled:
         assert result is True
         mock_run_command.assert_called_once_with('systemctl is-enabled xray -q')
 
-    def test_is_xray_service_enabled_false(self, mocker):
+    def test_is_xray_service_enabled_false(self, mocker: MockFixture):
         mocker.patch('app.utils.run_command', return_value=(1, '', ''))
 
         result = is_xray_service_enabled()
@@ -254,7 +254,7 @@ class TestIsXrayServiceEnabled:
 
 class TestEnableXrayService:
 
-    def test_enable_xray_service_success(self, mocker):
+    def test_enable_xray_service_success(self, mocker: MockFixture):
         mock_run_command = mocker.patch('app.utils.run_command', return_value=(0, '', ''))
 
         enable_xray_service()
@@ -264,7 +264,7 @@ class TestEnableXrayService:
 
 class TestDisableXrayService:
 
-    def test_disable_xray_service_success(self, mocker):
+    def test_disable_xray_service_success(self, mocker: MockFixture):
         mock_run_command = mocker.patch('app.utils.run_command', return_value=(0, '', ''))
 
         disable_xray_service()
@@ -321,6 +321,7 @@ class TestGetVlessClientUrl:
         )
         xray_config = Xray.model_validate_json(
             valid_xray_config_with_clients_path.read_text(encoding='utf-8'))
+        assert xray_config.veepeenet is not None
         xray_config.veepeenet.name = 'My VPN Server'
 
         actual_url = get_vless_client_url('c1.client', xray_config)
@@ -458,7 +459,7 @@ class TestIsValidVlessClientUrl:
 
 class TestUfwOpenPort:
 
-    def test_ufw_open_port_and_ssh_port(self, mocker):
+    def test_ufw_open_port_and_ssh_port(self, mocker: MockFixture):
         mock_run_command = mocker.patch('app.utils.run_command', return_value=(0, '', ''))
 
         ufw_open_port(8443, 'udp', ssh_port=2222)
@@ -468,7 +469,7 @@ class TestUfwOpenPort:
         )
         mock_run_command.assert_called_once_with(expected_command)
 
-    def test_ufw_open_port_tcp_protocol(self, mocker):
+    def test_ufw_open_port_tcp_protocol(self, mocker: MockFixture):
         mock_run_command = mocker.patch('app.utils.run_command', return_value=(0, '', ''))
 
         ufw_open_port(443, 'tcp', ssh_port=22)
@@ -478,7 +479,7 @@ class TestUfwOpenPort:
         )
         mock_run_command.assert_called_once_with(expected_command)
 
-    def test_ufw_open_port_with_different_ports(self, mocker):
+    def test_ufw_open_port_with_different_ports(self, mocker: MockFixture):
         mock_run_command = mocker.patch('app.utils.run_command', return_value=(0, '', ''))
 
         ufw_open_port(9001, 'udp', ssh_port=2200)
@@ -549,7 +550,7 @@ class TestDetectSshPort:
 
 class TestDetectCurrentIpv4:
 
-    def test_detect_current_ipv4_success(self, mocker):
+    def test_detect_current_ipv4_success(self, mocker: MockFixture):
         mock_run_command = mocker.patch(
             'app.utils.run_command', return_value=(0, '192.168.1.100', ''))
 
@@ -558,14 +559,14 @@ class TestDetectCurrentIpv4:
         assert result == '192.168.1.100'
         mock_run_command.assert_called_once_with('hostname -i', check=False)
 
-    def test_detect_current_ipv4_with_multiple_ips(self, mocker):
+    def test_detect_current_ipv4_with_multiple_ips(self, mocker: MockFixture):
         mocker.patch('app.utils.run_command', return_value=(0, '192.168.1.100 10.0.0.5', ''))
 
         result = detect_current_ipv4()
 
         assert result == '192.168.1.100'
 
-    def test_detect_current_ipv4_not_found(self, mocker):
+    def test_detect_current_ipv4_not_found(self, mocker: MockFixture):
         mocker.patch('app.utils.run_command', return_value=(0, 'hostname', ''))
 
         result = detect_current_ipv4()
@@ -631,7 +632,7 @@ class TestWriteTextFile:
 
 class TestGetXrayDistribVersion:
 
-    def test_returns_version_string(self, mocker):
+    def test_returns_version_string(self, mocker: MockFixture):
         mock_run_command = mocker.patch(
             'app.utils.run_command',
             return_value=(0, 'Xray 1.8.0 (Xray, Penetrates Everything.)', '')
@@ -642,7 +643,7 @@ class TestGetXrayDistribVersion:
         assert result == '1.8.0'
         mock_run_command.assert_called_once_with('xray --version')
 
-    def test_returns_none_when_command_fails(self, mocker):
+    def test_returns_none_when_command_fails(self, mocker: MockFixture):
         mocker.patch(
             'app.utils.run_command',
             return_value=(1, '', 'xray: command not found')
@@ -652,7 +653,7 @@ class TestGetXrayDistribVersion:
 
         assert result is None
 
-    def test_returns_none_when_output_has_no_version(self, mocker):
+    def test_returns_none_when_output_has_no_version(self, mocker: MockFixture):
         mocker.patch(
             'app.utils.run_command',
             return_value=(0, 'Unexpected output without version', '')
@@ -662,7 +663,7 @@ class TestGetXrayDistribVersion:
 
         assert result is None
 
-    def test_returns_version_with_multiple_digits(self, mocker):
+    def test_returns_version_with_multiple_digits(self, mocker: MockFixture):
         mocker.patch(
             'app.utils.run_command',
             return_value=(0, 'Xray 24.12.31 (Xray, Penetrates Everything.)', '')
@@ -674,7 +675,7 @@ class TestGetXrayDistribVersion:
 
 class TestInstallXrayDistrib:
 
-    def test_install_xray_distrib_creates_binary(self, mocker, tmp_path: Path):
+    def test_install_xray_distrib_creates_binary(self, mocker: MockFixture, tmp_path: Path):
         bin_path = tmp_path / 'usr' / 'local' / 'bin' / 'xray'
         xray_binary = b'xray_binary_content'
 
@@ -688,7 +689,7 @@ class TestInstallXrayDistrib:
         assert bin_path.stat().st_mode & 0o777 == 0o744
         mock_get.assert_called_once_with('http://example.com/xray.zip', timeout=20, stream=True)
 
-    def test_install_xray_distrib_creates_parent_directories(self, mocker, tmp_path: Path):
+    def test_install_xray_distrib_creates_parent_directories(self, mocker: MockFixture, tmp_path: Path):
         bin_path = tmp_path / 'deep' / 'nested' / 'xray'
 
         mock_get = mocker.patch('app.utils.get_request')
@@ -698,7 +699,7 @@ class TestInstallXrayDistrib:
 
         assert bin_path.parent.exists()
 
-    def test_install_xray_distrib_overwrites_existing_binary(self, mocker, tmp_path: Path):
+    def test_install_xray_distrib_overwrites_existing_binary(self, mocker: MockFixture, tmp_path: Path):
         bin_path = tmp_path / 'xray'
         bin_path.write_bytes(b'old_binary')
         new_binary = b'new_xray_binary'
@@ -713,7 +714,7 @@ class TestInstallXrayDistrib:
 
 class TestInstallGeoData:
 
-    def test_install_geo_data_success(self, mocker, tmp_path: Path):
+    def test_install_geo_data_success(self, mocker: MockFixture, tmp_path: Path):
         geo_data_path = tmp_path / 'geoip.dat'
         test_content = b'geodata_content'
 
@@ -727,7 +728,7 @@ class TestInstallGeoData:
         mock_get.assert_called_once_with('http://example.com/geoip.dat', timeout=20, stream=True)
         assert geo_data_path.stat().st_mode & 0o777 == 0o644
 
-    def test_install_geo_data_creates_parent_directory(self, mocker, tmp_path: Path):
+    def test_install_geo_data_creates_parent_directory(self, mocker: MockFixture, tmp_path: Path):
         geo_data_path = tmp_path / 'new_dir' / 'geoip.dat'
 
         mock_get = mocker.patch('app.utils.get_request')
@@ -737,7 +738,7 @@ class TestInstallGeoData:
 
         assert geo_data_path.parent.exists()
 
-    def test_install_geo_data_with_real_path(self, mocker, tmp_path: Path):
+    def test_install_geo_data_with_real_path(self, mocker: MockFixture, tmp_path: Path):
         geo_data_path = tmp_path / 'geodata' / 'geoip.dat'
         test_content = b'test_geodata_content'
 
@@ -750,7 +751,7 @@ class TestInstallGeoData:
         assert geo_data_path.read_bytes() == test_content
         assert geo_data_path.parent.exists()
 
-    def test_install_geo_data_sets_correct_permissions(self, mocker, tmp_path: Path):
+    def test_install_geo_data_sets_correct_permissions(self, mocker: MockFixture, tmp_path: Path):
         geo_data_path = tmp_path / 'geoip.dat'
 
         mock_get = mocker.patch('app.utils.get_request')
@@ -760,7 +761,7 @@ class TestInstallGeoData:
 
         assert geo_data_path.stat().st_mode & 0o777 == 0o644
 
-    def test_install_geo_data_url_parameter(self, mocker, tmp_path: Path):
+    def test_install_geo_data_url_parameter(self, mocker: MockFixture, tmp_path: Path):
         geo_data_path = tmp_path / 'custom.dat'
         test_url = 'http://example.com/custom_geodata.dat'
 
@@ -771,7 +772,7 @@ class TestInstallGeoData:
 
         mock_get.assert_called_once_with(test_url, timeout=20, stream=True)
 
-    def test_install_geo_data_overwrites_existing_file(self, mocker, tmp_path: Path):
+    def test_install_geo_data_overwrites_existing_file(self, mocker: MockFixture, tmp_path: Path):
         geo_data_path = tmp_path / 'geoip.dat'
         geo_data_path.write_bytes(b'old_geodata')
         new_content = b'new_geodata_content'
@@ -783,7 +784,7 @@ class TestInstallGeoData:
 
         assert geo_data_path.read_bytes() == new_content
 
-    def test_install_geo_data_with_empty_content(self, mocker, tmp_path: Path):
+    def test_install_geo_data_with_empty_content(self, mocker: MockFixture, tmp_path: Path):
         geo_data_path = tmp_path / 'geoip.dat'
 
         mock_get = mocker.patch('app.utils.get_request')
@@ -793,7 +794,7 @@ class TestInstallGeoData:
 
         assert geo_data_path.read_bytes() == b''
 
-    def test_install_geo_data_large_content(self, mocker, tmp_path: Path):
+    def test_install_geo_data_large_content(self, mocker: MockFixture, tmp_path: Path):
         geo_data_path = tmp_path / 'geoip.dat'
         large_content = b'x' * (10 * 1024 * 1024)  # 10 MB
 
@@ -807,7 +808,7 @@ class TestInstallGeoData:
 
 class TestIsXrayServiceInstalled:
 
-    def test_is_xray_service_installed_true(self, mocker, tmp_path: Path):
+    def test_is_xray_service_installed_true(self, mocker: MockFixture, tmp_path: Path):
         service_content = '[Unit]\nDescription=Xray Service\n'
         unit_path = tmp_path / 'xray.service'
         unit_path.write_text(service_content, encoding='utf-8')
@@ -826,7 +827,7 @@ class TestIsXrayServiceInstalled:
 
         assert result is False
 
-    def test_is_xray_service_installed_different_content(self, mocker, tmp_path: Path):
+    def test_is_xray_service_installed_different_content(self, mocker: MockFixture, tmp_path: Path):
         expected_content = '[Unit]\nDescription=Xray Service\n'
         actual_content = '[Unit]\nDescription=Different Service\n'
         unit_path = tmp_path / 'xray.service'
@@ -842,7 +843,7 @@ class TestIsXrayServiceInstalled:
 
 class TestInstallXrayService:
 
-    def test_install_xray_service_success(self, mocker, tmp_path: Path):
+    def test_install_xray_service_success(self, mocker: MockFixture, tmp_path: Path):
         service_content = '[Unit]\nDescription=Xray Service\n'
         unit_path = tmp_path / 'xray.service'
         mocker.patch(
@@ -860,7 +861,7 @@ class TestInstallXrayService:
 
 class TestStopXrayService:
 
-    def test_stop_xray_service_success(self, mocker):
+    def test_stop_xray_service_success(self, mocker: MockFixture):
         mock_run_command = mocker.patch('app.utils.run_command', return_value=(0, '', ''))
 
         stop_xray_service()
@@ -870,7 +871,7 @@ class TestStopXrayService:
 
 class TestStartXrayService:
 
-    def test_start_xray_service_success(self, mocker):
+    def test_start_xray_service_success(self, mocker: MockFixture):
         mock_run_command = mocker.patch('app.utils.run_command', return_value=(0, '', ''))
 
         start_xray_service()
@@ -880,7 +881,7 @@ class TestStartXrayService:
 
 class TestRunCommand:
 
-    def test_run_command_success(self, mocker):
+    def test_run_command_success(self, mocker: MockFixture):
         mock_subprocess_run = mocker.patch('app.utils.run')
         mock_result = MagicMock()
         mock_result.returncode = 0
@@ -898,7 +899,7 @@ class TestRunCommand:
         assert call_args[1]['shell'] is True
         assert call_args[1]['capture_output'] is True
 
-    def test_run_command_with_stdin(self, mocker):
+    def test_run_command_with_stdin(self, mocker: MockFixture):
         mock_subprocess_run = mocker.patch('app.utils.run')
         mock_result = MagicMock()
         mock_result.returncode = 0
@@ -912,7 +913,7 @@ class TestRunCommand:
         call_args = mock_subprocess_run.call_args
         assert call_args[1]['input'] == b'test input'
 
-    def test_run_command_failure(self, mocker):
+    def test_run_command_failure(self, mocker: MockFixture):
         mock_subprocess_run = mocker.patch('app.utils.run')
         mock_result = MagicMock()
         mock_result.returncode = 1
@@ -925,7 +926,7 @@ class TestRunCommand:
         assert result[0] == 1
         assert result[2] == 'error message'
 
-    def test_run_command_with_check_true(self, mocker):
+    def test_run_command_with_check_true(self, mocker: MockFixture):
         mock_subprocess_run = mocker.patch('app.utils.run')
         mock_result = MagicMock()
         mock_result.returncode = 0
@@ -938,7 +939,7 @@ class TestRunCommand:
         call_args = mock_subprocess_run.call_args
         assert call_args[1]['check'] is True
 
-    def test_run_command_with_timeout(self, mocker):
+    def test_run_command_with_timeout(self, mocker: MockFixture):
         mock_subprocess_run = mocker.patch('app.utils.run')
         mock_result = MagicMock()
         mock_result.returncode = 0
@@ -954,7 +955,7 @@ class TestRunCommand:
 
 class TestDetectVeepeenetVersions:
 
-    def test_detect_veepeenet_versions_success(self, mocker):
+    def test_detect_veepeenet_versions_success(self, mocker: MockFixture):
         versions_json = '{"app": "1.0.0", "xray": "1.8.0"}'
         mock_app_resources = mocker.patch(
             'app.utils.app_resources.joinpath'
@@ -1351,7 +1352,7 @@ class TestGetXrayGithubReleases:
 
     _RELEASES_URL = 'https://api.github.com/repos/XTLS/Xray-core/releases'
 
-    def test_returns_up_to_limit_versions(self, mocker):
+    def test_returns_up_to_limit_versions(self, mocker: MockFixture):
         releases = [_make_release(f'v1.0.{i}') for i in range(20)]
         mock_get = mocker.patch('app.utils.get_request')
         mock_get.return_value.json.return_value = releases
@@ -1362,7 +1363,7 @@ class TestGetXrayGithubReleases:
         assert len(result) == 10
         assert result == [f'v1.0.{i}' for i in range(10)]
 
-    def test_returns_fewer_than_limit_when_not_enough_releases(self, mocker):
+    def test_returns_fewer_than_limit_when_not_enough_releases(self, mocker: MockFixture):
         releases = [_make_release('v1.0.0'), _make_release('v1.0.1')]
         mock_get = mocker.patch('app.utils.get_request')
         mock_get.return_value.json.return_value = releases
@@ -1372,7 +1373,7 @@ class TestGetXrayGithubReleases:
 
         assert result == ['v1.0.0', 'v1.0.1']
 
-    def test_excludes_prerelease_versions(self, mocker):
+    def test_excludes_prerelease_versions(self, mocker: MockFixture):
         releases = [
             _make_release('v2.0.0'),
             _make_release('v2.0.0-beta', prerelease=True),
@@ -1387,7 +1388,7 @@ class TestGetXrayGithubReleases:
         assert 'v2.0.0-beta' not in result
         assert result == ['v2.0.0', 'v1.9.0']
 
-    def test_includes_prerelease_versions_when_requested(self, mocker):
+    def test_includes_prerelease_versions_when_requested(self, mocker: MockFixture):
         releases = [
             _make_release('v2.0.0'),
             _make_release('v2.0.0-beta', prerelease=True),
@@ -1401,7 +1402,7 @@ class TestGetXrayGithubReleases:
 
         assert result == ['v2.0.0', 'v2.0.0-beta', 'v1.9.0']
 
-    def test_include_prerelease_still_excludes_draft_releases(self, mocker):
+    def test_include_prerelease_still_excludes_draft_releases(self, mocker: MockFixture):
         releases = [
             _make_release('v2.0.0'),
             _make_release('v2.0.0-beta', prerelease=True),
@@ -1415,7 +1416,7 @@ class TestGetXrayGithubReleases:
 
         assert result == ['v2.0.0', 'v2.0.0-beta']
 
-    def test_excludes_draft_releases(self, mocker):
+    def test_excludes_draft_releases(self, mocker: MockFixture):
         releases = [
             _make_release('v2.0.0'),
             _make_release('v1.9.0-draft', draft=True),
@@ -1430,7 +1431,7 @@ class TestGetXrayGithubReleases:
         assert 'v1.9.0-draft' not in result
         assert result == ['v2.0.0', 'v1.8.0']
 
-    def test_excludes_both_draft_and_prerelease(self, mocker):
+    def test_excludes_both_draft_and_prerelease(self, mocker: MockFixture):
         releases = [
             _make_release('v3.0.0'),
             _make_release('v3.0.0-rc1', prerelease=True),
@@ -1445,7 +1446,7 @@ class TestGetXrayGithubReleases:
 
         assert result == ['v3.0.0', 'v2.8.0']
 
-    def test_returns_empty_list_when_all_releases_are_prerelease(self, mocker):
+    def test_returns_empty_list_when_all_releases_are_prerelease(self, mocker: MockFixture):
         releases = [
             _make_release('v1.0.0-beta', prerelease=True),
             _make_release('v1.0.0-alpha', prerelease=True),
@@ -1458,7 +1459,7 @@ class TestGetXrayGithubReleases:
 
         assert result == []
 
-    def test_returns_empty_list_when_no_releases(self, mocker):
+    def test_returns_empty_list_when_no_releases(self, mocker: MockFixture):
         mock_get = mocker.patch('app.utils.get_request')
         mock_get.return_value.json.return_value = []
         mock_get.return_value.raise_for_status = MagicMock()
@@ -1467,7 +1468,7 @@ class TestGetXrayGithubReleases:
 
         assert result == []
 
-    def test_default_limit_is_10(self, mocker):
+    def test_default_limit_is_10(self, mocker: MockFixture):
         releases = [_make_release(f'v1.0.{i}') for i in range(15)]
         mock_get = mocker.patch('app.utils.get_request')
         mock_get.return_value.json.return_value = releases
@@ -1477,7 +1478,7 @@ class TestGetXrayGithubReleases:
 
         assert len(result) == 10
 
-    def test_calls_correct_url_with_params(self, mocker):
+    def test_calls_correct_url_with_params(self, mocker: MockFixture):
         mock_get = mocker.patch('app.utils.get_request')
         mock_get.return_value.json.return_value = []
         mock_get.return_value.raise_for_status = MagicMock()
@@ -1491,14 +1492,14 @@ class TestGetXrayGithubReleases:
             headers={'Accept': 'application/vnd.github+json'},
         )
 
-    def test_raises_on_http_error(self, mocker):
+    def test_raises_on_http_error(self, mocker: MockFixture):
         mock_get = mocker.patch('app.utils.get_request')
         mock_get.return_value.raise_for_status.side_effect = HTTPError('404 Not Found')
 
         with pytest.raises(HTTPError):
             get_xray_github_releases()
 
-    def test_limit_zero_returns_empty_list(self, mocker):
+    def test_limit_zero_returns_empty_list(self, mocker: MockFixture):
         releases = [_make_release(f'v1.0.{i}') for i in range(5)]
         mock_get = mocker.patch('app.utils.get_request')
         mock_get.return_value.json.return_value = releases
@@ -1508,7 +1509,7 @@ class TestGetXrayGithubReleases:
 
         assert result == []
 
-    def test_raises_for_status_is_called(self, mocker):
+    def test_raises_for_status_is_called(self, mocker: MockFixture):
         mock_get = mocker.patch('app.utils.get_request')
         mock_response = mock_get.return_value
         mock_response.json.return_value = []
@@ -1521,25 +1522,25 @@ class TestGetXrayGithubReleases:
 
 class TestValidateXrayConfig:
 
-    def test_success(self, mocker):
+    def test_success(self, mocker: MockFixture):
         mocker.patch('app.utils.run_command', return_value=(0, 'Configuration OK', ''))
         success, output = validate_xray_config(Path('/tmp/config.json'))
         assert success is True
         assert output == 'Configuration OK'
 
-    def test_failure(self, mocker):
+    def test_failure(self, mocker: MockFixture):
         mocker.patch('app.utils.run_command', return_value=(1, '', 'invalid config'))
         success, output = validate_xray_config(Path('/tmp/config.json'))
         assert success is False
         assert output == 'invalid config'
 
-    def test_failure_stderr_empty_uses_stdout(self, mocker):
+    def test_failure_stderr_empty_uses_stdout(self, mocker: MockFixture):
         mocker.patch('app.utils.run_command', return_value=(1, 'stdout error', ''))
         success, output = validate_xray_config(Path('/tmp/config.json'))
         assert success is False
         assert output == 'stdout error'
 
-    def test_calls_xray_run_test(self, mocker):
+    def test_calls_xray_run_test(self, mocker: MockFixture):
         mock_cmd = mocker.patch('app.utils.run_command', return_value=(0, 'ok', ''))
         validate_xray_config(Path('/etc/xray/config.json'))
         mock_cmd.assert_called_once_with('xray run -test -config /etc/xray/config.json')
@@ -1586,23 +1587,23 @@ class TestRestoreConfig:
 
 class TestGetXrayServiceJournal:
 
-    def test_returns_journal_output(self, mocker):
+    def test_returns_journal_output(self, mocker: MockFixture):
         mocker.patch('app.utils.run_command',
                      return_value=(0, 'Jan 01 xray[123]: some log line', ''))
         result = get_xray_service_journal(lines=10)
         assert result == 'Jan 01 xray[123]: some log line'
 
-    def test_returns_none_on_empty_output(self, mocker):
+    def test_returns_none_on_empty_output(self, mocker: MockFixture):
         mocker.patch('app.utils.run_command', return_value=(0, '', ''))
         result = get_xray_service_journal()
         assert result is None
 
-    def test_returns_none_on_failure(self, mocker):
+    def test_returns_none_on_failure(self, mocker: MockFixture):
         mocker.patch('app.utils.run_command', return_value=(1, '', 'error'))
         result = get_xray_service_journal()
         assert result is None
 
-    def test_calls_journalctl_with_lines(self, mocker):
+    def test_calls_journalctl_with_lines(self, mocker: MockFixture):
         mock_cmd = mocker.patch('app.utils.run_command', return_value=(0, 'log', ''))
         get_xray_service_journal(lines=5)
         mock_cmd.assert_called_once_with('journalctl -u xray -n 5 --no-pager -q')
@@ -1610,20 +1611,20 @@ class TestGetXrayServiceJournal:
 
 class TestResetFailedXrayService:
 
-    def test_reset_failed_xray_service_calls_correct_command(self, mocker):
+    def test_reset_failed_xray_service_calls_correct_command(self, mocker: MockFixture):
         mock_run_command = mocker.patch('app.utils.run_command', return_value=(0, '', ''))
 
         reset_failed_xray_service()
 
         mock_run_command.assert_called_once_with('systemctl reset-failed xray')
 
-    def test_reset_failed_xray_service_returns_none(self, mocker):
+    def test_reset_failed_xray_service_returns_none(self, mocker: MockFixture):
         mocker.patch('app.utils.run_command', return_value=(0, '', ''))
 
         reset_failed_xray_service()
 
 
-    def test_reset_failed_xray_service_ignores_command_failure(self, mocker):
+    def test_reset_failed_xray_service_ignores_command_failure(self, mocker: MockFixture):
         mock_run_command = mocker.patch('app.utils.run_command', return_value=(1, '', 'error'))
 
         reset_failed_xray_service()
@@ -1714,7 +1715,6 @@ class TestIsJsonContentSame:
 class TestQueryXrayStats:
 
     def test_returns_parsed_stats(self, mocker: MockFixture):
-        import json
         raw_json = json.dumps({'stat': [
             {'name': 'inbound>>>vless-inbound>>>traffic>>>uplink', 'value': 1000},
             {'name': 'user>>>alice.abc@0.0.0.0>>>traffic>>>downlink', 'value': 500},
