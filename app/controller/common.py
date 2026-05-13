@@ -239,7 +239,6 @@ def _store_runtime_stats() -> None:
     stored_stats += runtime_stats
 
     save_config(config, XRAY_CONFIG_PATH)
-    get_runtime_stats(reset=True)
 
 def _test_config_or_fail() -> None:
     success, output = validate_xray_config(XRAY_CONFIG_PATH)
