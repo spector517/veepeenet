@@ -9,3 +9,4 @@ venv
 *egg-info
 test_real_config.py
 .ruff_cache
+*_cache

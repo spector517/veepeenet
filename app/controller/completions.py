@@ -3,7 +3,8 @@ from typing import Iterator, Any
 
 from typer import Context
 
-from app.controller.common import load_config, ClientData, RuleData
+from app.controller.common import load_config
+from app.controller.data import ClientData, RuleData
 from app.defaults import XRAY_CONFIG_PATH
 from app.model.xray import Outbound
 

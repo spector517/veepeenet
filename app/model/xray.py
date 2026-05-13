@@ -6,8 +6,17 @@ from pydantic import Field, model_serializer, model_validator
 from app.defaults import VLESS_LISTEN_INTERFACE
 from app.model.base import XrayModel
 from app.model.routing import Routing
-from app.model.shared import Log, Dns, FreedomOutbound, BlackholeOutbound, DnsOutbound
-from app.model.veepeenet import VeePeeNET
+from app.model.shared import (
+    Log,
+    Dns,
+    FreedomOutbound,
+    BlackholeOutbound,
+    DnsOutbound,
+    ApiConfig,
+    Policy,
+    StatsConfig
+)
+from app.model.veepeenet import VeePeeNet
 from app.model.vless_inbound import VlessInbound
 from app.model.vless_outbound import VlessOutbound
 
@@ -19,9 +28,12 @@ _REQUIRED_OUTBOUNDS: list[type] = [FreedomOutbound, BlackholeOutbound, DnsOutbou
 
 
 class Xray(XrayModel):
-    veepeenet: VeePeeNET | None = Field(default=None)
+    veepeenet: VeePeeNet | None = Field(default=None)
     log: Log | None = Field(default_factory=Log)
     dns: Dns | None = Field(default=None)
+    api: ApiConfig | None = Field(default=None)
+    policy: Policy | None = Field(default=None)
+    stats: StatsConfig | None = Field(default=None)
     inbounds: list[VlessInbound | dict[str, Any]] | None = Field(default=None)
     routing: Routing | None = Field(default=None)
     outbounds: list[Outbound | dict[str, Any]] | None = Field(
@@ -41,6 +53,12 @@ class Xray(XrayModel):
             if required_type not in existing_types:
                 outbounds = outbounds + [required_type()]
         self.outbounds = outbounds
+        if self.api is None:
+            self.api = ApiConfig()
+        if self.policy is None:
+            self.policy = Policy()
+        if self.stats is None:
+            self.stats = StatsConfig()
         return handler(self)
 
     @model_validator(mode='after')
@@ -50,7 +68,7 @@ class Xray(XrayModel):
         inbound = self.get_vless_inbound()
         if not inbound:
             raise ValueError('Vless inbound is required to auto fill VeePeeNET config')
-        self.veepeenet = VeePeeNET(
+        self.veepeenet = VeePeeNet(
             host=inbound.listen or VLESS_LISTEN_INTERFACE,
             namespace=str(uuid4()))
         return self

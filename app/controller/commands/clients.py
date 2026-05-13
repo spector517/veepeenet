@@ -15,9 +15,11 @@ from app.controller.common import (
     get_vless_inbound,
     save_config,
     stdout_console,
-    ClientData,
+    get_runtime_stats,
+    get_stored_stats,
 )
 from app.controller.completions import complete_client_name
+from app.controller.data import ClientData
 from app.defaults import (
     XRAY_CONFIG_PATH,
     STYLE_ACCENT_NEUTRAL,
@@ -28,13 +30,14 @@ from app.defaults import (
     EXIT_CLIENTS_ERROR,
 )
 from app.model.xray import Xray
+from app.model.veepeenet import VeePeeNetStats
 from app.utils import (
     get_new_items,
     get_vless_client_url,
     remove_duplicates,
     get_existing_items,
 )
-from app.view import ClientsView, ClientView
+from app.view import ClientsView, ClientView, TrafficStatsView
 
 
 @clients.command(help='Register clients to service')
@@ -66,8 +69,10 @@ def show(
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_xray_config()
     xray_config = load_config(XRAY_CONFIG_PATH)
+    display_stats = get_stored_stats(xray_config)
+    display_stats += get_runtime_stats()
 
-    view = get_clients_view(xray_config)
+    view = get_clients_view(xray_config, display_stats)
     if json:
         stdout_console.print_json(view.model_dump_json(exclude_none=True), indent=2)
     else:
@@ -75,15 +80,19 @@ def show(
         url_console.print(view.rich_repr())
 
 
-def get_clients_view(xray_config: Xray) -> ClientsView:
+def get_clients_view(xray_config: Xray, stats: VeePeeNetStats | None = None) -> ClientsView:
     inbound = get_vless_inbound(xray_config)
 
     clients_data = [ClientData.from_model(client, i)
                     for i, client in enumerate(inbound.settings.clients or [])]
-    clients_views = [ClientView(
-        name=client_data.name,
-        url=get_vless_client_url(client_data.name, xray_config) or 'error')
-                     for client_data in clients_data]
+    clients_views: list[ClientView] = []
+    for client_data in clients_data:
+        client_ts = stats.client.get(client_data.name) if stats else None
+        clients_views.append(ClientView(
+            name=client_data.name,
+            url=get_vless_client_url(client_data.name, xray_config) or 'error',
+            stats=TrafficStatsView(
+                uplink=client_ts.uplink, downlink=client_ts.downlink) if client_ts else TrafficStatsView()))
     return ClientsView(clients=clients_views)
 
 

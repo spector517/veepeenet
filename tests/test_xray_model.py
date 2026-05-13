@@ -1,5 +1,109 @@
-from app.model.shared import Log, Dns, DnsOutbound, DnsServer
+from app.model.shared import Log, Dns, DnsOutbound, DnsServer, ApiConfig, Policy, StatsConfig
+from app.model.veepeenet import TrafficStats, VeePeeNetStats, VeePeeNet
 from app.model.vless_inbound import VlessInbound, Client, StreamSettings, RealitySettings
+
+
+class TestTrafficStats:
+
+    def test_default_traffic_stats(self):
+        ts = TrafficStats()
+        assert ts.uplink == 0
+        assert ts.downlink == 0
+
+    def test_traffic_stats_serialized(self):
+        ts = TrafficStats(uplink=1000, downlink=2000)
+        data = ts.model_dump(by_alias=True)
+        assert data == {'uplink': 1000, 'downlink': 2000}
+
+
+class TestTrafficStatsIadd:
+
+    def test_iadd_accumulates(self):
+        a = TrafficStats(uplink=100, downlink=200)
+        a += TrafficStats(uplink=50, downlink=75)
+        assert a.uplink == 150
+        assert a.downlink == 275
+
+    def test_iadd_returns_self(self):
+        a = TrafficStats(uplink=10, downlink=0)
+        original_id = id(a)
+        a += TrafficStats(uplink=5, downlink=0)
+        assert id(a) == original_id
+
+    def test_iadd_with_zero(self):
+        a = TrafficStats(uplink=100, downlink=200)
+        a += TrafficStats()
+        assert a.uplink == 100
+        assert a.downlink == 200
+
+
+class TestVeePeeNETStats:
+
+    def test_default_veepeenet_stats(self):
+        stats = VeePeeNetStats()
+        assert stats.client == {}
+        assert stats.inbound == {}
+        assert stats.outbound == {}
+
+    def test_veepeenet_stats_serialized_empty(self):
+        stats = VeePeeNetStats()
+        data = stats.model_dump(by_alias=True, exclude_none=True)
+        assert data == {'client': {}, 'inbound': {}, 'outbound': {}}
+
+    def test_veepeenet_stats_with_data(self):
+        stats = VeePeeNetStats(
+            client={'alice': TrafficStats(uplink=100, downlink=200)},
+            inbound={'vless-inbound': TrafficStats(uplink=500, downlink=1000)},
+            outbound={'direct': TrafficStats(uplink=50, downlink=150)},
+        )
+        data = stats.model_dump(by_alias=True)
+        assert data['client']['alice'] == {'uplink': 100, 'downlink': 200}
+        assert data['inbound']['vless-inbound'] == {'uplink': 500, 'downlink': 1000}
+        assert data['outbound']['direct'] == {'uplink': 50, 'downlink': 150}
+
+
+class TestVeePeeNETModel:
+
+    def test_veepeenet_has_default_stats(self):
+        vpn = VeePeeNet(host='0.0.0.0', namespace='test-uuid')
+        assert isinstance(vpn.stats, VeePeeNetStats)
+
+    def test_veepeenet_stats_serialized_in_json(self):
+        vpn = VeePeeNet(host='0.0.0.0', namespace='test-uuid')
+        data = vpn.model_dump(by_alias=True, exclude_none=True)
+        assert 'stats' in data
+        assert data['stats'] == {'client': {}, 'inbound': {}, 'outbound': {}}
+
+
+class TestApiConfig:
+
+    def test_api_config_defaults(self):
+        api = ApiConfig()
+        data = api.model_dump(by_alias=True)
+        assert data['tag'] == 'api'
+        assert data['listen'] == '127.0.0.1:10085'
+        assert data['services'] == ['StatsService']
+
+
+class TestPolicy:
+
+    def test_policy_defaults(self):
+        policy = Policy()
+        data = policy.model_dump(by_alias=True)
+        assert data['levels'] == {'0': {'statsUserUplink': True, 'statsUserDownlink': True}}
+        system = data['system']
+        assert system['statsInboundUplink'] is True
+        assert system['statsInboundDownlink'] is True
+        assert system['statsOutboundUplink'] is True
+        assert system['statsOutboundDownlink'] is True
+
+
+class TestStatsConfig:
+
+    def test_stats_config_serializes_empty(self):
+        sc = StatsConfig()
+        data = sc.model_dump(by_alias=True, exclude_none=True)
+        assert data == {}
 
 
 class TestLog:

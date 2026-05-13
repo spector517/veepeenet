@@ -44,7 +44,7 @@ from app.defaults import (
     EXIT_CONFIGURE_NO_RELEASES,
     EXIT_CONFIGURE_VERSION_NOT_FOUND,
 )
-from app.model.veepeenet import VeePeeNET
+from app.model.veepeenet import VeePeeNet
 from app.model.vless_inbound import (
     VlessInbound,
     StreamSettings as InboundStreamSettings,
@@ -170,7 +170,7 @@ def _print_available_releases(limit: int, json: bool = False) -> None:
 def _select_version(version: str | None, limit: int) -> str:
     if version:
         normalized = version if version.startswith('v') else f'v{version}'
-        releases = _get_xray_releases(100)
+        releases = _get_xray_releases(100, include_prerelease=True)
         if normalized not in releases:
             print_error(Text.assemble(
                 ('Version ', STYLE_REGULAR),
@@ -202,10 +202,13 @@ def _select_version(version: str | None, limit: int) -> str:
     return releases[int(raw) - 1]
 
 
-def _get_xray_releases(limit: int):
+def _get_xray_releases(limit: int, include_prerelease: bool = False):
     with stdout_console.status(
             Text('Fetching available Xray releases from GitHub', STYLE_REGULAR)):
-        return get_xray_github_releases(limit=limit)
+        return get_xray_github_releases(
+            limit=limit,
+            include_prerelease=include_prerelease,
+        )
 
 
 def _install_xray_version(selected_version: str) -> None:
@@ -287,7 +290,7 @@ def _create_config(host: str, listen_port: int,
                 server_names=reality_names,
                 private_key=gen_xray_private_key(),
                 short_ids=[])))
-    veepeenet = VeePeeNET(host=host, namespace=str(uuid4()), name=name)
+    veepeenet = VeePeeNet(host=host, namespace=str(uuid4()), name=name)
     return Xray(veepeenet=veepeenet, inbounds=[vless_inbound])
 
 

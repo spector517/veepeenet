@@ -14,8 +14,11 @@ from app.controller.common import (
     start_service,
     stop_service,
     restart_service,
+    clear_stats,
     print_error,
     stdout_console,
+    get_runtime_stats,
+    get_stored_stats,
 )
 from app.controller.commands.routing import get_routing_view
 from app.controller.commands.clients import get_clients_view
@@ -35,9 +38,9 @@ from app.utils import (
     is_xray_service_running,
     is_xray_service_enabled,
     get_xray_service_uptime,
-    is_files_content_same,
+    is_json_content_same,
 )
-from app.view import ServerView
+from app.view import ServerView, TrafficStatsView
 
 
 @app.command(help='Show service status')
@@ -53,6 +56,14 @@ def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = Fals
     xray_version = get_xray_distrib_version()
     running = is_xray_service_running()
 
+    display_stats = get_stored_stats(xray_config)
+    display_stats += get_runtime_stats()
+
+    inbound_tag = inbound.tag or 'vless-inbound'
+    inbound_ts = display_stats.inbound.get(inbound_tag)
+    inbound_stats_view = TrafficStatsView(
+        uplink=inbound_ts.uplink, downlink=inbound_ts.downlink) if inbound_ts else TrafficStatsView()
+
     if not xray_config.veepeenet:
         print_error(Text('Invalid configuration: missing veepeenet section', STYLE_REGULAR))
         raise Exit(code=EXIT_STATE_ERROR)
@@ -64,15 +75,19 @@ def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = Fals
         server_status='running' if running else 'stopped',
         enabled=is_xray_service_enabled(),
         uptime=get_xray_service_uptime() if running else None,
-        restart_required=not is_files_content_same(XRAY_CONFIG_PATH, XRAY_CONFIG_BACKUP_PATH),
+        restart_required=not is_json_content_same(
+            XRAY_CONFIG_PATH,
+            XRAY_CONFIG_BACKUP_PATH,
+            exclude_top_level_keys={'veepeenet'}),
         server_host=xray_config.veepeenet.host,
         server_port=str(inbound.port),
         reality_address=inbound.stream_settings.reality_settings.dest,
         reality_names=inbound.stream_settings.reality_settings.server_names,
         routing=get_routing_view(xray_config),
-        clients=get_clients_view(xray_config),
-        outbounds=get_outbounds_view(xray_config).outbounds,
-        server_name=xray_config.veepeenet.name)
+        clients=get_clients_view(xray_config, display_stats),
+        outbounds=get_outbounds_view(xray_config, display_stats).outbounds,
+        server_name=xray_config.veepeenet.name,
+        inbound_stats=inbound_stats_view)
     if json:
         stdout_console.print_json(server_view.model_dump_json(exclude_none=True), indent=2)
     else:
@@ -119,3 +134,13 @@ def restart(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> 
     except RuntimeError as e:
         print_error(Text('Failed to restart service', STYLE_REGULAR))
         raise Exit(code=EXIT_STATE_RESTART_FAILED) from e
+
+
+@app.command(help='Reset traffic statistics')
+@error_handler(default_message='Error resetting traffic statistics', default_code=EXIT_STATE_ERROR)
+def reset_stats(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+    check_root()
+    check_xray_config()
+    check_distrib()
+
+    clear_stats()

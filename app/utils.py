@@ -1,17 +1,19 @@
+from json import loads as json_loads
 from importlib.resources import files
+from contextlib import suppress
 from pathlib import Path
 from re import findall, MULTILINE, search, fullmatch
 from shutil import copy2
 from subprocess import run
 from tempfile import NamedTemporaryFile
-from typing import Literal, TypeVar
+from typing import Any, Literal, TypeVar, cast
 from urllib.parse import quote_plus as safe_url_encode
 from zipfile import ZipFile
-from filecmp import cmp as compare_files
 
 from requests import get as get_request
 
 from app.model.xray import Xray
+from app.model.api import Api, Stats
 from app.view import VersionsView
 
 _T = TypeVar('_T')
@@ -211,12 +213,31 @@ def write_text_file(file_path: Path, text: str, mode: int = 0) -> None:
         file_path.chmod(mode)
 
 
-def is_files_content_same(path1: Path | None, path2: Path | None) -> bool:
+def is_json_content_same(
+        path1: Path | None,
+        path2: Path | None,
+        exclude_top_level_keys: set[str] | None = None) -> bool:
     if path1 is None or not path1.exists():
         return False
     if path2 is None or not path2.exists():
         return False
-    return compare_files(path1, path2, shallow=False)
+
+    try:
+        content1 = json_loads(path1.read_text(encoding='utf-8'))
+        content2 = json_loads(path2.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return False
+
+    if exclude_top_level_keys and isinstance(content1, dict) and isinstance(content2, dict):
+        content1 = cast(dict[str, Any], content1)
+        content2 = cast(dict[str, Any], content2)
+        for key in exclude_top_level_keys:
+            with suppress(KeyError):
+                del content1[key]
+            with suppress(KeyError):
+                del content2[key]
+
+    return content1 == content2
 
 
 def remove_duplicates(source: list[_T]) -> list[_T]:
@@ -282,7 +303,22 @@ def get_xray_service_journal(lines: int = 20) -> str | None:
     return result[1] if result[0] == 0 and result[1] else None
 
 
-def get_xray_github_releases(limit: int = 10) -> list[str]:
+def query_xray_stats(host: str, port: int, reset: bool = False) -> list[Stats]:
+    result = run_command(f'xray api statsquery --server={host}:{port} -reset={str(reset).lower()}')
+    if result[0] != 0:
+        return []
+    try:
+        return Api.model_validate_json(result[1]).stat
+    except (KeyError, ValueError):
+        return []
+
+
+def reset_xray_stats(host: str, port: int) -> bool:
+    result = run_command(f'xray api statsquery --server={host}:{port} -reset=true')
+    return result[0] == 0
+
+
+def get_xray_github_releases(limit: int = 10, include_prerelease: bool = False) -> list[str]:
     response = get_request(
         _XRAY_GITHUB_RELEASES_URL,
         params={'per_page': 100},
@@ -294,6 +330,7 @@ def get_xray_github_releases(limit: int = 10) -> list[str]:
     versions = [
         release['tag_name']
         for release in releases
-        if not release.get('prerelease', False) and not release.get('draft', False)
+        if (include_prerelease or not release.get('prerelease', False))
+        and not release.get('draft', False)
     ]
     return versions[:limit]

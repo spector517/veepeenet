@@ -2,7 +2,7 @@ from pathlib import Path
 
 from app.model.types import FingerprintType
 
-STATE_PENDING_TIMEOUT = 2
+STATE_PENDING_TIMEOUT = 1
 
 REALITY_HOST = 'microsoft.com'
 REALITY_PORT = 443
@@ -12,6 +12,9 @@ VLESS_LISTEN_PORT = 443
 VLESS_OUTBOUND_PORT = 443
 VLESS_OUTBOUND_SPIDER_X = '/'
 VLESS_OUTBOUND_FINGERPRINT: FingerprintType = 'chrome'
+
+XRAY_API_HOST = '127.0.0.1'
+XRAY_API_PORT = 10085
 
 XRAY_CONFIG_PATH = Path('/usr/local/etc/xray/config.json')
 XRAY_CONFIG_BACKUP_PATH = Path('/usr/local/etc/xray/config.json.bak')
@@ -40,6 +43,8 @@ STYLE_VALUE = 'bold cyan'
 STYLE_URL = 'magenta'
 STYLE_REGULAR = 'white'
 STYLE_DIM = 'dim'
+STYLE_STATS_UP = 'bold blue'
+STYLE_STATS_DOWN = 'bold magenta'
 
 EXIT_NOT_ROOT = 1
 EXIT_NO_CONFIG = 2

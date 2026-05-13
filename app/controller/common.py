@@ -1,17 +1,14 @@
-from dataclasses import dataclass
 from functools import wraps
 from os import getuid
 from pathlib import Path
 from time import sleep
 from typing import Callable, Any, Literal
 from urllib.parse import urljoin
-from uuid import uuid4, uuid5, UUID
 
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 from typer import Exit
-from xxhash import xxh64
 
 from app.defaults import (
     XRAY_BINARY_PATH,
@@ -21,7 +18,8 @@ from app.defaults import (
     XRAY_ERROR_LOG_PATH,
     XRAY_CONFIG_PATH,
     XRAY_CONFIG_BACKUP_PATH,
-    VLESS_LISTEN_INTERFACE,
+    XRAY_API_HOST,
+    XRAY_API_PORT,
     STATE_PENDING_TIMEOUT,
     STYLE_REGULAR,
     STYLE_VALUE,
@@ -30,9 +28,8 @@ from app.defaults import (
     EXIT_NOT_ROOT,
     EXIT_NO_CONFIG,
 )
-from app.model.routing import Rule
-from app.model.types import RuleProtocolType
-from app.model.vless_inbound import Client, VlessInbound
+from app.model.veepeenet import VeePeeNetStats
+from app.model.vless_inbound import VlessInbound
 from app.model.xray import Xray
 from app.utils import (
     detect_veepeenet_versions,
@@ -53,85 +50,19 @@ from app.utils import (
     backup_config,
     restore_config,
     get_xray_service_journal,
+    query_xray_stats,
+    reset_xray_stats,
 )
+from app.controller.data import StatsData
 
 stdout_console = Console()
 stderr_console = Console(stderr=True)
-
-@dataclass
-class ClientData:
-    name: str
-    short_id: str
-    uuid: UUID
-
-    def __init__(
-            self, name: str,
-            short_id: str | None = None,
-            namespace: UUID | None = None,
-            uuid: UUID | None = None) -> None:
-        self.name = name
-        self.short_id = short_id or xxh64(name).hexdigest()
-        if uuid:
-            self.uuid = uuid
-        elif namespace:
-            self.uuid = uuid5(namespace, name)
-        else:
-            self.uuid = uuid4()
-
-    @classmethod
-    def from_model(cls, client: Client, index: int):
-        if client.email:
-            name = '.'.join(client.email.split('@')[0].split('.')[:-1])
-            short_id = client.email.split('@')[0].split('.')[-1]
-        else:
-            name = f'client_{index}'
-            short_id = xxh64(name).hexdigest()
-        uuid = UUID(client.id)
-        return ClientData(name=name, short_id=short_id, uuid=uuid)
-
-    def to_model(self) -> Client:
-        return Client(
-            id=str(self.uuid),
-            email=f'{self.name}.{self.short_id}@{VLESS_LISTEN_INTERFACE}'
-        )
-
-
-@dataclass
-class RuleData:
-    name: str
-    outbound_name: str
-    protocols: list[RuleProtocolType] | None
-    ports: str | None
-    domains: list[str] | None
-    ips: list[str] | None
-    priority: int
-
-    @classmethod
-    def from_model(cls, rule: Rule, number: int = 0):
-        try:
-            split_name = rule.tag.split('.') if rule.tag else ''
-            priority = int(split_name[-1])
-            name = '.'.join(split_name[:-1])
-        except ValueError:
-            priority = (number + 1) * 10
-            name = rule.tag or f'rule_{priority}'
-        return RuleData(name=name, outbound_name=rule.outbound_tag, protocols=rule.protocol,
-                        ports=rule.port, domains=rule.domain, ips=rule.ip, priority=priority)
-
-    def to_model(self) -> Rule:
-        return Rule(
-            tag=f'{self.name}.{self.priority}',
-            outbound_tag=self.outbound_name,
-            protocol=self.protocols,
-            port=self.ports,
-            domain=self.domains,
-            ip=self.ips
-        )
 
 def print_error(message: str | Text) -> None:
     stderr_console.print(
         Panel(message, title='Error', title_align='left', border_style='red')
     )
+
 
 def error_handler(
         default_message: str | None = None, default_code: int = -1) -> Callable[..., Any]:
@@ -231,6 +162,7 @@ def start_service() -> None:
     _test_config_or_fail()
 
     with stdout_console.status(Text('Starting service', STYLE_REGULAR)):
+        _update_config()
         start_xray_service()
         sleep(STATE_PENDING_TIMEOUT)
         if not is_xray_service_enabled():
@@ -248,6 +180,7 @@ def stop_service() -> None:
             ('Xray service is ', STYLE_REGULAR),
             ('already stopped', STYLE_WARN)))
         return
+    _store_runtime_stats()
     with stdout_console.status(Text('Stopping service', STYLE_REGULAR)):
         stop_xray_service()
         sleep(STATE_PENDING_TIMEOUT)
@@ -261,8 +194,10 @@ def stop_service() -> None:
 def restart_service() -> None:
     _test_config_or_fail()
     was_running = is_xray_service_running()
+    _store_runtime_stats()
 
     with stdout_console.status(Text('Restarting service', STYLE_REGULAR)):
+        _update_config()
         restart_xray_service()
         sleep(STATE_PENDING_TIMEOUT)
     if is_xray_service_running():
@@ -274,6 +209,57 @@ def restart_service() -> None:
         _handle_service_failure('restart', was_running)
 
 
+def get_runtime_stats(reset: bool = False) -> VeePeeNetStats:
+    veepeenet_stats = VeePeeNetStats()
+
+    if not is_xray_service_running():
+        return veepeenet_stats
+
+    stats = query_xray_stats(XRAY_API_HOST, XRAY_API_PORT, reset=reset)
+    for stat in stats:
+        stats_data = StatsData.from_api(stat)
+        if stats_data:
+            veepeenet_stats += stats_data.to_model()
+
+    return veepeenet_stats
+
+
+def get_stored_stats(xray_config: Xray) -> VeePeeNetStats:
+    if xray_config.veepeenet:
+        return xray_config.veepeenet.stats
+    return VeePeeNetStats()
+
+
+def clear_stats() -> None:
+    config = load_config(XRAY_CONFIG_PATH)
+    running = is_xray_service_running()
+
+    if running and not reset_xray_stats(XRAY_API_HOST, XRAY_API_PORT):
+        raise RuntimeError('Failed to reset Xray API stats')
+
+    if not config.veepeenet:
+        raise ValueError('Invalid configuration: missing veepeenet section')
+
+    config.veepeenet.stats = VeePeeNetStats()
+    save_config(config, XRAY_CONFIG_PATH)
+
+    if running:
+        stdout_console.print(Text('Traffic statistics reset in config and Xray API', STYLE_OK))
+    else:
+        stdout_console.print(Text('Traffic statistics reset in config', STYLE_OK))
+
+
+def _store_runtime_stats() -> None:
+    if not is_xray_service_running():
+        return
+
+    config = load_config(XRAY_CONFIG_PATH)
+    runtime_stats = get_runtime_stats()
+    stored_stats = get_stored_stats(config)
+    stored_stats += runtime_stats
+
+    save_config(config, XRAY_CONFIG_PATH)
+
 def _test_config_or_fail() -> None:
     success, output = validate_xray_config(XRAY_CONFIG_PATH)
     if not success:
@@ -281,7 +267,6 @@ def _test_config_or_fail() -> None:
             ('Xray config test failed:\n', STYLE_REGULAR),
             (output, 'dim')))
         raise RuntimeError(f'Xray config test failed: {output}')
-
 
 def _handle_service_failure(action: Literal['start', 'restart'], was_running: bool) -> None:
     journal = get_xray_service_journal()
@@ -310,3 +295,7 @@ def _handle_service_failure(action: Literal['start', 'restart'], was_running: bo
     else:
         stderr_console.print(Text('No backup available to restore', STYLE_WARN))
     raise RuntimeError(f'Failed to {action} service')
+
+def _update_config() -> None:
+    config = load_config(XRAY_CONFIG_PATH)
+    save_config(config, XRAY_CONFIG_PATH)

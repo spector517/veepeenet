@@ -14,7 +14,9 @@ from app.defaults import (
     STYLE_ACCENT_NEUTRAL,
     STYLE_OK,
     STYLE_DIM,
-    STYLE_REGULAR
+    STYLE_REGULAR,
+    STYLE_STATS_UP,
+    STYLE_STATS_DOWN,
 )
 from app.model.types import FingerprintType
 
@@ -27,17 +29,49 @@ def joined_bold(items: list[str], fallback: str | None = None) -> Text:
 def row(label: Text, value: Text) -> Text:
     return Text.assemble(label, value)
 
+def format_traffic_bytes(n: int) -> str:
+    if n < 1_000:
+        return f'{n} B'
+    if n < 1_000_000:
+        return f'{n / 1_000:.2f} KB'
+    if n < 1_000_000_000:
+        return f'{n / 1_000_000:.2f} MB'
+    if n < 1_000_000_000_000:
+        return f'{n / 1_000_000_000:.2f} GB'
+    return f'{n / 1_000_000_000_000:.2f} TB'
+
+class TrafficStatsView(BaseModel):
+    uplink: int = Field(default=0)
+    downlink: int = Field(default=0)
+
+    def rich_repr_short(self) -> Text:
+        return Text.assemble(
+            ('⬇ ', STYLE_STATS_UP),
+            (format_traffic_bytes(self.downlink), STYLE_STATS_UP),
+            ' | ',
+            ('⬆ ', STYLE_STATS_DOWN),
+            (format_traffic_bytes(self.uplink), STYLE_STATS_DOWN),
+        )
+
+
 class ClientView(BaseModel):
     name: str
     url: str
+    stats: TrafficStatsView = Field(default_factory=TrafficStatsView)
 
     def rich_repr_short(self) -> Text:
         return Text(self.name, STYLE_VALUE)
 
     def rich_repr(self) -> Group:
-        return Group(
-            Text(self.name, STYLE_VALUE),
-            Text(self.url, STYLE_URL, no_wrap=True))
+        parts: list[Text] = [
+            Text.assemble(
+                Text(self.name, STYLE_VALUE),
+                Text(' [', STYLE_REGULAR),
+                self.stats.rich_repr_short(),
+                Text(']', STYLE_REGULAR)),
+            Text(self.url, STYLE_URL, no_wrap=True),
+        ]
+        return Group(*parts)
 
 
 class ClientsView(BaseModel):
@@ -147,14 +181,13 @@ class OutboundView(BaseModel):
     port: int | None = Field(default=None)
     fingerprint: FingerprintType | None = Field(default=None)
     interface: str | None = Field(default=None)
+    stats: TrafficStatsView = Field(default_factory=TrafficStatsView)
 
     def rich_text_short(self) -> Text:
         if self.address:
             return Text.assemble(
                 (self.name, STYLE_VALUE),
-                ('(', ''),
-                (self.address + (f':{self.port}' if self.port else ''), STYLE_URL),
-                (')', ''))
+                '(', (self.address + (f':{self.port}' if self.port else ''), STYLE_URL), ')')
         return Text(self.name, STYLE_VALUE)
 
     def rich_text(self) -> Panel:
@@ -182,7 +215,7 @@ class OutboundView(BaseModel):
         content = Text('\n').join(content_lines) if content_lines else Text('No details', STYLE_DIM)
         return Panel(
             content,
-            title=Text(self.name, STYLE_ACCENT_UP),
+            title=Text.assemble(Text(self.name, STYLE_ACCENT_UP), ' [', self.stats.rich_repr_short(), ']'),
             title_align='left',
         )
 
@@ -212,6 +245,7 @@ class ServerView(BaseModel):
     routing: RoutingView
     outbounds: list[OutboundView]
     server_name: str | None = Field(default=None)
+    inbound_stats: TrafficStatsView = Field(default_factory=TrafficStatsView)
 
     def rich_repr(self) -> Panel:
         run_status = Text(
@@ -233,6 +267,7 @@ class ServerView(BaseModel):
             row(Text('status: ', STYLE_REGULAR), Text.assemble(run_status, ' (', enabled_status, ')')),
             row(Text('uptime: ', STYLE_REGULAR), Text(
                 self.uptime, STYLE_ACCENT_UP) if self.uptime else Text('n/a', STYLE_ACCENT_DOWN)),
+            row(Text('traffic: ', STYLE_REGULAR), self.inbound_stats.rich_repr_short()),
             row(Text('xray_version: ', STYLE_REGULAR),Text(self.xray_version, STYLE_VALUE)),
             row(Text('address: ', STYLE_REGULAR),
                 Text(f'{self.server_host}:{self.server_port}', STYLE_VALUE)),
