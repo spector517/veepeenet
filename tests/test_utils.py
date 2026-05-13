@@ -1387,6 +1387,34 @@ class TestGetXrayGithubReleases:
         assert 'v2.0.0-beta' not in result
         assert result == ['v2.0.0', 'v1.9.0']
 
+    def test_includes_prerelease_versions_when_requested(self, mocker):
+        releases = [
+            _make_release('v2.0.0'),
+            _make_release('v2.0.0-beta', prerelease=True),
+            _make_release('v1.9.0'),
+        ]
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_get.return_value.json.return_value = releases
+        mock_get.return_value.raise_for_status = MagicMock()
+
+        result = get_xray_github_releases(limit=10, include_prerelease=True)
+
+        assert result == ['v2.0.0', 'v2.0.0-beta', 'v1.9.0']
+
+    def test_include_prerelease_still_excludes_draft_releases(self, mocker):
+        releases = [
+            _make_release('v2.0.0'),
+            _make_release('v2.0.0-beta', prerelease=True),
+            _make_release('v1.9.0-draft', draft=True),
+        ]
+        mock_get = mocker.patch('app.utils.get_request')
+        mock_get.return_value.json.return_value = releases
+        mock_get.return_value.raise_for_status = MagicMock()
+
+        result = get_xray_github_releases(limit=10, include_prerelease=True)
+
+        assert result == ['v2.0.0', 'v2.0.0-beta']
+
     def test_excludes_draft_releases(self, mocker):
         releases = [
             _make_release('v2.0.0'),

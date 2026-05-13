@@ -3,9 +3,10 @@ from pathlib import Path
 from pydantic import ValidationError
 from pytest import fixture, raises
 from pytest_mock import MockFixture
+from typer import Exit
 
 from app.controller.common import load_config
-from app.controller.commands.configure import config
+from app.controller.commands.configure import config, _select_version
 from app.controller.commands.outbound import remove
 from app.model.xray import Xray
 
@@ -103,6 +104,47 @@ class TestCreateConfig:
         actual_xray_config = save_config_mock.call_args[0][0]
 
         assert actual_xray_config.veepeenet.name == 'My Server'
+
+
+class TestUpdateXrayVersionSelection:
+
+    def test_select_version_finds_prerelease_when_explicit(self, mocker: MockFixture):
+        get_releases_mock = mocker.patch(
+            'app.controller.commands.configure._get_xray_releases',
+            return_value=['v2.0.0', 'v2.0.0-beta', 'v1.9.0'],
+        )
+
+        result = _select_version('2.0.0-beta', limit=9)
+
+        assert result == 'v2.0.0-beta'
+        get_releases_mock.assert_called_once_with(100, include_prerelease=True)
+
+    def test_select_version_without_explicit_version_keeps_stable_filter(self, mocker: MockFixture):
+        mocker.patch(
+            'app.controller.commands.configure.stdout_console.print',
+        )
+        get_releases_mock = mocker.patch(
+            'app.controller.commands.configure._get_xray_releases',
+            return_value=['v2.0.0', 'v1.9.0'],
+        )
+        mocker.patch('app.controller.commands.configure.Prompt.ask', return_value='1')
+
+        result = _select_version(None, limit=9)
+
+        assert result == 'v2.0.0'
+        get_releases_mock.assert_called_once_with(9)
+
+    def test_select_version_raises_when_prerelease_is_missing(self, mocker: MockFixture):
+        mocker.patch(
+            'app.controller.commands.configure._get_xray_releases',
+            return_value=['v2.0.0', 'v1.9.0'],
+        )
+        mocker.patch('app.controller.commands.configure.print_error')
+
+        with raises(Exit) as exc_info:
+            _select_version('2.0.0-beta', limit=9)
+
+        assert exc_info.value.exit_code == 14
 
 
 class TestOutboundRemove:

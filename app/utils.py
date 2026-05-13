@@ -293,7 +293,7 @@ def query_xray_stats(host: str, port: int, reset: bool = False) -> list[Stats]:
         return []
 
 
-def get_xray_github_releases(limit: int = 10) -> list[str]:
+def get_xray_github_releases(limit: int = 10, include_prerelease: bool = False) -> list[str]:
     response = get_request(
         _XRAY_GITHUB_RELEASES_URL,
         params={'per_page': 100},
@@ -305,6 +305,7 @@ def get_xray_github_releases(limit: int = 10) -> list[str]:
     versions = [
         release['tag_name']
         for release in releases
-        if not release.get('prerelease', False) and not release.get('draft', False)
+        if (include_prerelease or not release.get('prerelease', False))
+        and not release.get('draft', False)
     ]
     return versions[:limit]
