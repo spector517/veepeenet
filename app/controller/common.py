@@ -161,6 +161,7 @@ def start_service() -> None:
     _test_config_or_fail()
 
     with stdout_console.status(Text('Starting service', STYLE_REGULAR)):
+        _update_config()
         start_xray_service()
         sleep(STATE_PENDING_TIMEOUT)
         if not is_xray_service_enabled():
@@ -195,6 +196,7 @@ def restart_service() -> None:
     _store_runtime_stats()
 
     with stdout_console.status(Text('Restarting service', STYLE_REGULAR)):
+        _update_config()
         restart_xray_service()
         sleep(STATE_PENDING_TIMEOUT)
     if is_xray_service_running():
@@ -274,3 +276,7 @@ def _handle_service_failure(action: Literal['start', 'restart'], was_running: bo
     else:
         stderr_console.print(Text('No backup available to restore', STYLE_WARN))
     raise RuntimeError(f'Failed to {action} service')
+
+def _update_config() -> None:
+    config = load_config(XRAY_CONFIG_PATH)
+    save_config(config, XRAY_CONFIG_PATH)
