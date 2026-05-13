@@ -1,23 +1,25 @@
 # VeePeeNET
 
-Install and configure personal anti-censorship service [Xray](https://github.com/xtls/xray-core)
+Язык: Русский | [English](README.en.md)
 
-## Requirements
+Установка и настройка персонального ускорителя интернета сервиса на базе [Xray](https://github.com/xtls/xray-core)
 
-1. Ubuntu Server 24.04+ (amd64) 
-2. Internet connection
+## Требования
 
-## Features
+1. Ubuntu Server 24.04+ (amd64)
+2. Подключение к интернету
 
-- Installing Xray
-- Creating and changing Xray server configuration (Vless with Reality)
-- Adding and removing Xray server clients
-- Managing outbound Vless connections
-- Flexible routing rules management
-- Geodata updates for geoip/geosite based routing
+## Возможности
 
-## Installation
-Download and install the `.deb` package:
+- Установка Xray
+- Создание и изменение конфигурации Xray-сервера (Vless with Reality)
+- Добавление и удаление клиентов Xray-сервера
+- Управление исходящими Vless-подключениями
+- Гибкое управление правилами маршрутизации
+- Обновление geodata для маршрутизации на основе geoip/geosite
+
+## Установка
+Скачайте и установите `.deb`-пакет:
 ```text
 rm -rf /tmp/veepeenet \
     && mkdir /tmp/veepeenet \
@@ -27,126 +29,126 @@ rm -rf /tmp/veepeenet \
     )
 ```
 
-## Usage
+## Использование
 
-### Configure and add clients
+### Настройка сервера и добавление клиентов
 
-Configure Xray server on host **my.domain.com**:
+Настройте Xray-сервер на хосте **my.domain.com**:
 ```commandline
 sudo xrayctl config --host my.domain.com
 ```
-The `host` may be a **public** IP address or a domain name. 
-It is recommended to specify it manually, as the automatic detection may not work correctly in some environments (e.g. behind NAT).
+Параметр `host` может быть **публичным** IP-адресом или доменным именем.
+Лучше указывать его явно, так как автоматическое определение не всегда работает корректно, например за NAT.
 
-Create client configurations
-**my_client1** and **my_client2** and print share links:
+Создайте клиентские конфигурации
+**my_client1** и **my_client2**:
 ```commandline
 sudo xrayctl clients add my_client1 my_client2
 ```
 
-Start Xray service for the first time:
+Первый запуск сервиса Xray:
 ```commandline
 sudo xrayctl start
 ```
 
-### Remove clients
+### Удаление клиентов
 
-Remove client **my_client2**:
+Удалите клиента **my_client2**:
 ```commandline
 sudo xrayctl clients remove my_client2
 ```
 
-### List clients
+### Просмотр клиентов
 
-Show all clients with share links:
+Показать всех клиентов вместе со ссылками для подключения:
 ```commandline
 sudo xrayctl clients list
 ```
 
-Show clients in JSON format:
+Показать клиентов в формате JSON:
 ```commandline
 sudo xrayctl clients list --json
 ```
 
-### Recreate configuration
+### Пересоздание конфигурации
 
-Remove current configuration and create new configuration. All clients will be removed:
+Удалите текущую конфигурацию и создайте новую. Все клиенты будут удалены:
 ```commandline
 sudo xrayctl config --host my.domain.com --clean
 ```
 
-Add new clients again:
+После этого добавьте новых клиентов:
 ```commandline
 sudo xrayctl clients add new_client1
 ```
 
-Restart Xray service to apply changes:
+Перезапустите Xray, чтобы применить изменения:
 ```commandline
 sudo xrayctl restart
 ```
 
-### Get help
+### Справка
 
-Show rich help message:
+Показать расширенную справку:
 ```commandline
 sudo xrayctl --help
 ```
 
-### GUI client
-You can use [Happ](https://www.happ.su/main) GUI client to connect to the server. Just import the generated share link and connect.
-Or you can use any other client recommended by [Xray project](https://github.com/XTLS/Xray-core/blob/main/README.md#gui-clients)
+### GUI-клиент
+Для подключения к серверу можно использовать GUI-клиент [Happ](https://www.happ.su/main). Достаточно импортировать сгенерированную ссылку и подключиться.
+Также подойдёт любой другой клиент, рекомендованный [проектом Xray](https://github.com/XTLS/Xray-core/blob/main/README.md#gui-clients)
 
-## Commands
+## Команды
 
-### Configure Xray Vless server with Reality
+### Настройка Xray Vless-сервера с Reality
 ```
 sudo xrayctl config [OPTIONS]
 ```
 
-#### Options
-| Option          | Type    | Description                                                                                              |
+#### Параметры
+| Параметр        | Тип     | Описание                                                                                                 |
 | --------------- | ------- | -------------------------------------------------------------------------------------------------------- |
-| --host          | TEXT    | Public interface of server. Using `hostname -i` if not specified. It is recommended to specify manually. |
-| --port          | INTEGER | Inbound port. [default: 443]                                                                             |
-| --reality-host  | TEXT    | Reality host. [default: microsoft.com]                                                                   |
-| --reality-port  | INTEGER | Reality port. [default: 443]                                                                             |
-| --reality-names | TEXT    | Available Reality server names. [default: Reality host]                                                  |
-| --name          | TEXT    | Human-readable server name (used after # in client links).                                               |
-| --clean         | FLAG    | Override current configuration (All clients will be removed) [default: no-clean]                         |
+| --host          | TEXT    | Публичный интерфейс сервера. Если не указан, используется `hostname -i`. Рекомендуется задавать вручную. |
+| --port          | INTEGER | Входящий порт. [default: 443]                                                                            |
+| --reality-host  | TEXT    | Хост Reality. [default: microsoft.com]                                                                   |
+| --reality-port  | INTEGER | Порт Reality. [default: 443]                                                                             |
+| --reality-names | TEXT    | Доступные имена серверов Reality. [default: Reality host]                                                |
+| --name          | TEXT    | Человекочитаемое имя сервера, используется после # в клиентских ссылках.                                 |
+| --clean         | FLAG    | Перезаписать текущую конфигурацию. Все клиенты будут удалены. [default: no-clean]                       |
 
-### Update geodata
+### Обновление geodata
 ```
 sudo xrayctl update-geodata
 ```
-Updates `geoip.dat` and `geosite.dat` files used for geo-based routing rules.
+Обновляет файлы `geoip.dat` и `geosite.dat`, которые используются в правилах геомаршрутизации.
 
-### Update Xray distribution
+### Обновление дистрибутива Xray
 ```
 sudo xrayctl update-xray [OPTIONS]
 ```
-Updates Xray distribution to a selected or latest version. Shows a list of available releases from GitHub and allows you to choose which version to install.
+Обновляет Xray до выбранной или последней доступной версии. Команда может показать список релизов с GitHub и дать выбрать нужную версию для установки.
 
-#### Options
+#### Параметры
 
-| Option    | Type    | Description                                         |
-| --------- | ------- | --------------------------------------------------- |
-| --version | TEXT    | Target version (e.g. v1.8.24 or 1.8.24)             |
-| --list    | FLAG    | List available versions and exit                    |
-| --limit   | INTEGER | Number of versions to show with --list [default: 9] |
-| --json    |         | Show --list output in JSON format                   |
+| Параметр | Тип     | Описание                                                |
+| -------- | ------- | ------------------------------------------------------- |
+| --version | TEXT    | Целевая версия, например v1.8.24 или 1.8.24             |
+| --list    | FLAG    | Показать доступные версии и завершить работу            |
+| --limit   | INTEGER | Сколько версий показать вместе с --list [default: 9]    |
+| --json    |         | Вывести результат --list в формате JSON                 |
 
-### Show Xray service status
+### Просмотр статуса сервиса Xray
 ```
 sudo xrayctl status [OPTIONS]
 ```
 
-#### Options
+#### Параметры
 
-| Option | Type | Description         |
-| ------ | ---- | ------------------- |
-| --json | FLAG | Show in JSON-format |
+| Параметр | Тип  | Описание             |
+| -------- | ---- | -------------------- |
+| --json   | FLAG | Вывести в JSON-формате |
 
-#### Examples
+#### Примеры
 ```commandline
 sudo xrayctl status
 ```
@@ -192,7 +194,7 @@ sudo xrayctl status --json
 }
 ```
 
-### Start, stop or restart Xray server
+### Запуск, остановка и перезапуск Xray
 ```commandline
 sudo xrayctl start
 ```
@@ -205,103 +207,103 @@ sudo xrayctl restart
 
 ---
 
-### Clients management
+### Управление клиентами
 
-#### Add clients
+#### Добавление клиентов
 ```commandline
 sudo xrayctl clients add CLIENT_NAMES...
 ```
-If a client with the same name already exists, it will be ignored.
+Если клиент с таким именем уже существует, он будет проигнорирован.
 
-#### Remove clients
-Clients with names that do not exist on the server will be ignored.
+#### Удаление клиентов
+Имена клиентов, которых нет на сервере, будут проигнорированы.
 ```commandline
 sudo xrayctl clients remove CLIENT_NAMES...
 ```
 
-#### List clients
+#### Список клиентов
 ```text
 sudo xrayctl clients list [OPTIONS]
 ```
 
-| Option | Type | Description         |
-| ------ | ---- | ------------------- |
-| --json | FLAG | Show in JSON-format |
+| Параметр | Тип  | Описание             |
+| -------- | ---- | -------------------- |
+| --json   | FLAG | Вывести в JSON-формате |
 
 ---
 
-### Outbounds management
+### Управление outbounds
 
-#### Add Vless outbound
+#### Добавление Vless outbound
 ```text
 sudo xrayctl outbounds add NAME [OPTIONS]
 ```
 
-| Option        | Type    | Description                                             |
-| ------------- | ------- | ------------------------------------------------------- |
-| --address     | TEXT    | Outbound address (IP or domain name) **(required)**     |
-| --uuid        | TEXT    | Vless client identifier **(required)**                  |
-| --sni         | TEXT    | Server name of target server **(required)**             |
-| --short-id    | TEXT    | One of short_id of target server **(required)**         |
-| --password    | TEXT    | Public key of target server **(required)**              |
-| --spider-x    | TEXT    | Initial path and parameters for the spider [default: /] |
-| --port        | INTEGER | Vless outbound port [default: 443]                      |
-| --fingerprint | TEXT    | Browser TLS Client Hello fingerprint [default: chrome]  |
-| --interface   | TEXT    | Send through interface [default: 0.0.0.0]               |
+| Параметр      | Тип     | Описание                                                     |
+| ------------- | ------- | ------------------------------------------------------------ |
+| --address     | TEXT    | Адрес outbound: IP или доменное имя. **(обязательно)**       |
+| --uuid        | TEXT    | Идентификатор Vless-клиента. **(обязательно)**               |
+| --sni         | TEXT    | Имя сервера целевого узла. **(обязательно)**                 |
+| --short-id    | TEXT    | Один из short_id целевого сервера. **(обязательно)**         |
+| --password    | TEXT    | Публичный ключ целевого сервера. **(обязательно)**           |
+| --spider-x    | TEXT    | Начальный путь и параметры для spider [default: /]           |
+| --port        | INTEGER | Порт Vless outbound [default: 443]                           |
+| --fingerprint | TEXT    | Browser TLS Client Hello fingerprint [default: chrome]       |
+| --interface   | TEXT    | Интерфейс для исходящего трафика [default: 0.0.0.0]          |
 
-#### Add Vless outbound from URL
+#### Добавление Vless outbound из URL
 ```text
 sudo xrayctl outbounds add-from-url 'URL' [OPTIONS]
 ```
 
-| Option      | Type | Description                                        |
-| ----------- | ---- | -------------------------------------------------- |
-| --name      | TEXT | Outbound name (uses URL fragment if not specified) |
-| --interface | TEXT | Send through interface [default: 0.0.0.0]          |
+| Параметр  | Тип  | Описание                                                  |
+| --------- | ---- | --------------------------------------------------------- |
+| --name    | TEXT | Имя outbound. Если не указано, берётся фрагмент URL       |
+| --interface | TEXT | Интерфейс для исходящего трафика [default: 0.0.0.0]     |
 
-#### Remove Vless outbound
+#### Удаление Vless outbound
 ```commandline
 sudo xrayctl outbounds remove NAME
 ```
 
-#### Change Vless outbound
+#### Изменение Vless outbound
 ```text
 sudo xrayctl outbounds change NAME [OPTIONS]
 ```
 
-| Option        | Type    | Description                                            |
-| ------------- | ------- | ------------------------------------------------------ |
-| --address     | TEXT    | Outbound address (IP or domain name)                   |
-| --uuid        | TEXT    | Vless client identifier                                |
-| --sni         | TEXT    | Server name of target server                           |
-| --password    | TEXT    | Public key of target server                            |
-| --short-id    | TEXT    | One of short_id of target server                       |
-| --spider-x    | TEXT    | Initial path and parameters for the spider             |
-| --port        | INTEGER | Vless outbound port                                    |
-| --fingerprint | TEXT    | Browser TLS Client Hello fingerprint [default: chrome] |
-| --interface   | TEXT    | Send through interface [default: 0.0.0.0]              |
-| --new-name    | TEXT    | New outbound name                                      |
+| Параметр      | Тип     | Описание                                                   |
+| ------------- | ------- | ---------------------------------------------------------- |
+| --address     | TEXT    | Адрес outbound: IP или доменное имя                        |
+| --uuid        | TEXT    | Идентификатор Vless-клиента                                |
+| --sni         | TEXT    | Имя сервера целевого узла                                  |
+| --password    | TEXT    | Публичный ключ целевого сервера                            |
+| --short-id    | TEXT    | Один из short_id целевого сервера                          |
+| --spider-x    | TEXT    | Начальный путь и параметры для spider                      |
+| --port        | INTEGER | Порт Vless outbound                                        |
+| --fingerprint | TEXT    | Browser TLS Client Hello fingerprint [default: chrome]     |
+| --interface   | TEXT    | Интерфейс для исходящего трафика [default: 0.0.0.0]        |
+| --new-name    | TEXT    | Новое имя outbound                                         |
 
-#### Set default outbound
+#### Сделать outbound основным
 ```commandline
 sudo xrayctl outbounds set-default NAME
 ```
-Moves the specified outbound to the first position, making it the default.
+Перемещает указанный outbound на первую позицию и делает его основным.
 
 ---
 
-### Routing management
+### Управление маршрутизацией
 
-#### List routing rules
+#### Список правил маршрутизации
 ```text
 sudo xrayctl routing list [OPTIONS]
 ```
 
-| Option | Type | Description         |
-| ------ | ---- | ------------------- |
-| --json | FLAG | Show in JSON-format |
+| Параметр | Тип  | Описание             |
+| -------- | ---- | -------------------- |
+| --json   | FLAG | Вывести в JSON-формате |
 
-##### Example
+##### Пример
 ```commandline
 xrayctl routing list
 ```
@@ -320,68 +322,68 @@ xrayctl routing list
 └──────────────────────────────────────────┘
 ```
 
-#### Add routing rule
+#### Добавление правила маршрутизации
 ```text
 xrayctl routing add-rule NAME [OPTIONS]
 ```
 
-| Option     | Type    | Description                                                        |
-| ---------- | ------- | ------------------------------------------------------------------ |
-| --outbound | TEXT    | Outbound name to which the rule will direct traffic **(required)** |
-| --domain   | TEXT    | List of domain patterns to match (e.g. "domain:example.com")       |
-| --ip       | TEXT    | List of IPs or IP ranges to match (e.g. "123.123.123.123")         |
-| --ports    | TEXT    | Port or port range to match (e.g. "53,443,60-89")                  |
-| --protocol | TEXT    | List of protocols to match: http, tls, quic or bittorrent          |
-| --priority | INTEGER | Priority of the rule (lower value means higher priority)           |
+| Параметр   | Тип     | Описание                                                            |
+| ---------- | ------- | ------------------------------------------------------------------- |
+| --outbound | TEXT    | Имя outbound, в который будет направляться трафик. **(обязательно)** |
+| --domain   | TEXT    | Список доменных шаблонов для совпадения, например "domain:example.com" |
+| --ip       | TEXT    | Список IP-адресов или диапазонов, например "123.123.123.123"         |
+| --ports    | TEXT    | Порт или диапазон портов, например "53,443,60-89"                    |
+| --protocol | TEXT    | Список протоколов: http, tls, quic или bittorrent                    |
+| --priority | INTEGER | Приоритет правила. Чем меньше значение, тем выше приоритет           |
 
-At least one condition (`--domain`, `--ip`, `--ports`, `--protocol`) must be specified.
+Нужно указать хотя бы одно условие: `--domain`, `--ip`, `--ports` или `--protocol`.
 
-#### Remove routing rule
+#### Удаление правила маршрутизации
 ```commandline
 sudo xrayctl routing remove-rule NAME
 ```
 
-#### Rename routing rule
+#### Переименование правила маршрутизации
 ```commandline
 sudo xrayctl routing rename-rule NAME --new-name NEW_NAME
 ```
 
-#### Change rule priority
+#### Изменение приоритета правила
 ```commandline
 sudo xrayctl routing set-priority NAME --priority VALUE
 ```
 
-#### Change rule conditions
+#### Изменение условий правила
 ```text
 sudo xrayctl routing change-rule NAME ACTION [OPTIONS]
 ```
 
-Where `ACTION` is either `put` (add values) or `del` (remove values).
+Где `ACTION` может быть `put` (добавить значения) или `del` (удалить значения).
 
-| Option     | Type | Description                                                    |
-| ---------- | ---- | -------------------------------------------------------------- |
-| --domain   | TEXT | List of domain patterns to add/remove                          |
-| --ip       | TEXT | List of IPs or IP ranges to add/remove                         |
-| --ports    | TEXT | Port or port range to add/remove                               |
-| --protocol | TEXT | List of protocols to add/remove: http, tls, quic or bittorrent |
+| Параметр   | Тип  | Описание                                                      |
+| ---------- | ---- | ------------------------------------------------------------- |
+| --domain   | TEXT | Список доменных шаблонов для добавления или удаления          |
+| --ip       | TEXT | Список IP-адресов или диапазонов для добавления или удаления  |
+| --ports    | TEXT | Порт или диапазон портов для добавления или удаления          |
+| --protocol | TEXT | Список протоколов для добавления или удаления: http, tls, quic или bittorrent |
 
-#### Set domain strategy
+#### Установка domain strategy
 ```commandline
 sudo xrayctl routing set-domain-strategy STRATEGY
 ```
-Where `STRATEGY` is one of the available routing domain strategy values (e.g. `AsIs`, `IPIfNonMatch`, `IPOnDemand`).
+Где `STRATEGY` — одно из доступных значений стратегии маршрутизации, например `AsIs`, `IPIfNonMatch` или `IPOnDemand`.
 
-#### Change rule outbound
+#### Изменение outbound у правила
 ```commandline
 sudo xrayctl routing change-outbound NAME --outbound OUTBOUND_NAME
 ```
-Changes the outbound to which the specified rule directs traffic.
+Меняет outbound, в который направляется трафик по указанному правилу.
 
-## Removing
+## Удаление
 
 ```commandline
 sudo apt remove veepeenet
 ```
 
-# License
+# Лицензия
 MIT
