@@ -12,6 +12,7 @@ from zipfile import ZipFile
 
 from requests import get as get_request
 
+from app.defaults import XRAY_BINARY_PATH
 from app.model.xray import Xray
 from app.model.api import Api, Stats
 from app.view import VersionsView
@@ -25,7 +26,7 @@ app_resources = files('app.resources')
 
 
 def get_xray_distrib_version() -> str | None:
-    run_result = run_command('xray --version')
+    run_result = run_command(f'{XRAY_BINARY_PATH} --version')
     if run_result[0] != 0:
         return None
     matcher = search(r'Xray\s+([\d.]+)', run_result[1])
@@ -82,7 +83,7 @@ def install_xray_service(unit_path: Path) -> None:
 
 
 def gen_xray_private_key() -> str:
-    gen_result = run_command('xray x25519')
+    gen_result = run_command(f'{XRAY_BINARY_PATH} x25519')
     if gen_result[0] != 0:
         raise RuntimeError(
             f'Error generating private key.'
@@ -94,7 +95,7 @@ def gen_xray_private_key() -> str:
 
 
 def gen_xray_password(private_key: str) -> str:
-    gen_result = run_command(f'xray x25519 -i {private_key}')
+    gen_result = run_command(f'{XRAY_BINARY_PATH} x25519 -i {private_key}')
     if gen_result[0] != 0:
         raise RuntimeError(
             f'Error generating password.'
@@ -282,7 +283,7 @@ def detect_veepeenet_versions() -> VersionsView:
 
 
 def validate_xray_config(config_path: Path) -> tuple[bool, str]:
-    result = run_command(f'xray run -test -config {config_path}')
+    result = run_command(f'{XRAY_BINARY_PATH} run -test -config {config_path}')
     if result[0] == 0:
         return True, result[1]
     return False, result[2] or result[1]
@@ -304,7 +305,8 @@ def get_xray_service_journal(lines: int = 20) -> str | None:
 
 
 def query_xray_stats(host: str, port: int, reset: bool = False) -> list[Stats]:
-    result = run_command(f'xray api statsquery --server={host}:{port} -reset={str(reset).lower()}')
+    result = run_command(
+        f'{XRAY_BINARY_PATH} api statsquery --server={host}:{port} -reset={str(reset).lower()}')
     if result[0] != 0:
         return []
     try:
@@ -314,7 +316,7 @@ def query_xray_stats(host: str, port: int, reset: bool = False) -> list[Stats]:
 
 
 def reset_xray_stats(host: str, port: int) -> bool:
-    result = run_command(f'xray api statsquery --server={host}:{port} -reset=true')
+    result = run_command(f'{XRAY_BINARY_PATH} api statsquery --server={host}:{port} -reset=true')
     return result[0] == 0
 
 

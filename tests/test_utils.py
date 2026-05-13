@@ -11,6 +11,7 @@ import pytest
 from pytest_mock import MockFixture
 from requests import HTTPError
 
+from app.defaults import XRAY_BINARY_PATH
 from app.model.veepeenet import TrafficStats, VeePeeNetStats
 from app.model.xray import Xray
 from app.utils import (
@@ -84,7 +85,7 @@ class TestGenXrayPrivateKey:
         result = gen_xray_private_key()
 
         assert result == expected_key
-        mock_run_command.assert_called_once_with('xray x25519')
+        mock_run_command.assert_called_once_with(f'{XRAY_BINARY_PATH} x25519')
 
     def test_gen_xray_private_key_command_failure(self, mocker: MockFixture):
         mocker.patch('app.utils.run_command', return_value=(1, '', 'Error message'))
@@ -116,7 +117,7 @@ class TestGenXrayPassword:
         result = gen_xray_password(private_key)
 
         assert result == expected_pass
-        mock_run_command.assert_called_once_with(f'xray x25519 -i {private_key}')
+        mock_run_command.assert_called_once_with(f'{XRAY_BINARY_PATH} x25519 -i {private_key}')
 
     def test_gen_xray_password_success_1(self, mocker: MockFixture):
         private_key = 'aAbBcCdDeEfF123456789gGhHiIjJkKlL=='
@@ -127,7 +128,7 @@ class TestGenXrayPassword:
         result = gen_xray_password(private_key)
 
         assert result == expected_pass
-        mock_run_command.assert_called_once_with(f'xray x25519 -i {private_key}')
+        mock_run_command.assert_called_once_with(f'{XRAY_BINARY_PATH} x25519 -i {private_key}')
 
     def test_gen_xray_password_command_failure(self, mocker: MockFixture):
         mocker.patch('app.utils.run_command', return_value=(1, '', 'Error message'))
@@ -642,7 +643,7 @@ class TestGetXrayDistribVersion:
         result = get_xray_distrib_version()
 
         assert result == '1.8.0'
-        mock_run_command.assert_called_once_with('xray --version')
+        mock_run_command.assert_called_once_with(f'{XRAY_BINARY_PATH} --version')
 
     def test_returns_none_when_command_fails(self, mocker: MockFixture):
         mocker.patch(
@@ -1544,7 +1545,7 @@ class TestValidateXrayConfig:
     def test_calls_xray_run_test(self, mocker: MockFixture):
         mock_cmd = mocker.patch('app.utils.run_command', return_value=(0, 'ok', ''))
         validate_xray_config(Path('/etc/xray/config.json'))
-        mock_cmd.assert_called_once_with('xray run -test -config /etc/xray/config.json')
+        mock_cmd.assert_called_once_with(f'{XRAY_BINARY_PATH} run -test -config /etc/xray/config.json')
 
 
 class TestBackupConfig:
