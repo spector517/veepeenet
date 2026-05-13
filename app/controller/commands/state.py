@@ -14,6 +14,7 @@ from app.controller.common import (
     start_service,
     stop_service,
     restart_service,
+    clear_stats,
     print_error,
     stdout_console,
     get_runtime_stats,
@@ -133,3 +134,13 @@ def restart(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> 
     except RuntimeError as e:
         print_error(Text('Failed to restart service', STYLE_REGULAR))
         raise Exit(code=EXIT_STATE_RESTART_FAILED) from e
+
+
+@app.command(help='Reset traffic statistics')
+@error_handler(default_message='Error resetting traffic statistics', default_code=EXIT_STATE_ERROR)
+def reset_stats(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+    check_root()
+    check_xray_config()
+    check_distrib()
+
+    clear_stats()

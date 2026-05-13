@@ -49,6 +49,7 @@ from app.utils import (
     get_xray_service_journal,
     is_json_content_same,
     query_xray_stats,
+    reset_xray_stats,
 )
 
 
@@ -1765,6 +1766,31 @@ class TestQueryXrayStats:
         result = query_xray_stats('127.0.0.1', 10085)
 
         assert result == []
+
+
+class TestResetXrayStats:
+
+    def test_returns_true_on_success(self, mocker: MockFixture):
+        mocker.patch('app.utils.run_command', return_value=(0, '', ''))
+
+        result = reset_xray_stats('127.0.0.1', 10085)
+
+        assert result is True
+
+    def test_returns_false_on_failure(self, mocker: MockFixture):
+        mocker.patch('app.utils.run_command', return_value=(1, '', 'connection refused'))
+
+        result = reset_xray_stats('127.0.0.1', 10085)
+
+        assert result is False
+
+    def test_uses_reset_flag(self, mocker: MockFixture):
+        mock_run = mocker.patch('app.utils.run_command', return_value=(0, '', ''))
+
+        reset_xray_stats('127.0.0.1', 10085)
+
+        args = mock_run.call_args[0][0]
+        assert '-reset=true' in args
 
 
 class TestVeePeeNetStatsIadd:

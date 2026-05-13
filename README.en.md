@@ -194,7 +194,7 @@ sudo xrayctl status --json
 }
 ```
 
-### Start, stop or restart Xray server
+### Start, stop, restart or reset Xray statistics
 ```commandline
 sudo xrayctl start
 ```
@@ -204,6 +204,12 @@ sudo xrayctl stop
 ```commandline
 sudo xrayctl restart
 ```
+```commandline
+sudo xrayctl reset-stats
+```
+
+The `reset-stats` command clears accumulated statistics in the `veepeenet.stats` section.
+If the Xray service is running, it also resets runtime statistics through the Xray API.
 
 ---
 

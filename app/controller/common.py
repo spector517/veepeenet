@@ -51,6 +51,7 @@ from app.utils import (
     restore_config,
     get_xray_service_journal,
     query_xray_stats,
+    reset_xray_stats,
 )
 from app.controller.data import StatsData
 
@@ -227,6 +228,25 @@ def get_stored_stats(xray_config: Xray) -> VeePeeNetStats:
     if xray_config.veepeenet:
         return xray_config.veepeenet.stats
     return VeePeeNetStats()
+
+
+def clear_stats() -> None:
+    config = load_config(XRAY_CONFIG_PATH)
+    running = is_xray_service_running()
+
+    if running and not reset_xray_stats(XRAY_API_HOST, XRAY_API_PORT):
+        raise RuntimeError('Failed to reset Xray API stats')
+
+    if not config.veepeenet:
+        raise ValueError('Invalid configuration: missing veepeenet section')
+
+    config.veepeenet.stats = VeePeeNetStats()
+    save_config(config, XRAY_CONFIG_PATH)
+
+    if running:
+        stdout_console.print(Text('Traffic statistics reset in config and Xray API', STYLE_OK))
+    else:
+        stdout_console.print(Text('Traffic statistics reset in config', STYLE_OK))
 
 
 def _store_runtime_stats() -> None:

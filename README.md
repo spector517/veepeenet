@@ -194,7 +194,7 @@ sudo xrayctl status --json
 }
 ```
 
-### Запуск, остановка и перезапуск Xray
+### Запуск, остановка, перезапуск и сброс статистики Xray
 ```commandline
 sudo xrayctl start
 ```
@@ -204,6 +204,12 @@ sudo xrayctl stop
 ```commandline
 sudo xrayctl restart
 ```
+```commandline
+sudo xrayctl reset-stats
+```
+
+Команда `reset-stats` очищает накопленную статистику в секции `veepeenet.stats`.
+Если сервис Xray запущен, статистика также сбрасывается через Xray API.
 
 ---
 

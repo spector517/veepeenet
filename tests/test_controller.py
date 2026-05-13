@@ -10,7 +10,7 @@ from typer import Exit
 from app.controller.common import load_config
 from app.controller.commands.configure import config, _select_version
 from app.controller.commands.outbound import remove
-from app.controller.commands.state import status
+from app.controller.commands.state import status, reset_stats
 from app.model.veepeenet import VeePeeNetStats
 from app.model.xray import Xray
 
@@ -232,6 +232,81 @@ class TestCollectAndSaveStats:
         assert saved_config.veepeenet.stats.client.get('c1.client') is not None
         assert saved_config.veepeenet.stats.client['c1.client'].uplink == 100
         assert saved_config.veepeenet.stats.client['c1.client'].downlink == 200
+
+
+class TestClearStats:
+
+    def test_resets_only_config_if_service_not_running(self, mocker: MockFixture):
+        config_path = Path('tests/resources/valid_xray_config_with_clients.json')
+        xray_config = load_config(config_path)
+
+        mocker.patch('app.controller.common.XRAY_CONFIG_PATH', config_path)
+        mocker.patch('app.controller.common.is_xray_service_running', return_value=False)
+        reset_mock = mocker.patch('app.controller.common.reset_xray_stats')
+        mocker.patch('app.controller.common.load_config', return_value=xray_config)
+        save_mock = mocker.patch('app.controller.common.save_config')
+        print_mock = mocker.patch('app.controller.common.stdout_console.print')
+
+        from app.controller.common import clear_stats # pylint: disable=import-outside-toplevel
+        clear_stats()
+
+        reset_mock.assert_not_called()
+        save_mock.assert_called_once()
+        saved_config: Xray = save_mock.call_args[0][0]
+        assert saved_config.veepeenet is not None
+        assert saved_config.veepeenet.stats == VeePeeNetStats()
+        print_mock.assert_called_once()
+
+    def test_resets_config_and_api_if_service_running(self, mocker: MockFixture):
+        config_path = Path('tests/resources/valid_xray_config_with_clients.json')
+        xray_config = load_config(config_path)
+
+        mocker.patch('app.controller.common.XRAY_CONFIG_PATH', config_path)
+        mocker.patch('app.controller.common.is_xray_service_running', return_value=True)
+        reset_mock = mocker.patch('app.controller.common.reset_xray_stats', return_value=True)
+        mocker.patch('app.controller.common.load_config', return_value=xray_config)
+        save_mock = mocker.patch('app.controller.common.save_config')
+
+        from app.controller.common import clear_stats # pylint: disable=import-outside-toplevel
+        clear_stats()
+
+        reset_mock.assert_called_once()
+        save_mock.assert_called_once()
+        saved_config: Xray = save_mock.call_args[0][0]
+        assert saved_config.veepeenet is not None
+        assert saved_config.veepeenet.stats == VeePeeNetStats()
+
+    def test_raises_if_api_reset_fails(self, mocker: MockFixture):
+        config_path = Path('tests/resources/valid_xray_config_with_clients.json')
+        xray_config = load_config(config_path)
+
+        mocker.patch('app.controller.common.XRAY_CONFIG_PATH', config_path)
+        mocker.patch('app.controller.common.is_xray_service_running', return_value=True)
+        mocker.patch('app.controller.common.reset_xray_stats', return_value=False)
+        mocker.patch('app.controller.common.load_config', return_value=xray_config)
+        save_mock = mocker.patch('app.controller.common.save_config')
+
+        from app.controller.common import clear_stats # pylint: disable=import-outside-toplevel
+        with raises(RuntimeError, match='Failed to reset Xray API stats'):
+            clear_stats()
+
+        save_mock.assert_not_called()
+
+
+class TestResetStatsCommand:
+
+    def test_runs_checks_and_clears_stats(self, mocker: MockFixture):
+        check_root_mock = mocker.patch('app.controller.commands.state.check_root')
+        check_xray_config_mock = mocker.patch('app.controller.commands.state.check_xray_config')
+        check_distrib_mock = mocker.patch('app.controller.commands.state.check_distrib')
+        clear_stats_mock = mocker.patch('app.controller.commands.state.clear_stats')
+
+        reset_stats()
+
+        check_root_mock.assert_called_once()
+        check_xray_config_mock.assert_called_once()
+        check_distrib_mock.assert_called_once()
+        clear_stats_mock.assert_called_once()
 
 
 class TestStatusRestartRequired:

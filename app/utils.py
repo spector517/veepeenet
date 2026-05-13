@@ -313,6 +313,11 @@ def query_xray_stats(host: str, port: int, reset: bool = False) -> list[Stats]:
         return []
 
 
+def reset_xray_stats(host: str, port: int) -> bool:
+    result = run_command(f'xray api statsquery --server={host}:{port} -reset=true')
+    return result[0] == 0
+
+
 def get_xray_github_releases(limit: int = 10, include_prerelease: bool = False) -> list[str]:
     response = get_request(
         _XRAY_GITHUB_RELEASES_URL,
