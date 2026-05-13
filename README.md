@@ -14,7 +14,7 @@
 - Установка Xray
 - Создание и изменение конфигурации Xray-сервера (Vless with Reality)
 - Добавление и удаление клиентов Xray-сервера
-- Управление исходящими Vless-подключениями
+- Управление исходящими подключениями Vless
 - Гибкое управление правилами маршрутизации
 - Обновление geodata для маршрутизации на основе geoip/geosite
 
@@ -232,63 +232,63 @@ sudo xrayctl clients list [OPTIONS]
 
 ---
 
-### Управление outbounds
+### Управление исходящими подключениями
 
-#### Добавление Vless outbound
+#### Добавление исходящего подключения Vless
 ```text
 sudo xrayctl outbounds add NAME [OPTIONS]
 ```
 
 | Параметр      | Тип     | Описание                                                     |
 | ------------- | ------- | ------------------------------------------------------------ |
-| --address     | TEXT    | Адрес outbound: IP или доменное имя. **(обязательно)**       |
+| --address     | TEXT    | Адрес исходящего подключения: IP или доменное имя. **(обязательно)** |
 | --uuid        | TEXT    | Идентификатор Vless-клиента. **(обязательно)**               |
 | --sni         | TEXT    | Имя сервера целевого узла. **(обязательно)**                 |
 | --short-id    | TEXT    | Один из short_id целевого сервера. **(обязательно)**         |
 | --password    | TEXT    | Публичный ключ целевого сервера. **(обязательно)**           |
 | --spider-x    | TEXT    | Начальный путь и параметры для spider [default: /]           |
-| --port        | INTEGER | Порт Vless outbound [default: 443]                           |
+| --port        | INTEGER | Порт исходящего подключения Vless [default: 443]             |
 | --fingerprint | TEXT    | Browser TLS Client Hello fingerprint [default: chrome]       |
 | --interface   | TEXT    | Интерфейс для исходящего трафика [default: 0.0.0.0]          |
 
-#### Добавление Vless outbound из URL
+#### Добавление исходящего подключения Vless из URL
 ```text
 sudo xrayctl outbounds add-from-url 'URL' [OPTIONS]
 ```
 
 | Параметр  | Тип  | Описание                                                  |
 | --------- | ---- | --------------------------------------------------------- |
-| --name    | TEXT | Имя outbound. Если не указано, берётся фрагмент URL       |
+| --name    | TEXT | Имя исходящего подключения. Если не указано, берётся фрагмент URL |
 | --interface | TEXT | Интерфейс для исходящего трафика [default: 0.0.0.0]     |
 
-#### Удаление Vless outbound
+#### Удаление исходящего подключения Vless
 ```commandline
 sudo xrayctl outbounds remove NAME
 ```
 
-#### Изменение Vless outbound
+#### Изменение исходящего подключения Vless
 ```text
 sudo xrayctl outbounds change NAME [OPTIONS]
 ```
 
 | Параметр      | Тип     | Описание                                                   |
 | ------------- | ------- | ---------------------------------------------------------- |
-| --address     | TEXT    | Адрес outbound: IP или доменное имя                        |
+| --address     | TEXT    | Адрес исходящего подключения: IP или доменное имя          |
 | --uuid        | TEXT    | Идентификатор Vless-клиента                                |
 | --sni         | TEXT    | Имя сервера целевого узла                                  |
 | --password    | TEXT    | Публичный ключ целевого сервера                            |
 | --short-id    | TEXT    | Один из short_id целевого сервера                          |
 | --spider-x    | TEXT    | Начальный путь и параметры для spider                      |
-| --port        | INTEGER | Порт Vless outbound                                        |
+| --port        | INTEGER | Порт исходящего подключения Vless                          |
 | --fingerprint | TEXT    | Browser TLS Client Hello fingerprint [default: chrome]     |
 | --interface   | TEXT    | Интерфейс для исходящего трафика [default: 0.0.0.0]        |
-| --new-name    | TEXT    | Новое имя outbound                                         |
+| --new-name    | TEXT    | Новое имя исходящего подключения                           |
 
-#### Сделать outbound основным
+#### Сделать исходящее подключение основным
 ```commandline
 sudo xrayctl outbounds set-default NAME
 ```
-Перемещает указанный outbound на первую позицию и делает его основным.
+Перемещает указанное исходящее подключение на первую позицию и делает его основным.
 
 ---
 
@@ -329,7 +329,7 @@ xrayctl routing add-rule NAME [OPTIONS]
 
 | Параметр   | Тип     | Описание                                                            |
 | ---------- | ------- | ------------------------------------------------------------------- |
-| --outbound | TEXT    | Имя outbound, в который будет направляться трафик. **(обязательно)** |
+| --outbound | TEXT    | Имя исходящего подключения, в которое будет направляться трафик. **(обязательно)** |
 | --domain   | TEXT    | Список доменных шаблонов для совпадения, например "domain:example.com" |
 | --ip       | TEXT    | Список IP-адресов или диапазонов, например "123.123.123.123"         |
 | --ports    | TEXT    | Порт или диапазон портов, например "53,443,60-89"                    |
@@ -373,11 +373,11 @@ sudo xrayctl routing set-domain-strategy STRATEGY
 ```
 Где `STRATEGY` — одно из доступных значений стратегии маршрутизации, например `AsIs`, `IPIfNonMatch` или `IPOnDemand`.
 
-#### Изменение outbound у правила
+#### Изменение исходящего подключения у правила
 ```commandline
 sudo xrayctl routing change-outbound NAME --outbound OUTBOUND_NAME
 ```
-Меняет outbound, в который направляется трафик по указанному правилу.
+Меняет исходящее подключение, в которое направляется трафик по указанному правилу.
 
 ## Удаление
 
