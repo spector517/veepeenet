@@ -216,7 +216,7 @@ def get_runtime_stats(reset: bool = False) -> VeePeeNetStats:
 
     stats = query_xray_stats(XRAY_API_HOST, XRAY_API_PORT, reset=reset)
     for stat in stats:
-        stats_data =  StatsData.from_api(stat)
+        stats_data = StatsData.from_api(stat)
         if stats_data:
             veepeenet_stats += stats_data.to_model()
 

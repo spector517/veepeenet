@@ -32,6 +32,8 @@ def row(label: Text, value: Text) -> Text:
 def format_traffic_bytes(n: int) -> str:
     if n < 1_000:
         return f'{n} B'
+    if n < 1_000_000:
+        return f'{n / 1_000:.2f} KB'
     if n < 1_000_000_000:
         return f'{n / 1_000_000:.2f} MB'
     if n < 1_000_000_000_000:
