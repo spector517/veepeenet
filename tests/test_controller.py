@@ -254,7 +254,7 @@ class TestStatusRestartRequired:
             return_value=valid_config_for_status.get_vless_inbound())
         mocker.patch(
             'app.controller.commands.state.detect_veepeenet_versions',
-            return_value=SimpleNamespace(veepeenet_version='2.4.2', veepeenet_build=1))
+            return_value=SimpleNamespace(veepeenet_version='v2.5.0', veepeenet_build=1))
         mocker.patch('app.controller.commands.state.get_xray_distrib_version', return_value='1.8.0')
         mocker.patch('app.controller.commands.state.is_xray_service_running', return_value=True)
         mocker.patch('app.controller.commands.state.is_xray_service_enabled', return_value=True)
@@ -299,7 +299,7 @@ class TestStatusRestartRequired:
             return_value=valid_config_for_status.get_vless_inbound())
         mocker.patch(
             'app.controller.commands.state.detect_veepeenet_versions',
-            return_value=SimpleNamespace(veepeenet_version='2.4.2', veepeenet_build=1))
+            return_value=SimpleNamespace(veepeenet_version='v2.5.0', veepeenet_build=1))
         mocker.patch('app.controller.commands.state.get_xray_distrib_version', return_value='1.8.0')
         mocker.patch('app.controller.commands.state.is_xray_service_running', return_value=False)
         mocker.patch('app.controller.commands.state.is_xray_service_enabled', return_value=False)

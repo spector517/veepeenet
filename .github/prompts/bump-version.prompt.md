@@ -1,6 +1,5 @@
 ---
 description: "Update the VeePeeNET project version across all required files from 2.5.0 or v2.5.0 with automatic v-prefix handling"
-name: "Bump Project Version"
 argument-hint: "2.5.0 or v2.5.0"
 agent: "agent"
 ---
