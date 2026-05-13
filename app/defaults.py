@@ -2,7 +2,7 @@ from pathlib import Path
 
 from app.model.types import FingerprintType
 
-STATE_PENDING_TIMEOUT = 2
+STATE_PENDING_TIMEOUT = 1
 
 REALITY_HOST = 'microsoft.com'
 REALITY_PORT = 443
