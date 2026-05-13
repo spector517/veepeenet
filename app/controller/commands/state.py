@@ -37,7 +37,7 @@ from app.utils import (
     is_xray_service_running,
     is_xray_service_enabled,
     get_xray_service_uptime,
-    is_files_content_same,
+    is_json_content_same,
 )
 from app.view import ServerView, TrafficStatsView
 
@@ -74,7 +74,10 @@ def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = Fals
         server_status='running' if running else 'stopped',
         enabled=is_xray_service_enabled(),
         uptime=get_xray_service_uptime() if running else None,
-        restart_required=not is_files_content_same(XRAY_CONFIG_PATH, XRAY_CONFIG_BACKUP_PATH),
+        restart_required=not is_json_content_same(
+            XRAY_CONFIG_PATH,
+            XRAY_CONFIG_BACKUP_PATH,
+            exclude_top_level_keys={'veepeenet'}),
         server_host=xray_config.veepeenet.host,
         server_port=str(inbound.port),
         reality_address=inbound.stream_settings.reality_settings.dest,

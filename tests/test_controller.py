@@ -1,4 +1,6 @@
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 from pydantic import ValidationError
 from pytest import fixture, raises
@@ -8,6 +10,8 @@ from typer import Exit
 from app.controller.common import load_config
 from app.controller.commands.configure import config, _select_version
 from app.controller.commands.outbound import remove
+from app.controller.commands.state import status
+from app.model.veepeenet import VeePeeNetStats
 from app.model.xray import Xray
 
 
@@ -205,7 +209,7 @@ class TestCollectAndSaveStats:
         load_config_mock.assert_not_called()
 
     def test_saves_accumulated_stats_when_running(self, mocker: MockFixture):
-        from app.model.veepeenet import TrafficStats, VeePeeNetStats # pylint: disable=import-outside-toplevel
+        from app.model.veepeenet import TrafficStats # pylint: disable=import-outside-toplevel
         from app.controller.common import _store_runtime_stats # type: ignore # pylint: disable=import-outside-toplevel
 
         config_path = Path('tests/resources/valid_xray_config_with_clients.json')
@@ -228,3 +232,98 @@ class TestCollectAndSaveStats:
         assert saved_config.veepeenet.stats.client.get('c1.client') is not None
         assert saved_config.veepeenet.stats.client['c1.client'].uplink == 100
         assert saved_config.veepeenet.stats.client['c1.client'].downlink == 200
+
+
+class TestStatusRestartRequired:
+
+    @fixture(name='valid_config_for_status')
+    def fixture_valid_config_for_status(self) -> Xray:
+        return load_config(Path('tests/resources/valid_xray_config.json'))
+
+    def test_status_does_not_require_restart_for_same_json_content(
+            self, valid_config_for_status: Xray, mocker: MockFixture):
+        server_view = MagicMock()
+        server_view.model_dump_json.return_value = '{}'
+        server_view.rich_repr.return_value = 'server-view'
+
+        mocker.patch('app.controller.commands.state.check_xray_config')
+        mocker.patch('app.controller.commands.state.check_distrib')
+        mocker.patch('app.controller.commands.state.load_config', return_value=valid_config_for_status)
+        mocker.patch(
+            'app.controller.commands.state.get_vless_inbound',
+            return_value=valid_config_for_status.get_vless_inbound())
+        mocker.patch(
+            'app.controller.commands.state.detect_veepeenet_versions',
+            return_value=SimpleNamespace(veepeenet_version='2.4.2', veepeenet_build=1))
+        mocker.patch('app.controller.commands.state.get_xray_distrib_version', return_value='1.8.0')
+        mocker.patch('app.controller.commands.state.is_xray_service_running', return_value=True)
+        mocker.patch('app.controller.commands.state.is_xray_service_enabled', return_value=True)
+        mocker.patch('app.controller.commands.state.get_xray_service_uptime', return_value='1h')
+        mocker.patch(
+            'app.controller.commands.state.get_stored_stats',
+            return_value=VeePeeNetStats())
+        mocker.patch(
+            'app.controller.commands.state.get_runtime_stats',
+            return_value=VeePeeNetStats())
+        mocker.patch('app.controller.commands.state.get_routing_view', return_value=MagicMock())
+        mocker.patch('app.controller.commands.state.get_clients_view', return_value=MagicMock())
+        mocker.patch(
+            'app.controller.commands.state.get_outbounds_view',
+            return_value=SimpleNamespace(outbounds=[]))
+        compare_mock = mocker.patch(
+            'app.controller.commands.state.is_json_content_same',
+            return_value=True)
+        server_view_ctor = mocker.patch(
+            'app.controller.commands.state.ServerView',
+            return_value=server_view)
+        print_mock = mocker.patch('app.controller.commands.state.stdout_console.print')
+
+        status()
+
+        assert server_view_ctor.call_args.kwargs['restart_required'] is False
+        compare_mock.assert_called_once()
+        assert compare_mock.call_args.kwargs == {'exclude_top_level_keys': {'veepeenet'}}
+        print_mock.assert_called_once_with('server-view')
+
+    def test_status_requires_restart_for_different_json_content(
+            self, valid_config_for_status: Xray, mocker: MockFixture):
+        server_view = MagicMock()
+        server_view.model_dump_json.return_value = '{}'
+        server_view.rich_repr.return_value = 'server-view'
+
+        mocker.patch('app.controller.commands.state.check_xray_config')
+        mocker.patch('app.controller.commands.state.check_distrib')
+        mocker.patch('app.controller.commands.state.load_config', return_value=valid_config_for_status)
+        mocker.patch(
+            'app.controller.commands.state.get_vless_inbound',
+            return_value=valid_config_for_status.get_vless_inbound())
+        mocker.patch(
+            'app.controller.commands.state.detect_veepeenet_versions',
+            return_value=SimpleNamespace(veepeenet_version='2.4.2', veepeenet_build=1))
+        mocker.patch('app.controller.commands.state.get_xray_distrib_version', return_value='1.8.0')
+        mocker.patch('app.controller.commands.state.is_xray_service_running', return_value=False)
+        mocker.patch('app.controller.commands.state.is_xray_service_enabled', return_value=False)
+        mocker.patch(
+            'app.controller.commands.state.get_stored_stats',
+            return_value=VeePeeNetStats())
+        mocker.patch(
+            'app.controller.commands.state.get_runtime_stats',
+            return_value=VeePeeNetStats())
+        mocker.patch('app.controller.commands.state.get_routing_view', return_value=MagicMock())
+        mocker.patch('app.controller.commands.state.get_clients_view', return_value=MagicMock())
+        mocker.patch(
+            'app.controller.commands.state.get_outbounds_view',
+            return_value=SimpleNamespace(outbounds=[]))
+        compare_mock = mocker.patch(
+            'app.controller.commands.state.is_json_content_same',
+            return_value=False)
+        server_view_ctor = mocker.patch(
+            'app.controller.commands.state.ServerView',
+            return_value=server_view)
+        mocker.patch('app.controller.commands.state.stdout_console.print')
+
+        status()
+
+        assert server_view_ctor.call_args.kwargs['restart_required'] is True
+        compare_mock.assert_called_once()
+        assert compare_mock.call_args.kwargs == {'exclude_top_level_keys': {'veepeenet'}}

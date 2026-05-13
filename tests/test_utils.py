@@ -47,7 +47,7 @@ from app.utils import (
     backup_config,
     restore_config,
     get_xray_service_journal,
-    is_files_content_same,
+    is_json_content_same,
     query_xray_stats,
 )
 
@@ -1631,105 +1631,84 @@ class TestResetFailedXrayService:
         mock_run_command.assert_called_once_with('systemctl reset-failed xray')
 
 
-class TestIsFilesContentSame:
+class TestIsJsonContentSame:
 
-    def test_returns_true_for_identical_files(self, tmp_path: Path):
-        file1 = tmp_path / 'file1.txt'
-        file2 = tmp_path / 'file2.txt'
-        file1.write_bytes(b'same content')
-        file2.write_bytes(b'same content')
+    def test_returns_true_for_same_json_with_different_key_order(self, tmp_path: Path):
+        file1 = tmp_path / 'file1.json'
+        file2 = tmp_path / 'file2.json'
+        file1.write_text('{"a": 1, "b": {"c": 2}}', encoding='utf-8')
+        file2.write_text('{"b": {"c": 2}, "a": 1}', encoding='utf-8')
 
-        result = is_files_content_same(file1, file2)
-
-        assert result is True
-
-    def test_returns_false_for_different_files(self, tmp_path: Path):
-        file1 = tmp_path / 'file1.txt'
-        file2 = tmp_path / 'file2.txt'
-        file1.write_bytes(b'content A')
-        file2.write_bytes(b'content B')
-
-        result = is_files_content_same(file1, file2)
-
-        assert result is False
-
-    def test_returns_false_when_path1_is_none(self, tmp_path: Path):
-        file2 = tmp_path / 'file2.txt'
-        file2.write_bytes(b'content')
-
-        result = is_files_content_same(None, file2)
-
-        assert result is False
-
-    def test_returns_false_when_path2_is_none(self, tmp_path: Path):
-        file1 = tmp_path / 'file1.txt'
-        file1.write_bytes(b'content')
-
-        result = is_files_content_same(file1, None)
-
-        assert result is False
-
-    def test_returns_false_when_both_paths_are_none(self):
-        result = is_files_content_same(None, None)
-
-        assert result is False
-
-    def test_returns_false_when_path1_does_not_exist(self, tmp_path: Path):
-        file1 = tmp_path / 'nonexistent.txt'
-        file2 = tmp_path / 'file2.txt'
-        file2.write_bytes(b'content')
-
-        result = is_files_content_same(file1, file2)
-
-        assert result is False
-
-    def test_returns_false_when_path2_does_not_exist(self, tmp_path: Path):
-        file1 = tmp_path / 'file1.txt'
-        file1.write_bytes(b'content')
-        file2 = tmp_path / 'nonexistent.txt'
-
-        result = is_files_content_same(file1, file2)
-
-        assert result is False
-
-    def test_returns_false_when_both_paths_do_not_exist(self, tmp_path: Path):
-        file1 = tmp_path / 'nonexistent1.txt'
-        file2 = tmp_path / 'nonexistent2.txt'
-
-        result = is_files_content_same(file1, file2)
-
-        assert result is False
-
-    def test_returns_true_for_empty_files(self, tmp_path: Path):
-        file1 = tmp_path / 'empty1.txt'
-        file2 = tmp_path / 'empty2.txt'
-        file1.write_bytes(b'')
-        file2.write_bytes(b'')
-
-        result = is_files_content_same(file1, file2)
+        result = is_json_content_same(file1, file2)
 
         assert result is True
 
-    def test_returns_false_for_empty_vs_non_empty_file(self, tmp_path: Path):
-        file1 = tmp_path / 'empty.txt'
-        file2 = tmp_path / 'non_empty.txt'
-        file1.write_bytes(b'')
-        file2.write_bytes(b'content')
+    def test_returns_true_for_same_json_with_different_formatting(self, tmp_path: Path):
+        file1 = tmp_path / 'file1.json'
+        file2 = tmp_path / 'file2.json'
+        file1.write_text('{"items": [1, 2, 3]}', encoding='utf-8')
+        file2.write_text('{\n  "items": [\n    1,\n    2,\n    3\n  ]\n}', encoding='utf-8')
 
-        result = is_files_content_same(file1, file2)
+        result = is_json_content_same(file1, file2)
+
+        assert result is True
+
+    def test_returns_false_for_different_json_content(self, tmp_path: Path):
+        file1 = tmp_path / 'file1.json'
+        file2 = tmp_path / 'file2.json'
+        file1.write_text('{"value": 1}', encoding='utf-8')
+        file2.write_text('{"value": 2}', encoding='utf-8')
+
+        result = is_json_content_same(file1, file2)
 
         assert result is False
 
-    def test_returns_true_for_large_identical_files(self, tmp_path: Path):
-        data = b'x' * (5 * 1024 * 1024)  # 5 MB
-        file1 = tmp_path / 'large1.bin'
-        file2 = tmp_path / 'large2.bin'
-        file1.write_bytes(data)
-        file2.write_bytes(data)
+    def test_returns_false_for_invalid_json(self, tmp_path: Path):
+        file1 = tmp_path / 'file1.json'
+        file2 = tmp_path / 'file2.json'
+        file1.write_text('{"value": 1}', encoding='utf-8')
+        file2.write_text('{invalid json', encoding='utf-8')
 
-        result = is_files_content_same(file1, file2)
+        result = is_json_content_same(file1, file2)
+
+        assert result is False
+
+    def test_returns_false_for_missing_files(self, tmp_path: Path):
+        file1 = tmp_path / 'file1.json'
+        file2 = tmp_path / 'file2.json'
+        file1.write_text('{"value": 1}', encoding='utf-8')
+
+        result = is_json_content_same(file1, file2)
+
+        assert result is False
+
+    def test_ignores_selected_top_level_keys(self, tmp_path: Path):
+        file1 = tmp_path / 'file1.json'
+        file2 = tmp_path / 'file2.json'
+        file1.write_text(
+            '{"log": {"loglevel": "warning"}, "veepeenet": {"name": "one"}}',
+            encoding='utf-8')
+        file2.write_text(
+            '{"log": {"loglevel": "warning"}, "veepeenet": {"name": "two"}}',
+            encoding='utf-8')
+
+        result = is_json_content_same(file1, file2, exclude_top_level_keys={'veepeenet'})
 
         assert result is True
+
+    def test_does_not_ignore_nested_keys(self, tmp_path: Path):
+        file1 = tmp_path / 'file1.json'
+        file2 = tmp_path / 'file2.json'
+        file1.write_text(
+            '{"log": {"loglevel": "warning", "veepeenet": {"name": "one"}}}',
+            encoding='utf-8')
+        file2.write_text(
+            '{"log": {"loglevel": "warning", "veepeenet": {"name": "two"}}}',
+            encoding='utf-8')
+
+        result = is_json_content_same(file1, file2, exclude_top_level_keys={'veepeenet'})
+
+        assert result is False
 
 
 class TestQueryXrayStats:
