@@ -9,10 +9,10 @@ description = "VeePeeNET. Deploy personal anti-censorships services"
 requires-python = ">=3.12"
 
 dependencies = [
-    "pydantic==2.12.5",
-    "typer==0.24.1",
-    "requests==2.33.1",
-    "xxhash==3.6.0"
+    "pydantic==2.13.4",
+    "typer==0.25.1",
+    "requests==2.34.0",
+    "xxhash==3.7.0"
 ]
 
 [project.optional-dependencies]
@@ -20,7 +20,7 @@ dev = [
     "pytest==9.0.3",
     "pytest-mock==3.15.1",
     "pytest-cov==7.1.0",
-    "build==1.4.3",
+    "build==1.5.0",
     "pylint==4.0.5",
     "pylint-pydantic==0.4.1",
     "ansible-lint==26.4.0"
