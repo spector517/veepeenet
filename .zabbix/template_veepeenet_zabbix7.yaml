@@ -1,0 +1,719 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: 6f7dc34e3e8448f0bb9a660f43a6a201
+      name: Templates/Applications
+  host_groups: []
+  templates:
+    - uuid: 2df427ec6df64972bc7d3c5e6c67c01d
+      template: VeePeeNET
+      name: VeePeeNET
+      description: |
+        Monitoring template for xrayctl status --json.
+
+        The template keeps the full JSON payload in the master item veepeenet.status.raw.
+        All common metrics are exposed as dependent items. You can add your own dependent
+        items in Zabbix later and extract any additional field from the same JSON by using
+        JSONPath or JavaScript preprocessing.
+
+        Required on the monitored host:
+        - zabbix-agent2 UserParameter with key veepeenet.status.raw
+        - sudo rule allowing the zabbix user to execute xrayctl status --json without a password
+      groups:
+        - name: Templates/Applications
+      items:
+        - uuid: 7d357ec1456644b9a5d56ce30fcaf001
+          name: 'VeePeeNET: Raw status JSON'
+          type: ZABBIX_ACTIVE
+          key: veepeenet.status.raw
+          delay: '{$VEEPEENET.STATUS_INTERVAL}'
+          history: 7d
+          trends: '0'
+          value_type: TEXT
+          description: 'Full output of xrayctl status --json. Use as the master item for all dependent metrics.'
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - '{$VEEPEENET.JSON_HEARTBEAT}'
+          tags:
+            - tag: application
+              value: veepeenet
+            - tag: component
+              value: raw
+          triggers:
+            - uuid: 7f69f57fdf514dc091838d3fba08c001
+              expression: 'nodata(/VeePeeNET/veepeenet.status.raw,{$VEEPEENET.NODATA})=1'
+              name: 'VeePeeNET: xrayctl status JSON is unavailable'
+              priority: HIGH
+              description: 'No fresh data has been received for the raw xrayctl status JSON item.'
+              tags:
+                - tag: scope
+                  value: availability
+
+        - uuid: 8c58c9fa78344831b02e0a4aa3cf1001
+          name: 'VeePeeNET: Raw clients JSON'
+          type: DEPENDENT
+          key: veepeenet.clients.raw
+          history: 7d
+          trends: '0'
+          value_type: TEXT
+          description: 'Convenience item with $.clients.clients from the master JSON.'
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var data = JSON.parse(value);
+                  return JSON.stringify((((data || {}).clients || {}).clients) || []);
+          master_item:
+            key: veepeenet.status.raw
+          tags:
+            - tag: component
+              value: clients
+
+        - uuid: 2fa1e1630a304f4baefc8489e5411001
+          name: 'VeePeeNET: Raw outbounds JSON'
+          type: DEPENDENT
+          key: veepeenet.outbounds.raw
+          history: 7d
+          trends: '0'
+          value_type: TEXT
+          description: 'Convenience item with $.outbounds from the master JSON.'
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var data = JSON.parse(value);
+                  return JSON.stringify((data || {}).outbounds || []);
+          master_item:
+            key: veepeenet.status.raw
+          tags:
+            - tag: component
+              value: outbounds
+
+        - uuid: 3db0c5368292465f982fc78bd27a1001
+          name: 'VeePeeNET: Raw routing JSON'
+          type: DEPENDENT
+          key: veepeenet.routing.raw
+          history: 7d
+          trends: '0'
+          value_type: TEXT
+          description: 'Convenience item with $.routing from the master JSON.'
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var data = JSON.parse(value);
+                  return JSON.stringify((data || {}).routing || {});
+          master_item:
+            key: veepeenet.status.raw
+          tags:
+            - tag: component
+              value: routing
+
+        - uuid: b53ddc8d17da4d6ca13ffb59137a1001
+          name: 'VeePeeNET: Raw reality names JSON'
+          type: DEPENDENT
+          key: veepeenet.reality.names.raw
+          history: 7d
+          trends: '0'
+          value_type: TEXT
+          description: 'Convenience item with $.reality_names from the master JSON.'
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var data = JSON.parse(value);
+                  return JSON.stringify((data || {}).reality_names || []);
+          master_item:
+            key: veepeenet.status.raw
+          tags:
+            - tag: component
+              value: reality
+
+        - uuid: 833072f937254a67968467a43ca01001
+          name: 'VeePeeNET: Version'
+          type: DEPENDENT
+          key: veepeenet.version
+          history: 30d
+          trends: '0'
+          value_type: CHAR
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.veepeenet_version
+          master_item:
+            key: veepeenet.status.raw
+          tags:
+            - tag: component
+              value: version
+
+        - uuid: cdf1f51033414850a9417ea91c621001
+          name: 'VeePeeNET: Build'
+          type: DEPENDENT
+          key: veepeenet.build
+          history: 30d
+          trends: 365d
+          value_type: UNSIGNED
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.veepeenet_build
+          master_item:
+            key: veepeenet.status.raw
+          tags:
+            - tag: component
+              value: version
+
+        - uuid: 24416a5d84be4215a5afd9de40e21001
+          name: 'VeePeeNET: Xray version'
+          type: DEPENDENT
+          key: veepeenet.xray.version
+          history: 30d
+          trends: '0'
+          value_type: CHAR
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.xray_version
+          master_item:
+            key: veepeenet.status.raw
+          tags:
+            - tag: component
+              value: version
+
+        - uuid: a9b5d7e4e78f47a4895728b3de081001
+          name: 'VeePeeNET: Server status text'
+          type: DEPENDENT
+          key: veepeenet.server.status.text
+          history: 30d
+          trends: '0'
+          value_type: CHAR
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.server_status
+          master_item:
+            key: veepeenet.status.raw
+          tags:
+            - tag: component
+              value: state
+
+        - uuid: 30f6a39c8fd647bbaf04342aa59b1001
+          name: 'VeePeeNET: Server running state'
+          type: DEPENDENT
+          key: veepeenet.server.running
+          history: 30d
+          trends: 365d
+          value_type: UNSIGNED
+          description: '1 if server_status == running, otherwise 0.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.server_status
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  return value === 'running' ? 1 : 0;
+          master_item:
+            key: veepeenet.status.raw
+          valuemap:
+            name: 'VeePeeNET service state'
+          tags:
+            - tag: component
+              value: state
+          triggers:
+            - uuid: 5c6e07aab33049b9b2d17e7f47171001
+              expression: 'max(/VeePeeNET/veepeenet.server.running,5m)=0'
+              name: 'VeePeeNET: Xray service is not running'
+              priority: HIGH
+              description: 'The last 5 minutes indicate that xrayctl reports the service as stopped.'
+              tags:
+                - tag: scope
+                  value: service
+
+        - uuid: 823b5b87b0d0410982fca9fc7c221001
+          name: 'VeePeeNET: Service enabled'
+          type: DEPENDENT
+          key: veepeenet.server.enabled
+          history: 30d
+          trends: 365d
+          value_type: UNSIGNED
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.enabled
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  return (value === true || value === 'true') ? 1 : 0;
+          master_item:
+            key: veepeenet.status.raw
+          valuemap:
+            name: 'VeePeeNET boolean'
+          tags:
+            - tag: component
+              value: state
+
+        - uuid: 7f3f9b2662b64d6f904b6c2cf4ab1001
+          name: 'VeePeeNET: Restart required'
+          type: DEPENDENT
+          key: veepeenet.server.restart_required
+          history: 30d
+          trends: 365d
+          value_type: UNSIGNED
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.restart_required
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  return (value === true || value === 'true') ? 1 : 0;
+          master_item:
+            key: veepeenet.status.raw
+          valuemap:
+            name: 'VeePeeNET boolean'
+          tags:
+            - tag: component
+              value: state
+          triggers:
+            - uuid: f74249f6f4fd4d3aac509e53eec41001
+              expression: 'last(/VeePeeNET/veepeenet.server.restart_required)=1'
+              name: 'VeePeeNET: Configuration changes require restart'
+              priority: WARNING
+              description: 'xrayctl reports restart_required=true.'
+              tags:
+                - tag: scope
+                  value: configuration
+
+        - uuid: 9ea8205ad9414e87bf68165138ef1001
+          name: 'VeePeeNET: Uptime'
+          type: DEPENDENT
+          key: veepeenet.server.uptime
+          history: 30d
+          trends: '0'
+          value_type: CHAR
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var data = JSON.parse(value);
+                  var uptime = (data || {}).uptime;
+                  return uptime === null || uptime === undefined ? 'n/a' : String(uptime);
+          master_item:
+            key: veepeenet.status.raw
+          tags:
+            - tag: component
+              value: state
+
+        - uuid: 376d29df7ef049d89976979cd3b01001
+          name: 'VeePeeNET: Server host'
+          type: DEPENDENT
+          key: veepeenet.server.host
+          history: 30d
+          trends: '0'
+          value_type: CHAR
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.server_host
+          master_item:
+            key: veepeenet.status.raw
+          tags:
+            - tag: component
+              value: endpoint
+
+        - uuid: 4d8534bbba8f4bdd8f0bc13ab18f1001
+          name: 'VeePeeNET: Server port'
+          type: DEPENDENT
+          key: veepeenet.server.port
+          history: 30d
+          trends: 365d
+          value_type: UNSIGNED
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.server_port
+          master_item:
+            key: veepeenet.status.raw
+          tags:
+            - tag: component
+              value: endpoint
+
+        - uuid: 1a41f7eb050649cd8a62247d725b1001
+          name: 'VeePeeNET: Reality address'
+          type: DEPENDENT
+          key: veepeenet.reality.address
+          history: 30d
+          trends: '0'
+          value_type: CHAR
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.reality_address
+          master_item:
+            key: veepeenet.status.raw
+          tags:
+            - tag: component
+              value: reality
+
+        - uuid: 9c6935db1e9c4adfbbfd3e5e146a1001
+          name: 'VeePeeNET: Reality names'
+          type: DEPENDENT
+          key: veepeenet.reality.names
+          history: 30d
+          trends: '0'
+          value_type: TEXT
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var data = JSON.parse(value);
+                  return ((data || {}).reality_names || []).join(', ');
+          master_item:
+            key: veepeenet.status.raw
+          tags:
+            - tag: component
+              value: reality
+
+        - uuid: 1598aa03c5f24f5a82da353d69391001
+          name: 'VeePeeNET: Clients count'
+          type: DEPENDENT
+          key: veepeenet.clients.count
+          history: 30d
+          trends: 365d
+          value_type: UNSIGNED
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var data = JSON.parse(value);
+                  return ((((data || {}).clients || {}).clients) || []).length;
+          master_item:
+            key: veepeenet.status.raw
+          tags:
+            - tag: component
+              value: clients
+
+        - uuid: a7180c4c8c8e4909bc837bc98a511001
+          name: 'VeePeeNET: Outbounds count'
+          type: DEPENDENT
+          key: veepeenet.outbounds.count
+          history: 30d
+          trends: 365d
+          value_type: UNSIGNED
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var data = JSON.parse(value);
+                  return ((data || {}).outbounds || []).length;
+          master_item:
+            key: veepeenet.status.raw
+          tags:
+            - tag: component
+              value: outbounds
+
+        - uuid: 53a9af5c40c5471baa1ef93fb0951001
+          name: 'VeePeeNET: Routing rules count'
+          type: DEPENDENT
+          key: veepeenet.routing.rules.count
+          history: 30d
+          trends: 365d
+          value_type: UNSIGNED
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var data = JSON.parse(value);
+                  var routing = (data || {}).routing || {};
+                  return (routing.rules || []).length;
+          master_item:
+            key: veepeenet.status.raw
+          tags:
+            - tag: component
+              value: routing
+
+        - uuid: c9b0311546674ba8ad6f82bcfe021001
+          name: 'VeePeeNET: Inbound uplink'
+          type: DEPENDENT
+          key: veepeenet.inbound.uplink
+          history: 30d
+          trends: 365d
+          value_type: UNSIGNED
+          units: B
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.inbound_stats.uplink
+          master_item:
+            key: veepeenet.status.raw
+          tags:
+            - tag: component
+              value: traffic
+            - tag: direction
+              value: uplink
+
+        - uuid: a78eec6e70484a1f8d8ce0bdc6571001
+          name: 'VeePeeNET: Inbound downlink'
+          type: DEPENDENT
+          key: veepeenet.inbound.downlink
+          history: 30d
+          trends: 365d
+          value_type: UNSIGNED
+          units: B
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.inbound_stats.downlink
+          master_item:
+            key: veepeenet.status.raw
+          tags:
+            - tag: component
+              value: traffic
+            - tag: direction
+              value: downlink
+
+      discovery_rules:
+        - uuid: 6ee2ca53f4904038bfdf963a90d81001
+          name: 'VeePeeNET: Discover clients'
+          type: DEPENDENT
+          key: veepeenet.clients.discovery
+          delay: '{$VEEPEENET.STATUS_INTERVAL}'
+          lifetime_type: DELETE_AFTER
+          lifetime: 7d
+          enabled_lifetime_type: DISABLE_AFTER
+          enabled_lifetime: 1d
+          description: 'Discovers entries from $.clients.clients.'
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var data = JSON.parse(value);
+                  return JSON.stringify((((data || {}).clients || {}).clients) || []);
+          lld_macro_paths:
+            - lld_macro: '{#CLIENT.NAME}'
+              path: $.name
+          master_item:
+            key: veepeenet.status.raw
+          item_prototypes:
+            - uuid: 403c85a0d6544c99b7a35d7566f21001
+              name: 'VeePeeNET: Client {#CLIENT.NAME} uplink'
+              type: DEPENDENT
+              key: 'veepeenet.client.uplink[{#CLIENT.NAME}]'
+              history: 30d
+              trends: 365d
+              value_type: UNSIGNED
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.clients.clients[?(@.name == "{#CLIENT.NAME}")].stats.uplink.first()'
+              master_item:
+                key: veepeenet.status.raw
+              tags:
+                - tag: component
+                  value: client
+                - tag: client
+                  value: '{#CLIENT.NAME}'
+                - tag: direction
+                  value: uplink
+
+            - uuid: a3361bb63ce9499db672f6b4f6a41001
+              name: 'VeePeeNET: Client {#CLIENT.NAME} downlink'
+              type: DEPENDENT
+              key: 'veepeenet.client.downlink[{#CLIENT.NAME}]'
+              history: 30d
+              trends: 365d
+              value_type: UNSIGNED
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.clients.clients[?(@.name == "{#CLIENT.NAME}")].stats.downlink.first()'
+              master_item:
+                key: veepeenet.status.raw
+              tags:
+                - tag: component
+                  value: client
+                - tag: client
+                  value: '{#CLIENT.NAME}'
+                - tag: direction
+                  value: downlink
+
+            - uuid: ee1777422bb94b0896b8314dd5bf1001
+              name: 'VeePeeNET: Client {#CLIENT.NAME} URL'
+              type: DEPENDENT
+              key: 'veepeenet.client.url[{#CLIENT.NAME}]'
+              history: 30d
+              trends: '0'
+              value_type: TEXT
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.clients.clients[?(@.name == "{#CLIENT.NAME}")].url.first()'
+              master_item:
+                key: veepeenet.status.raw
+              tags:
+                - tag: component
+                  value: client
+                - tag: client
+                  value: '{#CLIENT.NAME}'
+
+        - uuid: 11b3653e94d14caf90d7f13be0dc1001
+          name: 'VeePeeNET: Discover outbounds'
+          type: DEPENDENT
+          key: veepeenet.outbounds.discovery
+          delay: '{$VEEPEENET.STATUS_INTERVAL}'
+          lifetime_type: DELETE_AFTER
+          lifetime: 7d
+          enabled_lifetime_type: DISABLE_AFTER
+          enabled_lifetime: 1d
+          description: 'Discovers entries from $.outbounds.'
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var data = JSON.parse(value);
+                  return JSON.stringify((data || {}).outbounds || []);
+          lld_macro_paths:
+            - lld_macro: '{#OUTBOUND.NAME}'
+              path: $.name
+          master_item:
+            key: veepeenet.status.raw
+          item_prototypes:
+            - uuid: 4c41b5ca4c0f4b368e894d7f9f541001
+              name: 'VeePeeNET: Outbound {#OUTBOUND.NAME} uplink'
+              type: DEPENDENT
+              key: 'veepeenet.outbound.uplink[{#OUTBOUND.NAME}]'
+              history: 30d
+              trends: 365d
+              value_type: UNSIGNED
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.outbounds[?(@.name == "{#OUTBOUND.NAME}")].stats.uplink.first()'
+              master_item:
+                key: veepeenet.status.raw
+              tags:
+                - tag: component
+                  value: outbound
+                - tag: outbound
+                  value: '{#OUTBOUND.NAME}'
+                - tag: direction
+                  value: uplink
+
+            - uuid: 25cb61fd3b9b4a28a267f52709fc1001
+              name: 'VeePeeNET: Outbound {#OUTBOUND.NAME} downlink'
+              type: DEPENDENT
+              key: 'veepeenet.outbound.downlink[{#OUTBOUND.NAME}]'
+              history: 30d
+              trends: 365d
+              value_type: UNSIGNED
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.outbounds[?(@.name == "{#OUTBOUND.NAME}")].stats.downlink.first()'
+              master_item:
+                key: veepeenet.status.raw
+              tags:
+                - tag: component
+                  value: outbound
+                - tag: outbound
+                  value: '{#OUTBOUND.NAME}'
+                - tag: direction
+                  value: downlink
+
+            - uuid: 3b30953054cc4c84848f5f1d1ce31001
+              name: 'VeePeeNET: Outbound {#OUTBOUND.NAME} address'
+              type: DEPENDENT
+              key: 'veepeenet.outbound.address[{#OUTBOUND.NAME}]'
+              history: 30d
+              trends: '0'
+              value_type: CHAR
+              preprocessing:
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var data = JSON.parse(value);
+                      var outbounds = (data && data.outbounds) || [];
+                      var outbound = null;
+                      var i;
+                      for (i = 0; i < outbounds.length; i += 1) {
+                        if (outbounds[i].name === '{#OUTBOUND.NAME}') {
+                          outbound = outbounds[i];
+                          break;
+                        }
+                      }
+                      if (!outbound || !outbound.address) {
+                        return '';
+                      }
+                      return outbound.port ? outbound.address + ':' + outbound.port : outbound.address;
+              master_item:
+                key: veepeenet.status.raw
+              tags:
+                - tag: component
+                  value: outbound
+                - tag: outbound
+                  value: '{#OUTBOUND.NAME}'
+
+            - uuid: ec26ced66ad04cafbf9744deca151001
+              name: 'VeePeeNET: Outbound {#OUTBOUND.NAME} fingerprint'
+              type: DEPENDENT
+              key: 'veepeenet.outbound.fingerprint[{#OUTBOUND.NAME}]'
+              history: 30d
+              trends: '0'
+              value_type: CHAR
+              preprocessing:
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var data = JSON.parse(value);
+                      var outbounds = (data && data.outbounds) || [];
+                      var i;
+                      for (i = 0; i < outbounds.length; i += 1) {
+                        if (outbounds[i].name === '{#OUTBOUND.NAME}') {
+                          return outbounds[i].fingerprint || '';
+                        }
+                      }
+                      return '';
+              master_item:
+                key: veepeenet.status.raw
+              tags:
+                - tag: component
+                  value: outbound
+                - tag: outbound
+                  value: '{#OUTBOUND.NAME}'
+
+      tags:
+        - tag: class
+          value: software
+        - tag: target
+          value: veepeenet
+      macros:
+        - macro: '{$VEEPEENET.STATUS_INTERVAL}'
+          value: 5m
+          description: 'Polling interval for the raw veepeenet.status.raw item. Default is 5 minutes.'
+        - macro: '{$VEEPEENET.JSON_HEARTBEAT}'
+          value: 10m
+          description: 'Heartbeat interval for unchanged raw JSON values.'
+        - macro: '{$VEEPEENET.NODATA}'
+          value: 10m
+          description: 'No-data window for the raw JSON availability trigger.'
+      valuemaps:
+        - uuid: c070adff52654763a431c31e4e291001
+          name: 'VeePeeNET boolean'
+          mappings:
+            - value: '0'
+              newvalue: 'false'
+            - value: '1'
+              newvalue: 'true'
+        - uuid: b82224875b0e4f3ab5a7b98bd61c1001
+          name: 'VeePeeNET service state'
+          mappings:
+            - value: '0'
+              newvalue: stopped
+            - value: '1'
+              newvalue: running
