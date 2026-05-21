@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, AliasChoices
 
 from app.model.base import XrayModel
 
@@ -8,7 +8,7 @@ from app.model.base import XrayModel
 class Client(XrayModel):
     email: str | None = Field(default=None)
     id: str
-    flow: Literal['xtls-rprx-vision', 'xtls-rprx-vision-udp443'] = 'xtls-rprx-vision'
+    flow: Literal['xtls-rprx-vision'] = 'xtls-rprx-vision'
 
 
 class RealitySettings(XrayModel):
@@ -19,7 +19,10 @@ class RealitySettings(XrayModel):
 
 
 class Settings(XrayModel):
-    clients: list[Client] | None = Field(default_factory=lambda: [])
+    clients: list[Client] | None = Field(
+        default_factory=lambda: [],
+        validation_alias=AliasChoices('users', 'clients'),
+        alias='users')
     decryption: Literal['none'] = 'none'
 
 
@@ -30,14 +33,14 @@ class StreamSettings(XrayModel):
 
 class Sniffing(XrayModel):
     enabled: bool = Field(default=False)
-    route_only: bool = Field(default=True)
+    route_only: bool = Field(default=False)
     dest_override: list[str] | None = Field(
         default_factory=lambda: ['http', 'tls', 'quic'])
 
 
 class VlessInbound(XrayModel):
     tag: str | None = Field(default='vless-inbound')
-    listen: str | None = Field(default=None)
+    listen: str
     port: int | str
     protocol: Literal['vless'] = 'vless'
     settings: Settings = Field(default_factory=Settings)

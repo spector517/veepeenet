@@ -4,8 +4,7 @@ from pydantic import Field, field_validator
 
 from app.defaults import XRAY_ERROR_LOG_PATH, XRAY_API_HOST, XRAY_API_PORT
 from app.model.base import XrayModel
-
-XrayLogLevel = Literal['none', 'off', 'error', 'info', 'warning', 'debug']
+from app.model.types import XrayApiServices, XrayLogLevel
 
 
 class Log(XrayModel):
@@ -38,7 +37,7 @@ class DnsOutbound(XrayModel):
         network: Literal['tcp', 'udp'] | None = Field(default=None)
         address: str | None = Field(default=None)
         port: int | None = Field(default=None)
-        blockTypes: list[int] | None = Field(default=None, alias='blockTypes')
+        block_types: list[int] | None = Field(default=None)
         non_ip_query: Literal['skip', 'drop', 'reject'] | None = Field(
             default='skip', alias='nonIPQuery')
 
@@ -58,15 +57,15 @@ class BlackholeOutbound(XrayModel):
 
 
 class PolicyLevel(XrayModel):
-    stats_user_uplink: bool = True
-    stats_user_downlink: bool = True
+    stats_user_uplink: bool = Field(default=True)
+    stats_user_downlink: bool = Field(default=True)
 
 
 class SystemPolicy(XrayModel):
-    stats_inbound_uplink: bool = True
-    stats_inbound_downlink: bool = True
-    stats_outbound_uplink: bool = True
-    stats_outbound_downlink: bool = True
+    stats_inbound_uplink: bool = Field(default=True)
+    stats_inbound_downlink: bool = Field(default=True)
+    stats_outbound_uplink: bool = Field(default=True)
+    stats_outbound_downlink: bool = Field(default=True)
 
 
 class Policy(XrayModel):
@@ -77,7 +76,7 @@ class Policy(XrayModel):
 class ApiConfig(XrayModel):
     tag: str = 'api'
     listen: str = Field(default_factory=lambda: f'{XRAY_API_HOST}:{XRAY_API_PORT}')
-    services: list[str] = Field(default_factory=lambda: ['StatsService'])
+    services: list[XrayApiServices] = Field(default_factory=lambda: ['StatsService'])
 
 
 

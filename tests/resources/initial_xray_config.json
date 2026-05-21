@@ -43,7 +43,7 @@
       "port": 8443,
       "protocol": "vless",
       "settings": {
-        "clients": [],
+        "users": [],
         "decryption": "none"
       },
       "streamSettings": {
@@ -59,7 +59,7 @@
       },
       "sniffing": {
         "enabled": false,
-        "routeOnly": true,
+        "routeOnly": false,
         "destOverride": [
           "http",
           "tls",

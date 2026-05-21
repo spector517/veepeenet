@@ -11,7 +11,7 @@ class Settings(XrayModel):
     port: int
     id: str
     encryption: Literal['none'] = 'none'
-    flow: Literal['xtls-rprx-vision'] = 'xtls-rprx-vision'
+    flow: Literal['xtls-rprx-vision', 'xtls-rprx-vision-udp443'] = 'xtls-rprx-vision'
 
 
 class RealitySettings(XrayModel):
@@ -19,7 +19,7 @@ class RealitySettings(XrayModel):
     fingerprint: FingerprintType
     password: str
     short_id: str
-    spider_x: str = Field(default_factory=lambda: '/')
+    spider_x: str = Field(default='/')
 
 
 class StreamSettings(XrayModel):

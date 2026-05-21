@@ -218,7 +218,7 @@ class TestVlessInbound:
             'protocol': 'vless',
             'tag': 'vless-inbound',
             'settings': {
-                'clients': [],
+                'users': [],
                 'decryption': 'none'
             },
             'streamSettings': {
@@ -232,7 +232,7 @@ class TestVlessInbound:
             },
             'sniffing': {
                 'enabled': False,
-                'routeOnly': True,
+                'routeOnly': False,
                 'destOverride': ['http', 'tls', 'quic'],
             }
         }

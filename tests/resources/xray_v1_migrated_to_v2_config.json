@@ -43,7 +43,7 @@
       "port": 443,
       "protocol": "vless",
       "settings": {
-        "clients": [
+        "users": [
           {
             "email": "client1.0001@0.0.0.0",
             "id": "cc92829e-79dd-4b8d-b456-01948c1801f0",
@@ -74,7 +74,7 @@
       },
       "sniffing": {
         "enabled": false,
-        "routeOnly": true,
+        "routeOnly": false,
         "destOverride": [
           "http",
           "tls",

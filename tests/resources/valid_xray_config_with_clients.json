@@ -17,7 +17,7 @@
       "protocol": "vless",
       "tag": "vless-inbound",
       "settings": {
-        "clients": [
+        "users": [
           {
             "id": "random-uuid-1",
             "email": "c1.client.0001@0.0.0.0",
@@ -41,7 +41,7 @@
       },
       "sniffing": {
         "enabled": false,
-        "routeOnly": true,
+        "routeOnly": false,
         "destOverride": [
           "http",
           "tls",

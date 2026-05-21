@@ -29,14 +29,14 @@ _REQUIRED_OUTBOUNDS: list[type] = [FreedomOutbound, BlackholeOutbound, DnsOutbou
 
 class Xray(XrayModel):
     veepeenet: VeePeeNet | None = Field(default=None)
-    log: Log | None = Field(default_factory=Log)
+    log: Log = Field(default_factory=Log)
     dns: Dns | None = Field(default=None)
-    api: ApiConfig | None = Field(default=None)
-    policy: Policy | None = Field(default=None)
-    stats: StatsConfig | None = Field(default=None)
-    inbounds: list[VlessInbound | dict[str, Any]] | None = Field(default=None)
+    api: ApiConfig = Field(default_factory=ApiConfig)
+    policy: Policy = Field(default_factory=Policy)
+    stats: StatsConfig = Field(default_factory=StatsConfig)
+    inbounds: list[VlessInbound | dict[str, Any]] = Field(default_factory=lambda: [])
     routing: Routing | None = Field(default=None)
-    outbounds: list[Outbound | dict[str, Any]] | None = Field(
+    outbounds: list[Outbound | dict[str, Any]] = Field(
         default_factory=lambda: [FreedomOutbound(), BlackholeOutbound(), DnsOutbound()])
 
     def get_vless_inbound(self) -> VlessInbound | None:
@@ -53,12 +53,6 @@ class Xray(XrayModel):
             if required_type not in existing_types:
                 outbounds = outbounds + [required_type()]
         self.outbounds = outbounds
-        if self.api is None:
-            self.api = ApiConfig()
-        if self.policy is None:
-            self.policy = Policy()
-        if self.stats is None:
-            self.stats = StatsConfig()
         return handler(self)
 
     @model_validator(mode='after')

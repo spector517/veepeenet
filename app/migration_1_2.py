@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import Annotated
 
@@ -19,7 +20,13 @@ def migrate_xray_config(
 ) -> None:
     try:
         xray_config_content = source_xray_config_path.read_text('utf-8')
-        xray = Xray.model_validate_json(xray_config_content)
+        raw_xray_config = json.loads(xray_config_content)
+
+        for inbound in raw_xray_config.get('inbounds', []):
+            if inbound.get('protocol') == 'vless' and 'listen' not in inbound:
+                inbound['listen'] = VLESS_LISTEN_INTERFACE
+
+        xray = Xray.model_validate(raw_xray_config, by_alias=True)
         inbound = xray.get_vless_inbound()
         if not inbound:
             raise ValueError("No Vless inbound found in the Xray config.")

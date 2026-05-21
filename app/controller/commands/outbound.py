@@ -157,10 +157,7 @@ def add(
         )
     )
 
-    if xray_config.outbounds is None:
-        xray_config.outbounds = [new_outbound]
-    else:
-        xray_config.outbounds.append(new_outbound)
+    xray_config.outbounds.append(new_outbound)
     save_config(xray_config, XRAY_CONFIG_PATH)
     stdout_console.print(Text.assemble(
         ('Added new outbound ', STYLE_REGULAR),
