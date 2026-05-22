@@ -22,7 +22,7 @@ class Settings(XrayModel):
     clients: list[Client] | None = Field(
         default_factory=lambda: [],
         validation_alias=AliasChoices('users', 'clients'),
-        alias='users')
+        alias='clients')
     decryption: Literal['none'] = 'none'
 
 

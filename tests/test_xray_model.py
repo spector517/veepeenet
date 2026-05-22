@@ -218,7 +218,7 @@ class TestVlessInbound:
             'protocol': 'vless',
             'tag': 'vless-inbound',
             'settings': {
-                'users': [],
+                'clients': [],
                 'decryption': 'none'
             },
             'streamSettings': {

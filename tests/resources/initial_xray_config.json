@@ -43,7 +43,7 @@
       "port": 8443,
       "protocol": "vless",
       "settings": {
-        "users": [],
+        "clients": [],
         "decryption": "none"
       },
       "streamSettings": {
