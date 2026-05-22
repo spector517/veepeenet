@@ -24,8 +24,8 @@
 rm -rf /tmp/veepeenet \
     && mkdir /tmp/veepeenet \
     && (cd /tmp/veepeenet \
-  && curl -LO https://github.com/spector517/veepeenet/releases/download/v2.5.1/veepeenet_2.5.1_amd64.deb \
-  && sudo apt install -y ./veepeenet_2.5.1_amd64.deb
+  && curl -LO https://github.com/spector517/veepeenet/releases/download/v2.5.2/veepeenet_2.5.2_amd64.deb \
+  && sudo apt install -y ./veepeenet_2.5.2_amd64.deb
     )
 ```
 
@@ -163,7 +163,7 @@ sudo xrayctl status
 │ clients: Server has no clients                    │
 │ rules: No routing rules configured                │
 │ outbounds: freedom, blackhole                     │
-└──────────────────────────────VeePeeNET v2.5.1─────┘
+└──────────────────────────────VeePeeNET v2.5.2─────┘
 ```
 
 ```commandline
@@ -171,7 +171,7 @@ sudo xrayctl status --json
 ```
 ```json
 {
-  "veepeenet_version": "v2.5.1",
+  "veepeenet_version": "v2.5.2",
   "veepeenet_build": 0,
   "xray_version": "v25.12.8",
   "server_status": "stopped",
