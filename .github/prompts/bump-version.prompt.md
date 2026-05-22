@@ -1,6 +1,6 @@
 ---
-description: "Update the VeePeeNET project version across all required files from 2.5.0 or v2.5.0 with automatic v-prefix handling"
-argument-hint: "2.5.0 or v2.5.0"
+description: "Update the VeePeeNET project version across all required files from 2.5.1 or v2.5.1 with automatic v-prefix handling"
+argument-hint: "2.5.1 or v2.5.1"
 agent: "agent"
 ---
 
@@ -10,7 +10,7 @@ Update the VeePeeNET version across all required files in this workspace.
 
 ## Input
 
-The user provides one version in the format `X.X.X` or `vX.X.X`, for example `2.5.0` or `v2.5.0`.
+The user provides one version in the format `X.X.X` or `vX.X.X`, for example `2.5.1` or `v2.5.1`.
 
 Immediately normalize it into two forms:
 
