@@ -26,8 +26,8 @@ Download and install the `.deb` package:
 rm -rf /tmp/veepeenet \
     && mkdir /tmp/veepeenet \
     && (cd /tmp/veepeenet \
-  && curl -LO https://github.com/spector517/veepeenet/releases/download/v2.5.2/veepeenet_2.5.2_amd64.deb \
-  && sudo apt install -y ./veepeenet_2.5.2_amd64.deb
+  && curl -LO https://github.com/spector517/veepeenet/releases/download/v2.6.0/veepeenet_2.6.0_amd64.deb \
+  && sudo apt install -y ./veepeenet_2.6.0_amd64.deb
     )
 ```
 
@@ -38,7 +38,7 @@ Create a virtual environment and install the package:
 ```commandline
 sudo python3 -m venv /usr/local/lib/veepeenet/venv
 sudo /usr/local/lib/veepeenet/venv/bin/pip install \
-  https://github.com/spector517/veepeenet/releases/download/v2.5.2/veepeenet-2.5.2-py3-none-any.whl
+  https://github.com/spector517/veepeenet/releases/download/v2.6.0/veepeenet-2.6.0-py3-none-any.whl
 sudo ln -sf /usr/local/lib/veepeenet/venv/bin/xrayctl /usr/local/bin/xrayctl
 ```
 The Xray binary and systemd unit are installed automatically on the first service command.
@@ -177,7 +177,7 @@ sudo xrayctl status
 │ clients: Server has no clients                    │
 │ rules: No routing rules configured                │
 │ outbounds: freedom, blackhole                     │
-└──────────────────────────────VeePeeNET v2.5.2─────┘
+└──────────────────────────────VeePeeNET v2.6.0─────┘
 ```
 
 ```commandline
@@ -185,7 +185,7 @@ sudo xrayctl status --json
 ```
 ```json
 {
-  "veepeenet_version": "v2.5.2",
+  "veepeenet_version": "v2.6.0",
   "veepeenet_build": 0,
   "xray_version": "v25.12.8",
   "server_status": "stopped",
