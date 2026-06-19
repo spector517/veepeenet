@@ -69,7 +69,7 @@ def show(
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_xray_config()
     xray_config = load_config(XRAY_CONFIG_PATH)
-    display_stats = get_stored_stats(xray_config)
+    display_stats = get_stored_stats()
     display_stats += get_runtime_stats()
 
     view = get_clients_view(xray_config, display_stats)

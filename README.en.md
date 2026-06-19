@@ -208,7 +208,7 @@ sudo xrayctl restart
 sudo xrayctl reset-stats
 ```
 
-The `reset-stats` command clears accumulated statistics in the `veepeenet.stats` section.
+The `reset-stats` command clears accumulated statistics in `/usr/local/etc/veepeenet/stats.json`.
 If the Xray service is running, it also resets runtime statistics through the Xray API.
 
 ---

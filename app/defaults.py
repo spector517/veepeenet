@@ -18,6 +18,7 @@ XRAY_API_PORT = 10085
 
 XRAY_CONFIG_PATH = Path('/usr/local/etc/xray/config.json')
 XRAY_CONFIG_BACKUP_PATH = Path('/usr/local/etc/xray/config.json.bak')
+VEEPEENET_STATS_PATH = Path('/usr/local/etc/veepeenet/stats.json')
 XRAY_BINARY_PATH = Path('/usr/local/bin/xray')
 XRAY_SERVICE_UNIT_PATH = Path('/etc/systemd/system/xray.service')
 XRAY_LOGS_PATH = Path('/var/log/xray')

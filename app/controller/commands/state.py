@@ -56,7 +56,7 @@ def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = Fals
     xray_version = get_xray_distrib_version()
     running = is_xray_service_running()
 
-    display_stats = get_stored_stats(xray_config)
+    display_stats = get_stored_stats()
     display_stats += get_runtime_stats()
 
     inbound_tag = inbound.tag or 'vless-inbound'

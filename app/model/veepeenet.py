@@ -1,5 +1,5 @@
-from typing import Self
-from pydantic import Field
+from typing import Any, Self
+from pydantic import Field, model_validator
 
 from app.model.base import XrayModel
 
@@ -41,4 +41,11 @@ class VeePeeNet(XrayModel):
     host: str
     namespace: str
     name: str | None = None
-    stats: VeePeeNetStats = Field(default_factory=VeePeeNetStats)
+
+    @model_validator(mode='before')
+    @classmethod
+    def _drop_legacy_stats(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            data = dict(data) # type: ignore
+            data.pop('stats', None)
+        return data
