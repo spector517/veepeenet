@@ -125,7 +125,7 @@ def update_geodata() -> None:
         install_geo_data(GEO_IP_URL, XRAY_GEO_IP_DATA_PATH)
     with stdout_console.status(Text('Updating geosite data', STYLE_REGULAR)):
         install_geo_data(GEO_SITE_URL, XRAY_GEO_SITE_DATA_PATH)
-    stdout_console.print(Text('Geoip data', STYLE_OK))
+    stdout_console.print(Text('Geodata updated', STYLE_OK))
 
 
 @app.command(help='Update Xray distribution to a selected or latest version')
