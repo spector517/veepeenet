@@ -19,6 +19,8 @@
 - Обновление geodata для маршрутизации на основе geoip/geosite
 
 ## Установка
+
+### Через .deb-пакет (рекомендуется)
 Скачайте и установите `.deb`-пакет:
 ```text
 rm -rf /tmp/veepeenet \
@@ -28,6 +30,18 @@ rm -rf /tmp/veepeenet \
   && sudo apt install -y ./veepeenet_2.5.2_amd64.deb
     )
 ```
+
+### Через pip (альтернативный способ)
+Требования: Python 3.12+, systemd, права root.
+
+Создайте виртуальное окружение и установите пакет:
+```commandline
+sudo python3 -m venv /usr/local/lib/veepeenet/venv
+sudo /usr/local/lib/veepeenet/venv/bin/pip install \
+  https://github.com/spector517/veepeenet/releases/download/v2.5.2/veepeenet-2.5.2-py3-none-any.whl
+sudo ln -sf /usr/local/lib/veepeenet/venv/bin/xrayctl /usr/local/bin/xrayctl
+```
+Бинарник Xray и systemd-юнит устанавливаются автоматически при первом запуске команды сервиса.
 
 ## Использование
 
@@ -387,8 +401,17 @@ sudo xrayctl routing change-outbound NAME --outbound OUTBOUND_NAME
 
 ## Удаление
 
+### Установленного через .deb-пакет
 ```commandline
 sudo apt remove veepeenet
+```
+
+### Установленного через pip
+```commandline
+sudo systemctl stop xray.service || true
+sudo systemctl disable xray.service || true
+sudo rm -f /usr/local/bin/xrayctl
+sudo rm -rf /usr/local/lib/veepeenet
 ```
 
 # Лицензия

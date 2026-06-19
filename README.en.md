@@ -19,6 +19,8 @@ Install and configure personal anti-censorship service [Xray](https://github.com
 - Geodata updates for geoip/geosite based routing
 
 ## Installation
+
+### Via .deb package (recommended)
 Download and install the `.deb` package:
 ```text
 rm -rf /tmp/veepeenet \
@@ -28,6 +30,18 @@ rm -rf /tmp/veepeenet \
   && sudo apt install -y ./veepeenet_2.5.2_amd64.deb
     )
 ```
+
+### Via pip (alternative)
+Requirements: Python 3.12+, systemd, root access.
+
+Create a virtual environment and install the package:
+```commandline
+sudo python3 -m venv /usr/local/lib/veepeenet/venv
+sudo /usr/local/lib/veepeenet/venv/bin/pip install \
+  https://github.com/spector517/veepeenet/releases/download/v2.5.2/veepeenet-2.5.2-py3-none-any.whl
+sudo ln -sf /usr/local/lib/veepeenet/venv/bin/xrayctl /usr/local/bin/xrayctl
+```
+The Xray binary and systemd unit are installed automatically on the first service command.
 
 ## Usage
 
@@ -387,8 +401,17 @@ Changes the outbound to which the specified rule directs traffic.
 
 ## Removing
 
+### Installed via .deb package
 ```commandline
 sudo apt remove veepeenet
+```
+
+### Installed via pip
+```commandline
+sudo systemctl stop xray.service || true
+sudo systemctl disable xray.service || true
+sudo rm -f /usr/local/bin/xrayctl
+sudo rm -rf /usr/local/lib/veepeenet
 ```
 
 # License
