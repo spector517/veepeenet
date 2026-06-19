@@ -10,8 +10,9 @@ from typer import Exit
 from app.controller.common import load_config
 from app.controller.commands.configure import config, _select_version
 from app.controller.commands.outbound import remove
-from app.controller.commands.state import status, reset_stats
-from app.model.veepeenet import VeePeeNetStats
+from app.controller.commands.state import status, reset_stats, _store_stats
+from app.model.api import Stats
+from app.model.veepeenet import VeePeeNetStats, TrafficStats
 from app.model.xray import Xray
 
 
@@ -209,7 +210,6 @@ class TestCollectAndSaveStats:
         load_stats_mock.assert_not_called()
 
     def test_saves_accumulated_stats_when_running(self, mocker: MockFixture):
-        from app.model.veepeenet import TrafficStats # pylint: disable=import-outside-toplevel
         from app.controller.common import _store_runtime_stats # type: ignore # pylint: disable=import-outside-toplevel
 
         mocker.patch('app.controller.common.is_xray_service_running', return_value=True)
@@ -218,15 +218,65 @@ class TestCollectAndSaveStats:
         runtime_stats = VeePeeNetStats(
             client={'c1.client': TrafficStats(uplink=100, downlink=200)}
         )
-        mocker.patch('app.controller.common.get_runtime_stats', return_value=runtime_stats)
+        runtime_mock = mocker.patch(
+            'app.controller.common.get_runtime_stats', return_value=runtime_stats)
 
         _store_runtime_stats()
 
+        runtime_mock.assert_called_once_with(reset=True)
         save_mock.assert_called_once()
         saved_stats = save_mock.call_args[0][0]
         assert saved_stats.client.get('c1.client') is not None
         assert saved_stats.client['c1.client'].uplink == 100
         assert saved_stats.client['c1.client'].downlink == 200
+
+
+class TestStoreStatsCommand:
+
+    def test_saves_runtime_stats_from_api(self, mocker: MockFixture):
+        check_root_mock = mocker.patch('app.controller.commands.state.check_root')
+        mocker.patch(
+            'app.controller.commands.state.query_xray_stats',
+            return_value=[
+                Stats(name='user>>>alice.123@0.0.0.0>>>traffic>>>uplink', value=100),
+                Stats(name='inbound>>>vless-inbound>>>traffic>>>downlink', value=200),
+            ])
+        mocker.patch(
+            'app.controller.commands.state.get_stored_stats',
+            return_value=VeePeeNetStats(
+                client={'alice': TrafficStats(uplink=5, downlink=0)}))
+        save_mock = mocker.patch('app.controller.commands.state.save_stats')
+
+        _store_stats()
+
+        check_root_mock.assert_called_once()
+        save_mock.assert_called_once()
+        saved_stats = save_mock.call_args[0][0]
+        assert saved_stats.client['alice'].uplink == 105
+        assert saved_stats.inbound['vless-inbound'].downlink == 200
+
+    def test_does_nothing_when_api_has_no_stats(self, mocker: MockFixture):
+        mocker.patch('app.controller.commands.state.check_root')
+        mocker.patch('app.controller.commands.state.query_xray_stats', return_value=[])
+        stored_mock = mocker.patch('app.controller.commands.state.get_stored_stats')
+        save_mock = mocker.patch('app.controller.commands.state.save_stats')
+
+        _store_stats()
+
+        stored_mock.assert_not_called()
+        save_mock.assert_not_called()
+
+    def test_raises_when_not_root(self, mocker: MockFixture):
+        mocker.patch(
+            'app.controller.commands.state.check_root',
+            side_effect=Exit(code=1))
+        query_mock = mocker.patch('app.controller.commands.state.query_xray_stats')
+
+        with raises(Exit) as exc_info:
+            _store_stats(_debug=True)
+
+        assert exc_info.value.exit_code == 1
+        query_mock.assert_not_called()
 
 
 class TestClearStats:

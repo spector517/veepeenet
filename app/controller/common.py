@@ -249,7 +249,7 @@ def _store_runtime_stats() -> None:
     if not is_xray_service_running():
         return
 
-    runtime_stats = get_runtime_stats()
+    runtime_stats = get_runtime_stats(reset=True)
     stored_stats = get_stored_stats()
     stored_stats += runtime_stats
 
