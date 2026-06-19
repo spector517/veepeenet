@@ -2,7 +2,7 @@ from typing import Annotated, get_args, cast, Any
 from urllib.parse import urlparse, parse_qs, unquote
 
 from rich.text import Text
-from typer import Argument, Option, Exit
+from typer import Argument, Context, Option, Exit
 
 from app.cli import outbounds
 from app.controller.common import (
@@ -70,6 +70,15 @@ def show(
         stdout_console.print_json(view.model_dump_json(exclude_none=True, indent=2))
     else:
         stdout_console.print(view.rich_repr())
+
+
+@outbounds.callback(invoke_without_command=True)
+def show_default(
+        ctx: Context,
+        json: Annotated[bool, Option(help='Show JSON formatted info')] = False,
+        _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+    if ctx.invoked_subcommand is None:
+        show(json=json, _debug=_debug)
 
 
 def get_outbounds_view(xray_config: Xray, stats: VeePeeNetStats | None = None) -> OutboundsView:

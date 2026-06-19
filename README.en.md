@@ -62,12 +62,12 @@ sudo xrayctl clients remove my_client2
 
 Show all clients with share links:
 ```commandline
-sudo xrayctl clients list
+sudo xrayctl clients
 ```
 
 Show clients in JSON format:
 ```commandline
-sudo xrayctl clients list --json
+sudo xrayctl clients --json
 ```
 
 ### Recreate configuration
@@ -229,7 +229,7 @@ sudo xrayctl clients remove CLIENT_NAMES...
 
 #### List clients
 ```text
-sudo xrayctl clients list [OPTIONS]
+sudo xrayctl clients [OPTIONS]
 ```
 
 | Option | Type | Description         |
@@ -302,7 +302,7 @@ Moves the specified outbound to the first position, making it the default.
 
 #### List routing rules
 ```text
-sudo xrayctl routing list [OPTIONS]
+sudo xrayctl routing [OPTIONS]
 ```
 
 | Option | Type | Description         |
@@ -311,7 +311,7 @@ sudo xrayctl routing list [OPTIONS]
 
 ##### Example
 ```commandline
-xrayctl routing list
+xrayctl routing
 ```
 ```
 ┌──────────────────────────────────────────┐

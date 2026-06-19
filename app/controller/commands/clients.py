@@ -4,7 +4,7 @@ from uuid import UUID
 
 from rich.console import Console
 from rich.text import Text
-from typer import Argument, Option
+from typer import Argument, Context, Option
 
 from app.cli import clients
 from app.controller.common import (
@@ -78,6 +78,15 @@ def show(
     else:
         url_console = Console(soft_wrap=True, width=2**15)
         url_console.print(view.rich_repr())
+
+
+@clients.callback(invoke_without_command=True)
+def show_default(
+        ctx: Context,
+        json: Annotated[bool, Option(help='Show JSON formatted info')] = False,
+        _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+    if ctx.invoked_subcommand is None:
+        show(json=json, _debug=_debug)
 
 
 def get_clients_view(xray_config: Xray, stats: VeePeeNetStats | None = None) -> ClientsView:

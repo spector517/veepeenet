@@ -62,12 +62,12 @@ sudo xrayctl clients remove my_client2
 
 Показать всех клиентов вместе со ссылками для подключения:
 ```commandline
-sudo xrayctl clients list
+sudo xrayctl clients
 ```
 
 Показать клиентов в формате JSON:
 ```commandline
-sudo xrayctl clients list --json
+sudo xrayctl clients --json
 ```
 
 ### Пересоздание конфигурации
@@ -229,7 +229,7 @@ sudo xrayctl clients remove CLIENT_NAMES...
 
 #### Список клиентов
 ```text
-sudo xrayctl clients list [OPTIONS]
+sudo xrayctl clients [OPTIONS]
 ```
 
 | Параметр | Тип  | Описание             |
@@ -302,7 +302,7 @@ sudo xrayctl outbounds set-default NAME
 
 #### Список правил маршрутизации
 ```text
-sudo xrayctl routing list [OPTIONS]
+sudo xrayctl routing [OPTIONS]
 ```
 
 | Параметр | Тип  | Описание             |
@@ -311,7 +311,7 @@ sudo xrayctl routing list [OPTIONS]
 
 ##### Пример
 ```commandline
-xrayctl routing list
+xrayctl routing
 ```
 ```
 ┌──────────────────────────────────────────┐

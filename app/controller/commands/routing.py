@@ -2,7 +2,7 @@ from re import fullmatch
 from typing import Annotated, Literal, Any, get_args
 
 from rich.text import Text
-from typer import Option, Argument, Exit
+from typer import Option, Argument, Context, Exit
 
 from app.cli import routing
 from app.controller.data import RuleData
@@ -59,6 +59,15 @@ def show(
         stdout_console.print_json(view.model_dump_json(exclude_none=True, indent=2))
     else:
         stdout_console.print(view.rich_repr())
+
+
+@routing.callback(invoke_without_command=True)
+def show_default(
+        ctx: Context,
+        json: Annotated[bool, Option(help='Show JSON formatted info')] = False,
+        _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+    if ctx.invoked_subcommand is None:
+        show(json=json, _debug=_debug)
 
 
 def get_routing_view(xray_config: Xray) -> RoutingView:
