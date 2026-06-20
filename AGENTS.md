@@ -62,27 +62,29 @@ app/migration_1_2.py          — Standalone v1→v2 config migration script
 
 ## Development
 
+If `.venv/` exists in the repo root, use it for all dev commands (prefix with `./.venv/bin/`). Examples below use the venv prefix.
+
 ```bash
 # Install dev dependencies
-pip install -e ".[dev]"
+./.venv/bin/pip install -e ".[dev]"
 
 # Run all tests 
-pytest tests -v --tb=short
+./.venv/bin/pytest tests -v --tb=short
 
 # Run tests
-pytest
+./.venv/bin/pytest
 
 # Run linter
-pylint app/
+./.venv/bin/pylint app/
 
 # Lint Ansible playbooks
 ansible-lint deploy-playbook.yml
 
 # Run tests with coverage
-pytest --cov=app
+./.venv/bin/pytest --cov=app
 
 # Build distribution
-python -m build
+./.venv/bin/python -m build
 ```
 
 Tests mock OS-level calls (`systemctl`, `xray` binary, file I/O) via `pytest-mock`. Test fixtures use JSON configs in `tests/resources/`. Each test file tests one module — naming: `test_{module}.py` (e.g. `test_utils.py`, `test_controller.py`, `test_completions.py`). Exception: `migration_1_2_test.py`. No `conftest.py` — fixtures are defined inline in each test file. Related tests are grouped in `class Test*:` (e.g. `class TestLoadConfig:`, `class TestCreateConfig:`).
