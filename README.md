@@ -444,6 +444,10 @@ sudo apt remove veepeenet
 ```commandline
 sudo systemctl stop xray.service || true
 sudo systemctl disable xray.service || true
+sudo rm -f /etc/systemd/system/xray.service
+sudo systemctl daemon-reload
+sudo rm -rf /usr/local/etc/xray/
+sudo rm -f /usr/local/bin/xray
 sudo rm -f /usr/local/bin/xrayctl
 sudo rm -rf /usr/local/lib/veepeenet
 ```
