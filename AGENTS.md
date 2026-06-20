@@ -75,7 +75,7 @@ If `.venv/` exists in the repo root, use it for all dev commands (prefix with `.
 ./.venv/bin/pytest
 
 # Run linter
-./.venv/bin/pylint app/
+./.venv/bin/pylint --load-plugins pylint_pydantic app/
 
 # Lint Ansible playbooks
 ansible-lint deploy-playbook.yml
