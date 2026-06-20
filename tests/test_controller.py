@@ -10,8 +10,11 @@ from typer import Exit
 from app.controller.common import load_config
 from app.controller.commands.configure import config, _select_version
 from app.controller.commands.outbound import remove
-from app.controller.commands.state import status, reset_stats, _store_stats
+from app.controller.commands.routing import add_rule, get_routing_view, set_rule_priority
+from app.controller.commands.state import status, reset_stats, store_stats
+from app.defaults import EXIT_ROUTING_INVALID_PRIORITY
 from app.model.api import Stats
+from app.model.routing import Rule
 from app.model.veepeenet import VeePeeNetStats, TrafficStats
 from app.model.xray import Xray
 
@@ -247,7 +250,7 @@ class TestStoreStatsCommand:
                 client={'alice': TrafficStats(uplink=5, downlink=0)}))
         save_mock = mocker.patch('app.controller.commands.state.save_stats')
 
-        _store_stats()
+        store_stats()
 
         check_root_mock.assert_called_once()
         save_mock.assert_called_once()
@@ -261,7 +264,7 @@ class TestStoreStatsCommand:
         stored_mock = mocker.patch('app.controller.commands.state.get_stored_stats')
         save_mock = mocker.patch('app.controller.commands.state.save_stats')
 
-        _store_stats()
+        store_stats()
 
         stored_mock.assert_not_called()
         save_mock.assert_not_called()
@@ -273,7 +276,7 @@ class TestStoreStatsCommand:
         query_mock = mocker.patch('app.controller.commands.state.query_xray_stats')
 
         with raises(Exit) as exc_info:
-            _store_stats(_debug=True)
+            store_stats(_debug=True)
 
         assert exc_info.value.exit_code == 1
         query_mock.assert_not_called()
@@ -430,3 +433,118 @@ class TestStatusRestartRequired:
         assert server_view_ctor.call_args.kwargs['restart_required'] is True
         compare_mock.assert_called_once()
         assert compare_mock.call_args.kwargs == {'exclude_top_level_keys': {'veepeenet'}}
+
+
+class TestRoutingPriorityValidation:
+
+    @fixture(name='valid_config_for_routing')
+    def fixture_valid_config_for_routing(self) -> Xray:
+        return load_config(Path('tests/resources/valid_xray_config.json'))
+
+    def test_add_rule_rejects_negative_priority(
+            self, valid_config_for_routing: Xray, mocker: MockFixture):
+        mocker.patch('app.controller.commands.routing.check_root')
+        mocker.patch('app.controller.commands.routing.check_xray_config')
+        mocker.patch('app.controller.commands.routing.load_config', return_value=valid_config_for_routing)
+        save_mock = mocker.patch('app.controller.commands.routing.save_config')
+        print_error_mock = mocker.patch('app.controller.commands.routing.print_error')
+
+        with raises(Exit) as exc_info:
+            add_rule('test', 'direct', domain=['domain:example.com'], priority=-1, _debug=True)
+
+        assert exc_info.value.exit_code == EXIT_ROUTING_INVALID_PRIORITY
+        save_mock.assert_not_called()
+        print_error_mock.assert_called_once()
+
+    def test_add_rule_rejects_priority_above_limit(
+            self, valid_config_for_routing: Xray, mocker: MockFixture):
+        mocker.patch('app.controller.commands.routing.check_root')
+        mocker.patch('app.controller.commands.routing.check_xray_config')
+        mocker.patch('app.controller.commands.routing.load_config', return_value=valid_config_for_routing)
+        save_mock = mocker.patch('app.controller.commands.routing.save_config')
+
+        with raises(Exit) as exc_info:
+            add_rule('test', 'direct', domain=['domain:example.com'], priority=1_000_001, _debug=True)
+
+        assert exc_info.value.exit_code == EXIT_ROUTING_INVALID_PRIORITY
+        save_mock.assert_not_called()
+
+    def test_add_rule_accepts_zero_priority(
+            self, valid_config_for_routing: Xray, mocker: MockFixture):
+        mocker.patch('app.controller.commands.routing.check_root')
+        mocker.patch('app.controller.commands.routing.check_xray_config')
+        mocker.patch('app.controller.commands.routing.load_config', return_value=valid_config_for_routing)
+        mocker.patch('app.controller.commands.routing.install_geo_data')
+        save_mock = mocker.patch('app.controller.commands.routing.save_config')
+        mocker.patch('app.controller.commands.routing.stdout_console.print')
+
+        add_rule('test', 'direct', domain=['domain:example.com'], priority=0)
+
+        save_mock.assert_called_once()
+        saved_config = save_mock.call_args[0][0]
+        saved_rules = saved_config.routing.rules if saved_config.routing else []
+        assert saved_rules is not None
+        assert any(rule.tag == 'test.0' for rule in saved_rules)
+
+    def test_add_rule_accepts_upper_boundary_priority(
+            self, valid_config_for_routing: Xray, mocker: MockFixture):
+        mocker.patch('app.controller.commands.routing.check_root')
+        mocker.patch('app.controller.commands.routing.check_xray_config')
+        mocker.patch('app.controller.commands.routing.load_config', return_value=valid_config_for_routing)
+        mocker.patch('app.controller.commands.routing.install_geo_data')
+        save_mock = mocker.patch('app.controller.commands.routing.save_config')
+        mocker.patch('app.controller.commands.routing.stdout_console.print')
+
+        add_rule('test', 'direct', domain=['domain:example.com'], priority=1_000_000)
+
+        save_mock.assert_called_once()
+        saved_config = save_mock.call_args[0][0]
+        saved_rules = saved_config.routing.rules if saved_config.routing else []
+        assert saved_rules is not None
+        assert any(rule.tag == 'test.1000000' for rule in saved_rules)
+
+    def test_set_rule_priority_rejects_negative_priority(
+            self, valid_config_for_routing: Xray, mocker: MockFixture):
+        valid_config_for_routing.routing.rules = [ # type: ignore[assignment]
+            Rule(tag='test.10', outbound_tag='direct', domain=['domain:example.com'])
+        ]
+        mocker.patch('app.controller.commands.routing.check_root')
+        mocker.patch('app.controller.commands.routing.check_xray_config')
+        mocker.patch('app.controller.commands.routing.load_config', return_value=valid_config_for_routing)
+        save_mock = mocker.patch('app.controller.commands.routing.save_config')
+
+        with raises(Exit) as exc_info:
+            set_rule_priority('test', -1, _debug=True)
+
+        assert exc_info.value.exit_code == EXIT_ROUTING_INVALID_PRIORITY
+        save_mock.assert_not_called()
+
+    def test_set_rule_priority_rejects_priority_above_limit(
+            self, valid_config_for_routing: Xray, mocker: MockFixture):
+        valid_config_for_routing.routing.rules = [ # type: ignore[assignment]
+            Rule(tag='test.10', outbound_tag='direct', domain=['domain:example.com'])
+        ]
+        mocker.patch('app.controller.commands.routing.check_root')
+        mocker.patch('app.controller.commands.routing.check_xray_config')
+        mocker.patch('app.controller.commands.routing.load_config', return_value=valid_config_for_routing)
+        save_mock = mocker.patch('app.controller.commands.routing.save_config')
+
+        with raises(Exit) as exc_info:
+            set_rule_priority('test', 1_000_001, _debug=True)
+
+        assert exc_info.value.exit_code == EXIT_ROUTING_INVALID_PRIORITY
+        save_mock.assert_not_called()
+
+    def test_get_routing_view_hides_service_rules(self, valid_config_for_routing: Xray):
+        valid_config_for_routing.routing.rules = [ # type: ignore[assignment]
+            Rule(tag='visible.10', outbound_tag='direct', domain=['domain:example.com']),
+            Rule(tag='hidden.-1', outbound_tag='blackhole', protocol=['bittorrent']),
+            Rule(tag='hidden.1000001', outbound_tag='dns', port='53'),
+        ]
+
+        view = get_routing_view(valid_config_for_routing)
+
+        rules = view.model_dump()['rules'] or []
+        assert len(rules) == 1
+        assert rules[0]['name'] == 'visible'
+        assert rules[0]['priority'] == 10

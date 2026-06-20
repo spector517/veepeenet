@@ -39,6 +39,9 @@ from app.defaults import (
     EXIT_ROUTING_RULE_SAME_VALUE,
     EXIT_ROUTING_NO_RULES,
     EXIT_ROUTING_STRATEGY_SAME,
+    EXIT_ROUTING_INVALID_PRIORITY,
+    USER_RULE_PRIORITY_MIN,
+    USER_RULE_PRIORITY_MAX,
 )
 from app.model.routing import Routing
 from app.model.types import RuleProtocolType, RoutingDomainStrategyType
@@ -81,6 +84,8 @@ def get_routing_view(xray_config: Xray) -> RoutingView:
         rules = []
     for i, rule in enumerate(rules):
         rule_data = RuleData.from_model(rule, i)
+        if not _is_user_rule(rule_data):
+            continue
         rule_view = RuleView(
             name=rule_data.name,
             domains=rule_data.domains,
@@ -117,7 +122,8 @@ def add_rule(
         priority: Annotated[
             int | None,
             Option(
-                help='Priority of the rule (lower value means higher priority)')] = None,
+                help=f'Priority of the rule (lower value means higher priority, '
+                     f'allowed range: {USER_RULE_PRIORITY_MIN}-{USER_RULE_PRIORITY_MAX})')] = None,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_root()
     xray_config = _init_and_load_config()
@@ -150,6 +156,14 @@ def add_rule(
             (ports, STYLE_ACCENT_NEUTRAL)))
         raise Exit(code=EXIT_ROUTING_INVALID_PORTS)
 
+    if priority is not None and not _is_user_priority(priority):
+        print_error(Text.assemble(
+            ('Invalid priority value: ', STYLE_REGULAR),
+            (str(priority), STYLE_ACCENT_NEUTRAL),
+            ('. Allowed range: ', STYLE_REGULAR),
+            (f'{USER_RULE_PRIORITY_MIN}-{USER_RULE_PRIORITY_MAX}', STYLE_VALUE)))
+        raise Exit(code=EXIT_ROUTING_INVALID_PRIORITY)
+
     all_rules = _get_existing_rules(xray_config)
     if _find_rule_by_name(all_rules, name):
         print_error(Text.assemble(
@@ -158,10 +172,12 @@ def add_rule(
             (' already exists', STYLE_REGULAR)))
         raise Exit(code=EXIT_ROUTING_RULE_EXISTS)
 
+    user_rules = [rule for rule in all_rules if _is_user_rule(rule)]
+
     new_rule = RuleData(name=name, outbound_name=outbound,
                         protocols=protocol, # pyright: ignore[reportArgumentType]
                         ports=ports, domains=domain, ips=ip,
-                        priority=priority or (len(all_rules) + 1) * 10)
+                        priority=priority if priority is not None else (len(user_rules) + 1) * 10)
     all_rules.append(new_rule)
 
     _save_rules(xray_config, all_rules)
@@ -234,7 +250,10 @@ def rename_rule(
 @error_handler(default_message='Error changing rule priority', default_code=EXIT_ROUTING_ERROR)
 def set_rule_priority(
         name: Annotated[str, Argument(help='Rule name', autocompletion=complete_route_name)],
-        priority: Annotated[int, Option(help='New priority value (lower = higher priority)')],
+    priority: Annotated[
+        int,
+        Option(help=f'New priority value (lower = higher priority, '
+            f'allowed range: {USER_RULE_PRIORITY_MIN}-{USER_RULE_PRIORITY_MAX})')],
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_root()
     xray_config = _init_and_load_config()
@@ -248,6 +267,14 @@ def set_rule_priority(
             (name, STYLE_ACCENT_NEUTRAL),
             (' not found', STYLE_REGULAR)))
         raise Exit(code=EXIT_ROUTING_RULE_NOT_FOUND)
+
+    if not _is_user_priority(priority):
+        print_error(Text.assemble(
+            ('Invalid priority value: ', STYLE_REGULAR),
+            (str(priority), STYLE_ACCENT_NEUTRAL),
+            ('. Allowed range: ', STYLE_REGULAR),
+            (f'{USER_RULE_PRIORITY_MIN}-{USER_RULE_PRIORITY_MAX}', STYLE_VALUE)))
+        raise Exit(code=EXIT_ROUTING_INVALID_PRIORITY)
 
     if rule_to_update.priority == priority:
         print_error(Text.assemble(
@@ -438,8 +465,18 @@ def _init_and_load_config() -> Xray:
     return load_config(XRAY_CONFIG_PATH)
 
 
+def _is_user_priority(priority: int) -> bool:
+    return USER_RULE_PRIORITY_MIN <= priority <= USER_RULE_PRIORITY_MAX
+
+
+def _is_user_rule(rule: RuleData) -> bool:
+    return _is_user_priority(rule.priority)
+
+
 def _find_rule_by_name(rules: list[RuleData], name: str) -> RuleData | None:
     for rule in rules:
+        if not _is_user_rule(rule):
+            continue
         if rule.name == name:
             return rule
     return None
