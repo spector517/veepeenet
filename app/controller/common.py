@@ -67,6 +67,13 @@ def print_error(message: str | Text) -> None:
     )
 
 
+def print_view(view: Any, json_format: bool) -> None:
+    if json_format:
+        stdout_console.print_json(view.model_dump_json(exclude_none=True, indent=2))
+    else:
+        stdout_console.print(view.rich_repr())
+
+
 def error_handler(
         default_message: str | None = None, default_code: int = -1) -> Callable[..., Any]:
 

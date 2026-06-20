@@ -11,6 +11,7 @@ from app.controller.common import (
     check_xray_config,
     check_root,
     print_error,
+    print_view,
     save_config,
     stdout_console,
     get_runtime_stats,
@@ -65,11 +66,7 @@ def show(
     display_stats += get_runtime_stats()
 
     view = get_outbounds_view(xray_config, display_stats)
-
-    if json:
-        stdout_console.print_json(view.model_dump_json(exclude_none=True, indent=2))
-    else:
-        stdout_console.print(view.rich_repr())
+    print_view(view, json)
 
 
 @outbounds.callback(invoke_without_command=True)

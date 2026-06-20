@@ -171,7 +171,7 @@ def _get_client_emails_by_name(xray_config: Xray) -> dict[str, str]:
     clients_data = [ClientData.from_model(client, i)
                     for i, client in enumerate(inbound.settings.clients or [])]
     return {
-        client_data.name: client_data.to_model().email 
+        client_data.name: client_data.to_model().email
         for client_data in clients_data
     } # type: ignore
 

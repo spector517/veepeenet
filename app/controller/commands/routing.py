@@ -13,6 +13,7 @@ from app.controller.common import (
     check_root,
     get_vless_inbound,
     print_error,
+    print_view,
     save_config,
     stdout_console,
 )
@@ -62,11 +63,7 @@ def show(
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     xray_config = _init_and_load_config()
     view = get_routing_view(xray_config)
-
-    if json:
-        stdout_console.print_json(view.model_dump_json(exclude_none=True, indent=2))
-    else:
-        stdout_console.print(view.rich_repr())
+    print_view(view, json)
 
 
 @routing.callback(invoke_without_command=True)
