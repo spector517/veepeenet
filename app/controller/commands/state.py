@@ -20,12 +20,16 @@ from app.controller.common import (
     get_runtime_stats,
     get_stored_stats,
 )
+from app.controller.data import StatsData
 from app.controller.commands.routing import get_routing_view
 from app.controller.commands.clients import get_clients_view
 from app.controller.commands.outbound import get_outbounds_view
 from app.defaults import (
+    XRAY_API_HOST,
+    XRAY_API_PORT,
     XRAY_CONFIG_PATH,
     XRAY_CONFIG_BACKUP_PATH,
+    VEEPEENET_STATS_PATH,
     STYLE_REGULAR,
     EXIT_STATE_ERROR,
     EXIT_STATE_START_FAILED,
@@ -39,7 +43,10 @@ from app.utils import (
     is_xray_service_enabled,
     get_xray_service_uptime,
     is_json_content_same,
+    query_xray_stats,
+    save_stats,
 )
+from app.model.veepeenet import VeePeeNetStats
 from app.view import ServerView, TrafficStatsView
 
 
@@ -56,7 +63,7 @@ def status(json: Annotated[bool, Option(help='Show JSON formatted info')] = Fals
     xray_version = get_xray_distrib_version()
     running = is_xray_service_running()
 
-    display_stats = get_stored_stats(xray_config)
+    display_stats = get_stored_stats()
     display_stats += get_runtime_stats()
 
     inbound_tag = inbound.tag or 'vless-inbound'
@@ -144,3 +151,23 @@ def reset_stats(_debug: Annotated[bool, Option('--debug', hidden=True)] = False)
     check_distrib()
 
     clear_stats()
+
+
+@app.command('_store-stats', hidden=True)
+@error_handler(default_message='Error storing traffic statistics', default_code=EXIT_STATE_ERROR)
+def store_stats(_debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+    check_root()
+
+    api_stats = query_xray_stats(XRAY_API_HOST, XRAY_API_PORT, reset=True)
+    if not api_stats:
+        return
+
+    runtime_stats = VeePeeNetStats()
+    for stat in api_stats:
+        stats_data = StatsData.from_api(stat)
+        if stats_data:
+            runtime_stats += stats_data.to_model()
+
+    stored_stats = get_stored_stats()
+    stored_stats += runtime_stats
+    save_stats(stored_stats, VEEPEENET_STATS_PATH)

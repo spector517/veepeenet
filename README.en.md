@@ -15,19 +15,33 @@ Install and configure personal anti-censorship service [Xray](https://github.com
 - Creating and changing Xray server configuration (Vless with Reality)
 - Adding and removing Xray server clients
 - Managing outbound Vless connections
-- Flexible routing rules management
+- Flexible routing rules management by domains, IPs, ports, protocols, and clients
 - Geodata updates for geoip/geosite based routing
 
 ## Installation
+
+### Via .deb package (recommended)
 Download and install the `.deb` package:
 ```text
 rm -rf /tmp/veepeenet \
     && mkdir /tmp/veepeenet \
     && (cd /tmp/veepeenet \
-  && curl -LO https://github.com/spector517/veepeenet/releases/download/v2.5.2/veepeenet_2.5.2_amd64.deb \
-  && sudo apt install -y ./veepeenet_2.5.2_amd64.deb
+  && curl -LO https://github.com/spector517/veepeenet/releases/download/v2.6.0/veepeenet_2.6.0_amd64.deb \
+  && sudo apt install -y ./veepeenet_2.6.0_amd64.deb
     )
 ```
+
+### Via pip (alternative)
+Requirements: Python 3.12+, systemd, root access.
+
+Create a virtual environment and install the package:
+```commandline
+sudo python3 -m venv /usr/local/lib/veepeenet/venv
+sudo /usr/local/lib/veepeenet/venv/bin/pip install \
+  https://github.com/spector517/veepeenet/releases/download/v2.6.0/veepeenet-2.6.0-py3-none-any.whl
+sudo ln -sf /usr/local/lib/veepeenet/venv/bin/xrayctl /usr/local/bin/xrayctl
+```
+The Xray binary and systemd unit are installed automatically on the first service command.
 
 ## Usage
 
@@ -62,12 +76,12 @@ sudo xrayctl clients remove my_client2
 
 Show all clients with share links:
 ```commandline
-sudo xrayctl clients list
+sudo xrayctl clients
 ```
 
 Show clients in JSON format:
 ```commandline
-sudo xrayctl clients list --json
+sudo xrayctl clients --json
 ```
 
 ### Recreate configuration
@@ -163,7 +177,7 @@ sudo xrayctl status
 │ clients: Server has no clients                    │
 │ rules: No routing rules configured                │
 │ outbounds: freedom, blackhole                     │
-└──────────────────────────────VeePeeNET v2.5.2─────┘
+└──────────────────────────────VeePeeNET v2.6.0─────┘
 ```
 
 ```commandline
@@ -171,7 +185,7 @@ sudo xrayctl status --json
 ```
 ```json
 {
-  "veepeenet_version": "v2.5.2",
+  "veepeenet_version": "v2.6.0",
   "veepeenet_build": 0,
   "xray_version": "v25.12.8",
   "server_status": "stopped",
@@ -208,7 +222,7 @@ sudo xrayctl restart
 sudo xrayctl reset-stats
 ```
 
-The `reset-stats` command clears accumulated statistics in the `veepeenet.stats` section.
+The `reset-stats` command clears accumulated statistics in `/usr/local/etc/veepeenet/stats.json`.
 If the Xray service is running, it also resets runtime statistics through the Xray API.
 
 ---
@@ -227,10 +241,26 @@ Clients with names that do not exist on the server will be ignored.
 sudo xrayctl clients remove CLIENT_NAMES...
 ```
 
+#### Disable clients
+This command blocks client traffic with a service routing rule and sends it to `blackhole`.
+```commandline
+sudo xrayctl clients disable CLIENT_NAMES...
+```
+
+#### Enable clients
+This command removes the block and restores client access to the proxy.
+```commandline
+sudo xrayctl clients enable CLIENT_NAMES...
+```
+
 #### List clients
 ```text
-sudo xrayctl clients list [OPTIONS]
+sudo xrayctl clients [OPTIONS]
 ```
+
+In both the client list and `xrayctl status`, a state indicator is shown before each name:
+- green `●` — access enabled
+- red `●` — access disabled
 
 | Option | Type | Description         |
 | ------ | ---- | ------------------- |
@@ -302,7 +332,7 @@ Moves the specified outbound to the first position, making it the default.
 
 #### List routing rules
 ```text
-sudo xrayctl routing list [OPTIONS]
+sudo xrayctl routing [OPTIONS]
 ```
 
 | Option | Type | Description         |
@@ -311,7 +341,7 @@ sudo xrayctl routing list [OPTIONS]
 
 ##### Example
 ```commandline
-xrayctl routing list
+xrayctl routing
 ```
 ```
 ┌──────────────────────────────────────────┐
@@ -325,6 +355,10 @@ xrayctl routing list
 │ name: bypass-ru                          │
 │ domains: geosite:category-gov-ru         │
 │ ips: geoip:ru                            │
+└──────────────────────────────────────────┘
+┌ Rule #30 alice-direct --> direct ────────┐
+│ name: alice-direct                       │
+│ clients: alice                           │
 └──────────────────────────────────────────┘
 ```
 
@@ -340,9 +374,16 @@ xrayctl routing add-rule NAME [OPTIONS]
 | --ip       | TEXT    | List of IPs or IP ranges to match (e.g. "123.123.123.123")         |
 | --ports    | TEXT    | Port or port range to match (e.g. "53,443,60-89")                  |
 | --protocol | TEXT    | List of protocols to match: http, tls, quic or bittorrent          |
+| --client   | TEXT    | Client name. The rule stores the full client email from the config  |
 | --priority | INTEGER | Priority of the rule (lower value means higher priority)           |
 
-At least one condition (`--domain`, `--ip`, `--ports`, `--protocol`) must be specified.
+At least one condition (`--domain`, `--ip`, `--ports`, `--protocol`, `--client`) must be specified.
+
+Examples:
+```commandline
+sudo xrayctl routing add-rule bypass-ads --outbound blackhole --domain geosite:category-ads-all
+sudo xrayctl routing add-rule alice-direct --outbound direct --client alice
+```
 
 #### Remove routing rule
 ```commandline
@@ -372,6 +413,13 @@ Where `ACTION` is either `put` (add values) or `del` (remove values).
 | --ip       | TEXT | List of IPs or IP ranges to add/remove                         |
 | --ports    | TEXT | Port or port range to add/remove                               |
 | --protocol | TEXT | List of protocols to add/remove: http, tls, quic or bittorrent |
+| --client   | TEXT | Client name to add/remove from the rule condition              |
+
+Examples:
+```commandline
+sudo xrayctl routing change-rule alice-direct put --client bob
+sudo xrayctl routing change-rule alice-direct del --client alice
+```
 
 #### Set domain strategy
 ```commandline
@@ -387,8 +435,21 @@ Changes the outbound to which the specified rule directs traffic.
 
 ## Removing
 
+### Installed via .deb package
 ```commandline
 sudo apt remove veepeenet
+```
+
+### Installed via pip
+```commandline
+sudo systemctl stop xray.service || true
+sudo systemctl disable xray.service || true
+sudo rm -f /etc/systemd/system/xray.service
+sudo systemctl daemon-reload
+sudo rm -rf /usr/local/etc/xray/
+sudo rm -f /usr/local/bin/xray
+sudo rm -f /usr/local/bin/xrayctl
+sudo rm -rf /usr/local/lib/veepeenet
 ```
 
 # License

@@ -2,10 +2,10 @@ from re import fullmatch
 from typing import Annotated, Literal, Any, get_args
 
 from rich.text import Text
-from typer import Option, Argument, Exit
+from typer import Option, Argument, Context, Exit
 
 from app.cli import routing
-from app.controller.data import RuleData
+from app.controller.data import RuleData, ClientData
 from app.controller.common import (
     error_handler,
     load_config,
@@ -13,10 +13,15 @@ from app.controller.common import (
     check_root,
     get_vless_inbound,
     print_error,
+    print_view,
     save_config,
     stdout_console,
 )
-from app.controller.completions import complete_route_name, complete_outbound_name
+from app.controller.completions import (
+    complete_route_name,
+    complete_outbound_name,
+    complete_client_name
+)
 from app.defaults import (
     XRAY_CONFIG_PATH,
     GEO_IP_URL,
@@ -39,6 +44,10 @@ from app.defaults import (
     EXIT_ROUTING_RULE_SAME_VALUE,
     EXIT_ROUTING_NO_RULES,
     EXIT_ROUTING_STRATEGY_SAME,
+    EXIT_ROUTING_INVALID_PRIORITY,
+    EXIT_ROUTING_CLIENT_NOT_FOUND,
+    USER_RULE_PRIORITY_MIN,
+    USER_RULE_PRIORITY_MAX,
 )
 from app.model.routing import Routing
 from app.model.types import RuleProtocolType, RoutingDomainStrategyType
@@ -54,11 +63,16 @@ def show(
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     xray_config = _init_and_load_config()
     view = get_routing_view(xray_config)
+    print_view(view, json)
 
-    if json:
-        stdout_console.print_json(view.model_dump_json(exclude_none=True, indent=2))
-    else:
-        stdout_console.print(view.rich_repr())
+
+@routing.callback(invoke_without_command=True)
+def show_default(
+        ctx: Context,
+        json: Annotated[bool, Option(help='Show JSON formatted info')] = False,
+        _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+    if ctx.invoked_subcommand is None:
+        show(json=json, _debug=_debug)
 
 
 def get_routing_view(xray_config: Xray) -> RoutingView:
@@ -72,12 +86,16 @@ def get_routing_view(xray_config: Xray) -> RoutingView:
         rules = []
     for i, rule in enumerate(rules):
         rule_data = RuleData.from_model(rule, i)
+        if not _is_user_rule(rule_data):
+            continue
         rule_view = RuleView(
             name=rule_data.name,
             domains=rule_data.domains,
             ips=rule_data.ips,
             ports=rule_data.ports,
             protocols=rule_data.protocols, # pyright: ignore[reportArgumentType]
+            users=([ClientData.get_name_by_email(email) for email in rule_data.users]
+                   if rule_data.users else None),
             outbound_name=rule_data.outbound_name,
             priority=rule_data.priority
         )
@@ -105,10 +123,15 @@ def add_rule(
         protocol: Annotated[
             list[str] | None,
             Option(help='List of protocols to match: http, tls, quic or bittorrent')] = None,
+        client: Annotated[
+            list[str] | None,
+            Option('--client', help='List of client names to match',
+                   autocompletion=complete_client_name)] = None,
         priority: Annotated[
             int | None,
             Option(
-                help='Priority of the rule (lower value means higher priority)')] = None,
+                help=f'Priority of the rule (lower value means higher priority, '
+                     f'allowed range: {USER_RULE_PRIORITY_MIN}-{USER_RULE_PRIORITY_MAX})')] = None,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_root()
     xray_config = _init_and_load_config()
@@ -120,9 +143,9 @@ def add_rule(
             (' not found', STYLE_REGULAR)))
         raise Exit(code=EXIT_ROUTING_OUTBOUND_NOT_FOUND)
 
-    if not (domain or ip or ports or protocol):
+    if not (domain or ip or ports or protocol or client):
         print_error(Text(
-            'At least one condition (domain, ip, ports, protocol) must be specified',
+            'At least one condition (domain, ip, ports, protocol, client) must be specified',
             STYLE_REGULAR))
         raise Exit(code=EXIT_ROUTING_NO_CONDITIONS)
 
@@ -141,6 +164,14 @@ def add_rule(
             (ports, STYLE_ACCENT_NEUTRAL)))
         raise Exit(code=EXIT_ROUTING_INVALID_PORTS)
 
+    if priority is not None and not _is_user_priority(priority):
+        print_error(Text.assemble(
+            ('Invalid priority value: ', STYLE_REGULAR),
+            (str(priority), STYLE_ACCENT_NEUTRAL),
+            ('. Allowed range: ', STYLE_REGULAR),
+            (f'{USER_RULE_PRIORITY_MIN}-{USER_RULE_PRIORITY_MAX}', STYLE_VALUE)))
+        raise Exit(code=EXIT_ROUTING_INVALID_PRIORITY)
+
     all_rules = _get_existing_rules(xray_config)
     if _find_rule_by_name(all_rules, name):
         print_error(Text.assemble(
@@ -149,10 +180,15 @@ def add_rule(
             (' already exists', STYLE_REGULAR)))
         raise Exit(code=EXIT_ROUTING_RULE_EXISTS)
 
+    user_rules = [rule for rule in all_rules if _is_user_rule(rule)]
+    client_emails = _resolve_client_emails(xray_config, client)
+    if client and client_emails is None:
+        raise Exit(code=EXIT_ROUTING_CLIENT_NOT_FOUND)
+
     new_rule = RuleData(name=name, outbound_name=outbound,
                         protocols=protocol, # pyright: ignore[reportArgumentType]
-                        ports=ports, domains=domain, ips=ip,
-                        priority=priority or (len(all_rules) + 1) * 10)
+                        ports=ports, domains=domain, ips=ip, users=client_emails,
+                        priority=priority if priority is not None else (len(user_rules) + 1) * 10)
     all_rules.append(new_rule)
 
     _save_rules(xray_config, all_rules)
@@ -225,7 +261,10 @@ def rename_rule(
 @error_handler(default_message='Error changing rule priority', default_code=EXIT_ROUTING_ERROR)
 def set_rule_priority(
         name: Annotated[str, Argument(help='Rule name', autocompletion=complete_route_name)],
-        priority: Annotated[int, Option(help='New priority value (lower = higher priority)')],
+    priority: Annotated[
+        int,
+        Option(help=f'New priority value (lower = higher priority, '
+            f'allowed range: {USER_RULE_PRIORITY_MIN}-{USER_RULE_PRIORITY_MAX})')],
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_root()
     xray_config = _init_and_load_config()
@@ -239,6 +278,14 @@ def set_rule_priority(
             (name, STYLE_ACCENT_NEUTRAL),
             (' not found', STYLE_REGULAR)))
         raise Exit(code=EXIT_ROUTING_RULE_NOT_FOUND)
+
+    if not _is_user_priority(priority):
+        print_error(Text.assemble(
+            ('Invalid priority value: ', STYLE_REGULAR),
+            (str(priority), STYLE_ACCENT_NEUTRAL),
+            ('. Allowed range: ', STYLE_REGULAR),
+            (f'{USER_RULE_PRIORITY_MIN}-{USER_RULE_PRIORITY_MAX}', STYLE_VALUE)))
+        raise Exit(code=EXIT_ROUTING_INVALID_PRIORITY)
 
     if rule_to_update.priority == priority:
         print_error(Text.assemble(
@@ -277,13 +324,17 @@ def change_rule(
         protocol: Annotated[
             list[str] | None,
             Option(help='List of protocols to match: http, tls, quic or bittorrent')] = None,
+        client: Annotated[
+            list[str] | None,
+            Option('--client', help='List of client names to match',
+                   autocompletion=complete_client_name)] = None,
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_root()
     xray_config = _init_and_load_config()
 
-    if not (domain or ip or ports or protocol):
+    if not (domain or ip or ports or protocol or client):
         print_error(Text(
-            'At least one condition (domain, ip, ports, protocol) must be specified',
+            'At least one condition (domain, ip, ports, protocol, client) must be specified',
             STYLE_REGULAR))
         raise Exit(code=EXIT_ROUTING_NO_CONDITIONS)
     if protocol and not _is_correct_protocols(protocol):
@@ -310,10 +361,22 @@ def change_rule(
             (' not found', STYLE_REGULAR)))
         raise Exit(code=EXIT_ROUTING_RULE_NOT_FOUND)
 
+    client_emails = None
     if action == 'put':
-        _add_conditions(rule_to_change, domain, ip, ports, protocol) # pyright: ignore[reportArgumentType]
+        client_emails = _resolve_client_emails(xray_config, client)
+        if client and client_emails is None:
+            raise Exit(code=EXIT_ROUTING_CLIENT_NOT_FOUND)
+    elif client and rule_to_change.users:
+        selected_clients = set(client)
+        client_emails = [email for email in rule_to_change.users
+                         if ClientData.get_name_by_email(email) in selected_clients]
+
+    if action == 'put':
+        _add_conditions(
+            rule_to_change, domain, ip, ports, protocol, client_emails) # pyright: ignore[reportArgumentType]
     else:
-        _remove_conditions(rule_to_change, domain, ip, ports, protocol) # pyright: ignore[reportArgumentType]
+        _remove_conditions(
+            rule_to_change, domain, ip, ports, protocol, client_emails) # pyright: ignore[reportArgumentType]
 
     _save_rules(xray_config, all_rules)
     stdout_console.print(Text.assemble(
@@ -429,8 +492,18 @@ def _init_and_load_config() -> Xray:
     return load_config(XRAY_CONFIG_PATH)
 
 
+def _is_user_priority(priority: int) -> bool:
+    return USER_RULE_PRIORITY_MIN <= priority <= USER_RULE_PRIORITY_MAX
+
+
+def _is_user_rule(rule: RuleData) -> bool:
+    return _is_user_priority(rule.priority)
+
+
 def _find_rule_by_name(rules: list[RuleData], name: str) -> RuleData | None:
     for rule in rules:
+        if not _is_user_rule(rule):
+            continue
         if rule.name == name:
             return rule
     return None
@@ -470,12 +543,37 @@ def _save_rules(xray_config: Xray, rules: list[RuleData] | None = None) -> None:
     save_config(xray_config, XRAY_CONFIG_PATH)
 
 
+def _resolve_client_emails(xray_config: Xray, client_names: list[str] | None) -> list[str] | None:
+    if not client_names:
+        return None
+
+    clients = get_vless_inbound(xray_config).settings.clients or []
+    clients_by_name = {
+        ClientData.get_name_by_email(client.email): client.email
+        for client in clients
+        if client.email
+    }
+    emails: list[str] = []
+
+    for client_name in client_names:
+        email = clients_by_name.get(client_name)
+        if email is None:
+            print_error(Text.assemble(
+                ('Client ', STYLE_REGULAR),
+                (client_name, STYLE_ACCENT_NEUTRAL),
+                (' not found', STYLE_REGULAR)))
+            return None
+        emails.append(email)
+    return emails
+
+
 def _add_conditions(
         rule: RuleData,
         domains: list[str] | None,
         ips: list[str] | None,
         ports: str | None,
-        protocols: list[RuleProtocolType] | None
+    protocols: list[RuleProtocolType] | None,
+    users: list[str] | None
 ) -> None:
     if domains:
         rule.domains = _add_unique_items(rule.domains or [], domains)
@@ -485,6 +583,8 @@ def _add_conditions(
         rule.ports = _merge_ports(rule.ports, ports)
     if protocols:
         rule.protocols = _add_unique_items(rule.protocols or [], protocols)
+    if users:
+        rule.users = _add_unique_items(rule.users or [], users)
 
 
 def _remove_conditions(
@@ -492,19 +592,15 @@ def _remove_conditions(
         domains: list[str] | None,
         ips: list[str] | None,
         ports: str | None,
-        protocols: list[RuleProtocolType] | None
+    protocols: list[RuleProtocolType] | None,
+    users: list[str] | None
 ) -> None:
-    if domains and rule.domains:
-        rule.domains = [d for d in rule.domains if d not in domains]
-        rule.domains = rule.domains if rule.domains else None
-    if ips and rule.ips:
-        rule.ips = [ip for ip in rule.ips if ip not in ips]
-        rule.ips = rule.ips if rule.ips else None
+    rule.domains = _remove_items(rule.domains, domains)
+    rule.ips = _remove_items(rule.ips, ips)
     if ports and rule.ports:
         rule.ports = _subtract_ports(rule.ports, ports)
-    if protocols and rule.protocols:
-        rule.protocols = [p for p in rule.protocols if p not in protocols]
-        rule.protocols = rule.protocols if rule.protocols else None
+    rule.protocols = _remove_items(rule.protocols, protocols)
+    rule.users = _remove_items(rule.users, users)
 
 
 def _merge_ports(current: str | None, new: str) -> str:
@@ -531,3 +627,11 @@ def _add_unique_items(existing: list[Any], new_items: list[Any]) -> list[Any]:
             result.append(item)
             existing_set.add(item)
     return result
+
+
+def _remove_items(existing: list[Any] | None, items_to_remove: list[Any] | None) -> list[Any] | None:
+    if not existing or not items_to_remove:
+        return existing
+
+    filtered_items = [item for item in existing if item not in items_to_remove]
+    return filtered_items if filtered_items else None

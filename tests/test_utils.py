@@ -51,6 +51,8 @@ from app.utils import (
     is_json_content_same,
     query_xray_stats,
     reset_xray_stats,
+    load_stats,
+    save_stats,
 )
 
 
@@ -1792,6 +1794,34 @@ class TestResetXrayStats:
 
         args = mock_run.call_args[0][0]
         assert '-reset=true' in args
+
+
+class TestStatsFileStorage:
+
+    def test_load_stats_returns_empty_for_missing_file(self, tmp_path: Path):
+        result = load_stats(tmp_path / 'missing.json')
+
+        assert result == VeePeeNetStats()
+
+    def test_load_stats_returns_empty_for_invalid_json(self, tmp_path: Path):
+        stats_path = tmp_path / 'stats.json'
+        stats_path.write_text('not json', encoding='utf-8')
+
+        result = load_stats(stats_path)
+
+        assert result == VeePeeNetStats()
+
+    def test_save_stats_writes_serialized_json(self, tmp_path: Path):
+        stats_path = tmp_path / 'stats.json'
+        stats = VeePeeNetStats(client={'alice': TrafficStats(uplink=100, downlink=200)})
+
+        save_stats(stats, stats_path)
+
+        assert json.loads(stats_path.read_text(encoding='utf-8')) == {
+            'client': {'alice': {'uplink': 100, 'downlink': 200}},
+            'inbound': {},
+            'outbound': {},
+        }
 
 
 class TestVeePeeNetStatsIadd:

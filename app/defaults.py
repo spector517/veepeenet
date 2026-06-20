@@ -18,6 +18,7 @@ XRAY_API_PORT = 10085
 
 XRAY_CONFIG_PATH = Path('/usr/local/etc/xray/config.json')
 XRAY_CONFIG_BACKUP_PATH = Path('/usr/local/etc/xray/config.json.bak')
+VEEPEENET_STATS_PATH = Path('/usr/local/etc/veepeenet/stats.json')
 XRAY_BINARY_PATH = Path('/usr/local/bin/xray')
 XRAY_SERVICE_UNIT_PATH = Path('/etc/systemd/system/xray.service')
 XRAY_LOGS_PATH = Path('/var/log/xray')
@@ -81,3 +82,11 @@ EXIT_ROUTING_RULE_NOT_FOUND = 56
 EXIT_ROUTING_RULE_SAME_VALUE = 57
 EXIT_ROUTING_NO_RULES = 58
 EXIT_ROUTING_STRATEGY_SAME = 59
+EXIT_ROUTING_INVALID_PRIORITY = 60
+EXIT_ROUTING_CLIENT_NOT_FOUND = 61
+
+USER_RULE_PRIORITY_MIN = 0
+USER_RULE_PRIORITY_MAX = 1_000_000
+
+DISABLED_CLIENTS_RULE_NAME = '_disabled_clients'
+DISABLED_CLIENTS_RULE_PRIORITY = -1

@@ -64,15 +64,18 @@ class TestVeePeeNETStats:
 
 class TestVeePeeNETModel:
 
-    def test_veepeenet_has_default_stats(self):
+    def test_veepeenet_has_no_stats_field(self):
         vpn = VeePeeNet(host='0.0.0.0', namespace='test-uuid')
-        assert isinstance(vpn.stats, VeePeeNetStats)
+        assert 'stats' not in vpn.model_dump(by_alias=True, exclude_none=True)
 
-    def test_veepeenet_stats_serialized_in_json(self):
-        vpn = VeePeeNet(host='0.0.0.0', namespace='test-uuid')
+    def test_veepeenet_drops_legacy_stats_from_json(self):
+        vpn = VeePeeNet.model_validate({
+            'host': '0.0.0.0',
+            'namespace': 'test-uuid',
+            'stats': {'client': {}, 'inbound': {}, 'outbound': {}},
+        })
         data = vpn.model_dump(by_alias=True, exclude_none=True)
-        assert 'stats' in data
-        assert data['stats'] == {'client': {}, 'inbound': {}, 'outbound': {}}
+        assert data == {'host': '0.0.0.0', 'namespace': 'test-uuid'}
 
 
 class TestApiConfig:

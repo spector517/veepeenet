@@ -17,8 +17,8 @@ applyTo:
 ---
 # State, Stats, And Release Handling
 
-- Treat traffic statistics as two layers: persisted counters in `veepeenet.stats` and live counters from the Xray API. Status views should display the sum of both, not one source alone.
-- `reset-stats` is a dual reset. It must clear `veepeenet.stats` in the config and, when Xray is running, also reset live API counters through `reset_xray_stats()`.
+- Treat traffic statistics as two layers: persisted counters in `/usr/local/etc/veepeenet/stats.json` and live counters from the Xray API. Status views should display the sum of both, not one source alone.
+- `reset-stats` is a dual reset. It must clear `/usr/local/etc/veepeenet/stats.json` and, when Xray is running, also reset live API counters through `reset_xray_stats()`.
 - Before `stop` and `restart`, preserve runtime counters by calling `_store_runtime_stats()` so traffic is not lost across service transitions.
 - For restart-required detection, compare parsed JSON structures with `is_json_content_same(...)`, not raw file bytes. Ignore top-level `veepeenet` when the intent is to detect config changes that require an Xray restart.
 - Explicit Xray version selection is broader than release listing. `update-xray --version ...` should query enough GitHub releases and include prereleases so tags like beta/rc can still be resolved.

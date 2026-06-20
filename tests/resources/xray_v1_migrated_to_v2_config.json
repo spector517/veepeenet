@@ -1,12 +1,7 @@
 {
   "veepeenet": {
     "host": "126.6.6.6",
-    "namespace": "some-uuid",
-    "stats": {
-      "client": {},
-      "inbound": {},
-      "outbound": {}
-    }
+    "namespace": "some-uuid"
   },
   "log": {
     "access": "none",

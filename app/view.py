@@ -57,14 +57,19 @@ class TrafficStatsView(BaseModel):
 class ClientView(BaseModel):
     name: str
     url: str
+    disabled: bool = Field(default=False)
     stats: TrafficStatsView = Field(default_factory=TrafficStatsView)
 
     def rich_repr_short(self) -> Text:
-        return Text(self.name, STYLE_VALUE)
+        return Text.assemble(
+            ('● ', STYLE_ACCENT_DOWN if self.disabled else STYLE_OK),
+            (self.name, STYLE_VALUE),
+        )
 
     def rich_repr(self) -> Group:
         parts: list[Text] = [
             Text.assemble(
+                Text('● ', STYLE_ACCENT_DOWN if self.disabled else STYLE_OK),
                 Text(self.name, STYLE_VALUE),
                 Text(' [', STYLE_REGULAR),
                 self.stats.rich_repr_short(),
@@ -99,6 +104,7 @@ class RuleView(BaseModel):
     ips: list[str] | None = Field(default=None)
     ports: str | None = Field(default=None)
     protocols: list[str] | None = Field(default=None)
+    users: list[str] | None = Field(default=None)
     outbound_name: str
     priority: int
 
@@ -126,6 +132,9 @@ class RuleView(BaseModel):
         if self.protocols:
             content_lines.append(
                 row(Text('protocols: ', STYLE_REGULAR), joined_bold(self.protocols)))
+        if self.users:
+            content_lines.append(
+                row(Text('clients: ', STYLE_REGULAR), joined_bold(self.users)))
 
         content = Text('\n').join(content_lines)
         title = Text.assemble(

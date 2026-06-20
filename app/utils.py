@@ -13,8 +13,9 @@ from zipfile import ZipFile
 from requests import get as get_request
 
 from app.defaults import XRAY_BINARY_PATH
-from app.model.xray import Xray
 from app.model.api import Api, Stats
+from app.model.veepeenet import VeePeeNetStats
+from app.model.xray import Xray
 from app.view import VersionsView
 
 _T = TypeVar('_T')
@@ -212,6 +213,20 @@ def write_text_file(file_path: Path, text: str, mode: int = 0) -> None:
         file_path.write_text(text, encoding='utf-8')
     if mode:
         file_path.chmod(mode)
+
+
+def load_stats(file_path: Path) -> VeePeeNetStats:
+    try:
+        return VeePeeNetStats.model_validate_json(file_path.read_text(encoding='utf-8'), by_alias=True)
+    except (OSError, ValueError):
+        return VeePeeNetStats()
+
+
+def save_stats(stats: VeePeeNetStats, file_path: Path) -> None:
+    write_text_file(
+        file_path,
+        stats.model_dump_json(by_alias=True, exclude_none=True, indent=2),
+        mode=0o644)
 
 
 def is_json_content_same(

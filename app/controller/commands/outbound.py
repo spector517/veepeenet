@@ -2,7 +2,7 @@ from typing import Annotated, get_args, cast, Any
 from urllib.parse import urlparse, parse_qs, unquote
 
 from rich.text import Text
-from typer import Argument, Option, Exit
+from typer import Argument, Context, Option, Exit
 
 from app.cli import outbounds
 from app.controller.common import (
@@ -11,6 +11,7 @@ from app.controller.common import (
     check_xray_config,
     check_root,
     print_error,
+    print_view,
     save_config,
     stdout_console,
     get_runtime_stats,
@@ -61,15 +62,20 @@ def show(
         _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
     check_xray_config()
     xray_config = load_config(XRAY_CONFIG_PATH)
-    display_stats = get_stored_stats(xray_config)
+    display_stats = get_stored_stats()
     display_stats += get_runtime_stats()
 
     view = get_outbounds_view(xray_config, display_stats)
+    print_view(view, json)
 
-    if json:
-        stdout_console.print_json(view.model_dump_json(exclude_none=True, indent=2))
-    else:
-        stdout_console.print(view.rich_repr())
+
+@outbounds.callback(invoke_without_command=True)
+def show_default(
+        ctx: Context,
+        json: Annotated[bool, Option(help='Show JSON formatted info')] = False,
+        _debug: Annotated[bool, Option('--debug', hidden=True)] = False) -> None:
+    if ctx.invoked_subcommand is None:
+        show(json=json, _debug=_debug)
 
 
 def get_outbounds_view(xray_config: Xray, stats: VeePeeNetStats | None = None) -> OutboundsView:

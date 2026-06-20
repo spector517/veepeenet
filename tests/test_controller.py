@@ -8,10 +8,21 @@ from pytest_mock import MockFixture
 from typer import Exit
 
 from app.controller.common import load_config
+from app.controller.commands.clients import disable, enable, get_clients_view
 from app.controller.commands.configure import config, _select_version
 from app.controller.commands.outbound import remove
-from app.controller.commands.state import status, reset_stats
-from app.model.veepeenet import VeePeeNetStats
+from app.controller.commands.routing import add_rule, change_rule, get_routing_view, set_rule_priority
+from app.controller.commands.state import status, reset_stats, store_stats
+from app.defaults import (
+    DISABLED_CLIENTS_RULE_NAME,
+    DISABLED_CLIENTS_RULE_PRIORITY,
+    EXIT_CLIENTS_ERROR,
+    EXIT_ROUTING_CLIENT_NOT_FOUND,
+    EXIT_ROUTING_INVALID_PRIORITY,
+)
+from app.model.api import Stats
+from app.model.routing import Rule
+from app.model.veepeenet import VeePeeNetStats, TrafficStats
 from app.model.xray import Xray
 
 
@@ -201,50 +212,89 @@ class TestCollectAndSaveStats:
 
     def test_does_nothing_if_service_not_running(self, mocker: MockFixture):
         mocker.patch('app.controller.common.is_xray_service_running', return_value=False)
-        load_config_mock = mocker.patch('app.controller.common.load_config')
+        load_stats_mock = mocker.patch('app.controller.common.load_stats')
 
         from app.controller.common import _store_runtime_stats # type: ignore # pylint: disable=import-outside-toplevel
         _store_runtime_stats()
 
-        load_config_mock.assert_not_called()
+        load_stats_mock.assert_not_called()
 
     def test_saves_accumulated_stats_when_running(self, mocker: MockFixture):
-        from app.model.veepeenet import TrafficStats # pylint: disable=import-outside-toplevel
         from app.controller.common import _store_runtime_stats # type: ignore # pylint: disable=import-outside-toplevel
 
-        config_path = Path('tests/resources/valid_xray_config_with_clients.json')
-        xray_config = load_config(config_path)
-
         mocker.patch('app.controller.common.is_xray_service_running', return_value=True)
-        mocker.patch('app.controller.common.XRAY_CONFIG_PATH', config_path)
-        mocker.patch('app.controller.common.load_config', return_value=xray_config)
-        save_mock = mocker.patch('app.controller.common.save_config')
+        mocker.patch('app.controller.common.load_stats', return_value=VeePeeNetStats())
+        save_mock = mocker.patch('app.controller.common.save_stats')
         runtime_stats = VeePeeNetStats(
             client={'c1.client': TrafficStats(uplink=100, downlink=200)}
         )
-        mocker.patch('app.controller.common.get_runtime_stats', return_value=runtime_stats)
+        runtime_mock = mocker.patch(
+            'app.controller.common.get_runtime_stats', return_value=runtime_stats)
 
         _store_runtime_stats()
 
+        runtime_mock.assert_called_once_with(reset=True)
         save_mock.assert_called_once()
-        saved_config: Xray = save_mock.call_args[0][0]
-        assert saved_config.veepeenet is not None
-        assert saved_config.veepeenet.stats.client.get('c1.client') is not None
-        assert saved_config.veepeenet.stats.client['c1.client'].uplink == 100
-        assert saved_config.veepeenet.stats.client['c1.client'].downlink == 200
+        saved_stats = save_mock.call_args[0][0]
+        assert saved_stats.client.get('c1.client') is not None
+        assert saved_stats.client['c1.client'].uplink == 100
+        assert saved_stats.client['c1.client'].downlink == 200
+
+
+class TestStoreStatsCommand:
+
+    def test_saves_runtime_stats_from_api(self, mocker: MockFixture):
+        check_root_mock = mocker.patch('app.controller.commands.state.check_root')
+        mocker.patch(
+            'app.controller.commands.state.query_xray_stats',
+            return_value=[
+                Stats(name='user>>>alice.123@0.0.0.0>>>traffic>>>uplink', value=100),
+                Stats(name='inbound>>>vless-inbound>>>traffic>>>downlink', value=200),
+            ])
+        mocker.patch(
+            'app.controller.commands.state.get_stored_stats',
+            return_value=VeePeeNetStats(
+                client={'alice': TrafficStats(uplink=5, downlink=0)}))
+        save_mock = mocker.patch('app.controller.commands.state.save_stats')
+
+        store_stats()
+
+        check_root_mock.assert_called_once()
+        save_mock.assert_called_once()
+        saved_stats = save_mock.call_args[0][0]
+        assert saved_stats.client['alice'].uplink == 105
+        assert saved_stats.inbound['vless-inbound'].downlink == 200
+
+    def test_does_nothing_when_api_has_no_stats(self, mocker: MockFixture):
+        mocker.patch('app.controller.commands.state.check_root')
+        mocker.patch('app.controller.commands.state.query_xray_stats', return_value=[])
+        stored_mock = mocker.patch('app.controller.commands.state.get_stored_stats')
+        save_mock = mocker.patch('app.controller.commands.state.save_stats')
+
+        store_stats()
+
+        stored_mock.assert_not_called()
+        save_mock.assert_not_called()
+
+    def test_raises_when_not_root(self, mocker: MockFixture):
+        mocker.patch(
+            'app.controller.commands.state.check_root',
+            side_effect=Exit(code=1))
+        query_mock = mocker.patch('app.controller.commands.state.query_xray_stats')
+
+        with raises(Exit) as exc_info:
+            store_stats(_debug=True)
+
+        assert exc_info.value.exit_code == 1
+        query_mock.assert_not_called()
 
 
 class TestClearStats:
 
-    def test_resets_only_config_if_service_not_running(self, mocker: MockFixture):
-        config_path = Path('tests/resources/valid_xray_config_with_clients.json')
-        xray_config = load_config(config_path)
-
-        mocker.patch('app.controller.common.XRAY_CONFIG_PATH', config_path)
+    def test_resets_only_stats_file_if_service_not_running(self, mocker: MockFixture):
         mocker.patch('app.controller.common.is_xray_service_running', return_value=False)
         reset_mock = mocker.patch('app.controller.common.reset_xray_stats')
-        mocker.patch('app.controller.common.load_config', return_value=xray_config)
-        save_mock = mocker.patch('app.controller.common.save_config')
+        save_mock = mocker.patch('app.controller.common.save_stats')
         print_mock = mocker.patch('app.controller.common.stdout_console.print')
 
         from app.controller.common import clear_stats # pylint: disable=import-outside-toplevel
@@ -252,39 +302,27 @@ class TestClearStats:
 
         reset_mock.assert_not_called()
         save_mock.assert_called_once()
-        saved_config: Xray = save_mock.call_args[0][0]
-        assert saved_config.veepeenet is not None
-        assert saved_config.veepeenet.stats == VeePeeNetStats()
+        saved_stats = save_mock.call_args[0][0]
+        assert saved_stats == VeePeeNetStats()
         print_mock.assert_called_once()
 
-    def test_resets_config_and_api_if_service_running(self, mocker: MockFixture):
-        config_path = Path('tests/resources/valid_xray_config_with_clients.json')
-        xray_config = load_config(config_path)
-
-        mocker.patch('app.controller.common.XRAY_CONFIG_PATH', config_path)
+    def test_resets_stats_file_and_api_if_service_running(self, mocker: MockFixture):
         mocker.patch('app.controller.common.is_xray_service_running', return_value=True)
         reset_mock = mocker.patch('app.controller.common.reset_xray_stats', return_value=True)
-        mocker.patch('app.controller.common.load_config', return_value=xray_config)
-        save_mock = mocker.patch('app.controller.common.save_config')
+        save_mock = mocker.patch('app.controller.common.save_stats')
 
         from app.controller.common import clear_stats # pylint: disable=import-outside-toplevel
         clear_stats()
 
         reset_mock.assert_called_once()
         save_mock.assert_called_once()
-        saved_config: Xray = save_mock.call_args[0][0]
-        assert saved_config.veepeenet is not None
-        assert saved_config.veepeenet.stats == VeePeeNetStats()
+        saved_stats = save_mock.call_args[0][0]
+        assert saved_stats == VeePeeNetStats()
 
     def test_raises_if_api_reset_fails(self, mocker: MockFixture):
-        config_path = Path('tests/resources/valid_xray_config_with_clients.json')
-        xray_config = load_config(config_path)
-
-        mocker.patch('app.controller.common.XRAY_CONFIG_PATH', config_path)
         mocker.patch('app.controller.common.is_xray_service_running', return_value=True)
         mocker.patch('app.controller.common.reset_xray_stats', return_value=False)
-        mocker.patch('app.controller.common.load_config', return_value=xray_config)
-        save_mock = mocker.patch('app.controller.common.save_config')
+        save_mock = mocker.patch('app.controller.common.save_stats')
 
         from app.controller.common import clear_stats # pylint: disable=import-outside-toplevel
         with raises(RuntimeError, match='Failed to reset Xray API stats'):
@@ -402,3 +440,328 @@ class TestStatusRestartRequired:
         assert server_view_ctor.call_args.kwargs['restart_required'] is True
         compare_mock.assert_called_once()
         assert compare_mock.call_args.kwargs == {'exclude_top_level_keys': {'veepeenet'}}
+
+
+class TestRoutingPriorityValidation:
+
+    @fixture(name='valid_config_for_routing')
+    def fixture_valid_config_for_routing(self) -> Xray:
+        return load_config(Path('tests/resources/valid_xray_config.json'))
+
+    def test_add_rule_rejects_negative_priority(
+            self, valid_config_for_routing: Xray, mocker: MockFixture):
+        mocker.patch('app.controller.commands.routing.check_root')
+        mocker.patch('app.controller.commands.routing.check_xray_config')
+        mocker.patch('app.controller.commands.routing.load_config', return_value=valid_config_for_routing)
+        save_mock = mocker.patch('app.controller.commands.routing.save_config')
+        print_error_mock = mocker.patch('app.controller.commands.routing.print_error')
+
+        with raises(Exit) as exc_info:
+            add_rule('test', 'direct', domain=['domain:example.com'], priority=-1, _debug=True)
+
+        assert exc_info.value.exit_code == EXIT_ROUTING_INVALID_PRIORITY
+        save_mock.assert_not_called()
+        print_error_mock.assert_called_once()
+
+    def test_add_rule_rejects_priority_above_limit(
+            self, valid_config_for_routing: Xray, mocker: MockFixture):
+        mocker.patch('app.controller.commands.routing.check_root')
+        mocker.patch('app.controller.commands.routing.check_xray_config')
+        mocker.patch('app.controller.commands.routing.load_config', return_value=valid_config_for_routing)
+        save_mock = mocker.patch('app.controller.commands.routing.save_config')
+
+        with raises(Exit) as exc_info:
+            add_rule('test', 'direct', domain=['domain:example.com'], priority=1_000_001, _debug=True)
+
+        assert exc_info.value.exit_code == EXIT_ROUTING_INVALID_PRIORITY
+        save_mock.assert_not_called()
+
+    def test_add_rule_accepts_zero_priority(
+            self, valid_config_for_routing: Xray, mocker: MockFixture):
+        mocker.patch('app.controller.commands.routing.check_root')
+        mocker.patch('app.controller.commands.routing.check_xray_config')
+        mocker.patch('app.controller.commands.routing.load_config', return_value=valid_config_for_routing)
+        mocker.patch('app.controller.commands.routing.install_geo_data')
+        save_mock = mocker.patch('app.controller.commands.routing.save_config')
+        mocker.patch('app.controller.commands.routing.stdout_console.print')
+
+        add_rule('test', 'direct', domain=['domain:example.com'], priority=0)
+
+        save_mock.assert_called_once()
+        saved_config = save_mock.call_args[0][0]
+        saved_rules = saved_config.routing.rules if saved_config.routing else []
+        assert saved_rules is not None
+        assert any(rule.tag == 'test.0' for rule in saved_rules)
+
+    def test_add_rule_accepts_upper_boundary_priority(
+            self, valid_config_for_routing: Xray, mocker: MockFixture):
+        mocker.patch('app.controller.commands.routing.check_root')
+        mocker.patch('app.controller.commands.routing.check_xray_config')
+        mocker.patch('app.controller.commands.routing.load_config', return_value=valid_config_for_routing)
+        mocker.patch('app.controller.commands.routing.install_geo_data')
+        save_mock = mocker.patch('app.controller.commands.routing.save_config')
+        mocker.patch('app.controller.commands.routing.stdout_console.print')
+
+        add_rule('test', 'direct', domain=['domain:example.com'], priority=1_000_000)
+
+        save_mock.assert_called_once()
+        saved_config = save_mock.call_args[0][0]
+        saved_rules = saved_config.routing.rules if saved_config.routing else []
+        assert saved_rules is not None
+        assert any(rule.tag == 'test.1000000' for rule in saved_rules)
+
+    def test_set_rule_priority_rejects_negative_priority(
+            self, valid_config_for_routing: Xray, mocker: MockFixture):
+        valid_config_for_routing.routing.rules = [ # type: ignore[assignment]
+            Rule(tag='test.10', outbound_tag='direct', domain=['domain:example.com'])
+        ]
+        mocker.patch('app.controller.commands.routing.check_root')
+        mocker.patch('app.controller.commands.routing.check_xray_config')
+        mocker.patch('app.controller.commands.routing.load_config', return_value=valid_config_for_routing)
+        save_mock = mocker.patch('app.controller.commands.routing.save_config')
+
+        with raises(Exit) as exc_info:
+            set_rule_priority('test', -1, _debug=True)
+
+        assert exc_info.value.exit_code == EXIT_ROUTING_INVALID_PRIORITY
+        save_mock.assert_not_called()
+
+    def test_set_rule_priority_rejects_priority_above_limit(
+            self, valid_config_for_routing: Xray, mocker: MockFixture):
+        valid_config_for_routing.routing.rules = [ # type: ignore[assignment]
+            Rule(tag='test.10', outbound_tag='direct', domain=['domain:example.com'])
+        ]
+        mocker.patch('app.controller.commands.routing.check_root')
+        mocker.patch('app.controller.commands.routing.check_xray_config')
+        mocker.patch('app.controller.commands.routing.load_config', return_value=valid_config_for_routing)
+        save_mock = mocker.patch('app.controller.commands.routing.save_config')
+
+        with raises(Exit) as exc_info:
+            set_rule_priority('test', 1_000_001, _debug=True)
+
+        assert exc_info.value.exit_code == EXIT_ROUTING_INVALID_PRIORITY
+        save_mock.assert_not_called()
+
+    def test_get_routing_view_hides_service_rules(self, valid_config_for_routing: Xray):
+        valid_config_for_routing.routing.rules = [ # type: ignore[assignment]
+            Rule(tag='visible.10', outbound_tag='direct', domain=['domain:example.com']),
+            Rule(tag='hidden.-1', outbound_tag='blackhole', protocol=['bittorrent']),
+            Rule(tag='hidden.1000001', outbound_tag='dns', port='53'),
+        ]
+
+        view = get_routing_view(valid_config_for_routing)
+
+        rules = view.model_dump()['rules'] or []
+        assert len(rules) == 1
+        assert rules[0]['name'] == 'visible'
+        assert rules[0]['priority'] == 10
+
+
+class TestRoutingClientCondition:
+
+    @fixture(name='config_with_clients_for_routing')
+    def fixture_config_with_clients_for_routing(self) -> Xray:
+        return load_config(Path('tests/resources/valid_xray_config_with_clients.json'))
+
+    def test_add_rule_with_client_succeeds(
+            self, config_with_clients_for_routing: Xray, mocker: MockFixture):
+        mocker.patch('app.controller.commands.routing.check_root')
+        mocker.patch('app.controller.commands.routing.check_xray_config')
+        mocker.patch(
+            'app.controller.commands.routing.load_config',
+            return_value=config_with_clients_for_routing)
+        mocker.patch('app.controller.commands.routing.install_geo_data')
+        save_mock = mocker.patch('app.controller.commands.routing.save_config')
+        mocker.patch('app.controller.commands.routing.stdout_console.print')
+
+        add_rule('client-rule', 'direct', client=['c1.client'], _debug=True)
+
+        save_mock.assert_called_once()
+        saved_config = save_mock.call_args[0][0]
+        saved_rule = saved_config.routing.rules[-1] # type: ignore[index]
+        assert saved_rule.user == ['c1.client.0001@0.0.0.0']
+
+    def test_add_rule_with_unknown_client_fails(
+            self, config_with_clients_for_routing: Xray, mocker: MockFixture):
+        mocker.patch('app.controller.commands.routing.check_root')
+        mocker.patch('app.controller.commands.routing.check_xray_config')
+        mocker.patch(
+            'app.controller.commands.routing.load_config',
+            return_value=config_with_clients_for_routing)
+        mocker.patch('app.controller.commands.routing.install_geo_data')
+        save_mock = mocker.patch('app.controller.commands.routing.save_config')
+
+        with raises(Exit) as exc_info:
+            add_rule('client-rule', 'direct', client=['missing'], _debug=True)
+
+        assert exc_info.value.exit_code == EXIT_ROUTING_CLIENT_NOT_FOUND
+        save_mock.assert_not_called()
+
+    def test_change_rule_put_client_adds_email(
+            self, config_with_clients_for_routing: Xray, mocker: MockFixture):
+        mocker.patch('app.controller.commands.routing.check_root')
+        mocker.patch('app.controller.commands.routing.check_xray_config')
+        mocker.patch(
+            'app.controller.commands.routing.load_config',
+            return_value=config_with_clients_for_routing)
+        mocker.patch('app.controller.commands.routing.install_geo_data')
+        save_mock = mocker.patch('app.controller.commands.routing.save_config')
+        mocker.patch('app.controller.commands.routing.stdout_console.print')
+
+        add_rule('client-rule', 'direct', domain=['domain:example.com'], _debug=True)
+        save_mock.reset_mock()
+
+        change_rule('client-rule', 'put', client=['c1.client'], _debug=True)
+
+        save_mock.assert_called_once()
+        saved_config = save_mock.call_args[0][0]
+        saved_rule = saved_config.routing.rules[-1] # type: ignore[index]
+        assert saved_rule.user == ['c1.client.0001@0.0.0.0']
+
+    def test_change_rule_del_client_removes_email(
+            self, config_with_clients_for_routing: Xray, mocker: MockFixture):
+        mocker.patch('app.controller.commands.routing.check_root')
+        mocker.patch('app.controller.commands.routing.check_xray_config')
+        mocker.patch(
+            'app.controller.commands.routing.load_config',
+            return_value=config_with_clients_for_routing)
+        mocker.patch('app.controller.commands.routing.install_geo_data')
+        save_mock = mocker.patch('app.controller.commands.routing.save_config')
+        mocker.patch('app.controller.commands.routing.stdout_console.print')
+
+        add_rule('client-rule', 'direct', client=['c1.client'], _debug=True)
+        save_mock.reset_mock()
+
+        change_rule('client-rule', 'del', client=['c1.client'], _debug=True)
+
+        save_mock.assert_called_once()
+        saved_config = save_mock.call_args[0][0]
+        saved_rule = saved_config.routing.rules[-1] # type: ignore[index]
+        assert saved_rule.user is None
+
+
+class TestDisableEnableClients:
+
+    @fixture(name='config_with_clients_for_clients_commands')
+    def fixture_config_with_clients_for_clients_commands(self) -> Xray:
+        config = load_config(Path('tests/resources/valid_xray_config_with_clients.json'))
+        inbound = config.get_vless_inbound()
+        if inbound and inbound.settings.clients:
+            inbound.settings.clients[0].id = '12345678-1234-5678-1234-567812345678'
+        return config
+
+    def test_disable_creates_system_rule(
+            self, config_with_clients_for_clients_commands: Xray, mocker: MockFixture):
+        mocker.patch('app.controller.commands.clients.check_root')
+        mocker.patch('app.controller.commands.clients.check_xray_config')
+        mocker.patch(
+            'app.controller.commands.clients.load_config',
+            return_value=config_with_clients_for_clients_commands)
+        save_mock = mocker.patch('app.controller.commands.clients.save_config')
+        mocker.patch('app.controller.commands.clients.stdout_console.print')
+
+        disable(['c1.client'], _debug=True)
+
+        save_mock.assert_called_once()
+        saved_config = save_mock.call_args[0][0]
+        disabled_rule = next(
+            rule for rule in saved_config.routing.rules or []
+            if rule.tag == f'{DISABLED_CLIENTS_RULE_NAME}.{DISABLED_CLIENTS_RULE_PRIORITY}')
+        assert disabled_rule.outbound_tag == 'blackhole'
+        assert disabled_rule.user == ['c1.client.0001@0.0.0.0']
+
+    def test_disable_unknown_client_fails_without_save(
+            self, config_with_clients_for_clients_commands: Xray, mocker: MockFixture):
+        mocker.patch('app.controller.commands.clients.check_root')
+        mocker.patch('app.controller.commands.clients.check_xray_config')
+        mocker.patch(
+            'app.controller.commands.clients.load_config',
+            return_value=config_with_clients_for_clients_commands)
+        mocker.patch('app.controller.commands.clients.print_error')
+        save_mock = mocker.patch('app.controller.commands.clients.save_config')
+
+        with raises(Exit) as exc_info:
+            disable(['missing'], _debug=True)
+
+        assert exc_info.value.exit_code == EXIT_CLIENTS_ERROR
+        save_mock.assert_not_called()
+
+    def test_enable_removes_rule_for_last_disabled_client(
+            self, config_with_clients_for_clients_commands: Xray, mocker: MockFixture):
+        config_with_clients_for_clients_commands.routing.rules.append( # type: ignore[union-attr]
+            Rule(
+                tag=f'{DISABLED_CLIENTS_RULE_NAME}.{DISABLED_CLIENTS_RULE_PRIORITY}',
+                outbound_tag='blackhole',
+                user=['c1.client.0001@0.0.0.0'],
+            ))
+        mocker.patch('app.controller.commands.clients.check_root')
+        mocker.patch('app.controller.commands.clients.check_xray_config')
+        mocker.patch(
+            'app.controller.commands.clients.load_config',
+            return_value=config_with_clients_for_clients_commands)
+        save_mock = mocker.patch('app.controller.commands.clients.save_config')
+        mocker.patch('app.controller.commands.clients.stdout_console.print')
+
+        enable(['c1.client'], _debug=True)
+
+        save_mock.assert_called_once()
+        saved_config = save_mock.call_args[0][0]
+        assert all(
+            rule.tag != f'{DISABLED_CLIENTS_RULE_NAME}.{DISABLED_CLIENTS_RULE_PRIORITY}'
+            for rule in saved_config.routing.rules or []
+        )
+
+    def test_enable_already_enabled_skips_without_save(
+            self, config_with_clients_for_clients_commands: Xray, mocker: MockFixture):
+        mocker.patch('app.controller.commands.clients.check_root')
+        mocker.patch('app.controller.commands.clients.check_xray_config')
+        mocker.patch(
+            'app.controller.commands.clients.load_config',
+            return_value=config_with_clients_for_clients_commands)
+        save_mock = mocker.patch('app.controller.commands.clients.save_config')
+        mocker.patch('app.controller.commands.clients.stdout_console.print')
+
+        enable(['c1.client'], _debug=True)
+
+        save_mock.assert_not_called()
+
+    def test_get_clients_view_marks_disabled_clients(
+            self, config_with_clients_for_clients_commands: Xray, mocker: MockFixture):
+        config_with_clients_for_clients_commands.routing.rules.append( # type: ignore[union-attr]
+            Rule(
+                tag=f'{DISABLED_CLIENTS_RULE_NAME}.{DISABLED_CLIENTS_RULE_PRIORITY}',
+                outbound_tag='blackhole',
+                user=['c1.client.0001@0.0.0.0'],
+            ))
+        mocker.patch('app.controller.commands.clients.get_vless_client_url', return_value='vless://test')
+
+        view = get_clients_view(config_with_clients_for_clients_commands)
+
+        assert view.clients[0].disabled is True
+
+    def test_remove_client_drops_disabled_email_from_rule(
+            self, config_with_clients_for_clients_commands: Xray, mocker: MockFixture):
+        from app.controller.commands.clients import remove as remove_clients
+
+        config_with_clients_for_clients_commands.routing.rules.append( # type: ignore[union-attr]
+            Rule(
+                tag=f'{DISABLED_CLIENTS_RULE_NAME}.{DISABLED_CLIENTS_RULE_PRIORITY}',
+                outbound_tag='blackhole',
+                user=['c1.client.0001@0.0.0.0'],
+            ))
+        mocker.patch('app.controller.commands.clients.check_root')
+        mocker.patch('app.controller.commands.clients.check_xray_config')
+        mocker.patch(
+            'app.controller.commands.clients.load_config',
+            return_value=config_with_clients_for_clients_commands)
+        save_mock = mocker.patch('app.controller.commands.clients.save_config')
+        mocker.patch('app.controller.commands.clients.stdout_console.print')
+
+        remove_clients(['c1.client'], _debug=True)
+
+        save_mock.assert_called_once()
+        saved_config = save_mock.call_args[0][0]
+        assert all(
+            rule.tag != f'{DISABLED_CLIENTS_RULE_NAME}.{DISABLED_CLIENTS_RULE_PRIORITY}'
+            for rule in saved_config.routing.rules or []
+        )

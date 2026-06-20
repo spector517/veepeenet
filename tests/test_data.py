@@ -1,5 +1,6 @@
 from app.model.api import Stats
-from app.controller.data import StatsData
+from app.controller.data import RuleData, StatsData
+from app.model.routing import Rule
 from app.model.veepeenet import VeePeeNetStats
 
 
@@ -142,3 +143,34 @@ class TestStatsDataToModel:
         )
         model = data.to_model()
         assert model.outbound['blackhole'].uplink == 999
+
+
+class TestRuleDataUsers:
+
+    def test_from_model_reads_users(self):
+        rule = Rule(
+            tag='by-client.10',
+            outbound_tag='direct',
+            user=['c1.client.0001@0.0.0.0'],
+        )
+
+        rule_data = RuleData.from_model(rule)
+
+        assert rule_data.name == 'by-client'
+        assert rule_data.users == ['c1.client.0001@0.0.0.0']
+
+    def test_to_model_writes_users(self):
+        rule_data = RuleData(
+            name='by-client',
+            outbound_name='direct',
+            protocols=None,
+            ports=None,
+            domains=None,
+            ips=None,
+            users=['c1.client.0001@0.0.0.0'],
+            priority=10,
+        )
+
+        rule = rule_data.to_model()
+
+        assert rule.user == ['c1.client.0001@0.0.0.0']

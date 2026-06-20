@@ -1,4 +1,4 @@
-from app.view import format_traffic_bytes
+from app.view import ClientView, format_traffic_bytes
 
 
 class TestFormatTrafficBytes:
@@ -24,3 +24,23 @@ class TestFormatTrafficBytes:
     def test_terabytes(self):
         assert format_traffic_bytes(1_000_000_000_000) == '1.00 TB'
         assert format_traffic_bytes(5_500_000_000_000) == '5.50 TB'
+
+
+class TestClientViewDisabled:
+
+    def test_rich_repr_short_marks_enabled_client(self):
+        view = ClientView(name='alice', url='vless://test', disabled=False)
+
+        assert view.rich_repr_short().plain == '● alice'
+
+    def test_rich_repr_short_marks_disabled_client(self):
+        view = ClientView(name='alice', url='vless://test', disabled=True)
+
+        assert view.rich_repr_short().plain == '● alice'
+
+    def test_rich_repr_marks_disabled_client(self):
+        view = ClientView(name='alice', url='vless://test', disabled=True)
+        group = view.rich_repr()
+        rendered = list(group.renderables)
+
+        assert rendered[0].plain.startswith('● alice')

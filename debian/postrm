@@ -12,6 +12,7 @@ esac
 case "$1" in
     purge)
         rm -rf /usr/local/etc/xray
+    rm -rf /usr/local/etc/veepeenet
         ;;
 esac
 

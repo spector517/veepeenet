@@ -20,6 +20,7 @@ from app.defaults import (
     XRAY_CONFIG_BACKUP_PATH,
     XRAY_API_HOST,
     XRAY_API_PORT,
+    VEEPEENET_STATS_PATH,
     STATE_PENDING_TIMEOUT,
     STYLE_REGULAR,
     STYLE_VALUE,
@@ -52,6 +53,8 @@ from app.utils import (
     get_xray_service_journal,
     query_xray_stats,
     reset_xray_stats,
+    load_stats,
+    save_stats,
 )
 from app.controller.data import StatsData
 
@@ -62,6 +65,13 @@ def print_error(message: str | Text) -> None:
     stderr_console.print(
         Panel(message, title='Error', title_align='left', border_style='red')
     )
+
+
+def print_view(view: Any, json_format: bool) -> None:
+    if json_format:
+        stdout_console.print_json(view.model_dump_json(exclude_none=True, indent=2))
+    else:
+        stdout_console.print(view.rich_repr())
 
 
 def error_handler(
@@ -224,41 +234,33 @@ def get_runtime_stats(reset: bool = False) -> VeePeeNetStats:
     return veepeenet_stats
 
 
-def get_stored_stats(xray_config: Xray) -> VeePeeNetStats:
-    if xray_config.veepeenet:
-        return xray_config.veepeenet.stats
-    return VeePeeNetStats()
+def get_stored_stats() -> VeePeeNetStats:
+    return load_stats(VEEPEENET_STATS_PATH)
 
 
 def clear_stats() -> None:
-    config = load_config(XRAY_CONFIG_PATH)
     running = is_xray_service_running()
 
     if running and not reset_xray_stats(XRAY_API_HOST, XRAY_API_PORT):
         raise RuntimeError('Failed to reset Xray API stats')
 
-    if not config.veepeenet:
-        raise ValueError('Invalid configuration: missing veepeenet section')
-
-    config.veepeenet.stats = VeePeeNetStats()
-    save_config(config, XRAY_CONFIG_PATH)
+    save_stats(VeePeeNetStats(), VEEPEENET_STATS_PATH)
 
     if running:
-        stdout_console.print(Text('Traffic statistics reset in config and Xray API', STYLE_OK))
+        stdout_console.print(Text('Traffic statistics reset in stats file and Xray API', STYLE_OK))
     else:
-        stdout_console.print(Text('Traffic statistics reset in config', STYLE_OK))
+        stdout_console.print(Text('Traffic statistics reset in stats file', STYLE_OK))
 
 
 def _store_runtime_stats() -> None:
     if not is_xray_service_running():
         return
 
-    config = load_config(XRAY_CONFIG_PATH)
-    runtime_stats = get_runtime_stats()
-    stored_stats = get_stored_stats(config)
+    runtime_stats = get_runtime_stats(reset=True)
+    stored_stats = get_stored_stats()
     stored_stats += runtime_stats
 
-    save_config(config, XRAY_CONFIG_PATH)
+    save_stats(stored_stats, VEEPEENET_STATS_PATH)
 
 def _test_config_or_fail() -> None:
     success, output = validate_xray_config(XRAY_CONFIG_PATH)
