@@ -65,6 +65,7 @@ class RuleData:
     ports: str | None
     domains: list[str] | None
     ips: list[str] | None
+    users: list[str] | None
     priority: int
 
     @classmethod
@@ -77,7 +78,8 @@ class RuleData:
             priority = (number + 1) * 10
             name = rule.tag or f'rule_{priority}'
         return RuleData(name=name, outbound_name=rule.outbound_tag, protocols=rule.protocol,
-                        ports=rule.port, domains=rule.domain, ips=rule.ip, priority=priority)
+                        ports=rule.port, domains=rule.domain, ips=rule.ip,
+                        users=rule.user, priority=priority)
 
     def to_model(self) -> Rule:
         return Rule(
@@ -86,7 +88,8 @@ class RuleData:
             protocol=self.protocols,
             port=self.ports,
             domain=self.domains,
-            ip=self.ips)
+            ip=self.ips,
+            user=self.users)
 
 
 @dataclass

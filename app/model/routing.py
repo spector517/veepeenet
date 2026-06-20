@@ -12,6 +12,7 @@ class Rule(XrayModel):
     port: str | None = Field(default=None)
     domain: list[str] | None = Field(default=None)
     ip: list[str] | None = Field(default=None)
+    user: list[str] | None = Field(default=None)
 
 
 class Routing(XrayModel):

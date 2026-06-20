@@ -10,9 +10,9 @@ from typer import Exit
 from app.controller.common import load_config
 from app.controller.commands.configure import config, _select_version
 from app.controller.commands.outbound import remove
-from app.controller.commands.routing import add_rule, get_routing_view, set_rule_priority
+from app.controller.commands.routing import add_rule, change_rule, get_routing_view, set_rule_priority
 from app.controller.commands.state import status, reset_stats, store_stats
-from app.defaults import EXIT_ROUTING_INVALID_PRIORITY
+from app.defaults import EXIT_ROUTING_CLIENT_NOT_FOUND, EXIT_ROUTING_INVALID_PRIORITY
 from app.model.api import Stats
 from app.model.routing import Rule
 from app.model.veepeenet import VeePeeNetStats, TrafficStats
@@ -548,3 +548,86 @@ class TestRoutingPriorityValidation:
         assert len(rules) == 1
         assert rules[0]['name'] == 'visible'
         assert rules[0]['priority'] == 10
+
+
+class TestRoutingClientCondition:
+
+    @fixture(name='config_with_clients_for_routing')
+    def fixture_config_with_clients_for_routing(self) -> Xray:
+        return load_config(Path('tests/resources/valid_xray_config_with_clients.json'))
+
+    def test_add_rule_with_client_succeeds(
+            self, config_with_clients_for_routing: Xray, mocker: MockFixture):
+        mocker.patch('app.controller.commands.routing.check_root')
+        mocker.patch('app.controller.commands.routing.check_xray_config')
+        mocker.patch(
+            'app.controller.commands.routing.load_config',
+            return_value=config_with_clients_for_routing)
+        mocker.patch('app.controller.commands.routing.install_geo_data')
+        save_mock = mocker.patch('app.controller.commands.routing.save_config')
+        mocker.patch('app.controller.commands.routing.stdout_console.print')
+
+        add_rule('client-rule', 'direct', client=['c1.client'], _debug=True)
+
+        save_mock.assert_called_once()
+        saved_config = save_mock.call_args[0][0]
+        saved_rule = saved_config.routing.rules[-1] # type: ignore[index]
+        assert saved_rule.user == ['c1.client.0001@0.0.0.0']
+
+    def test_add_rule_with_unknown_client_fails(
+            self, config_with_clients_for_routing: Xray, mocker: MockFixture):
+        mocker.patch('app.controller.commands.routing.check_root')
+        mocker.patch('app.controller.commands.routing.check_xray_config')
+        mocker.patch(
+            'app.controller.commands.routing.load_config',
+            return_value=config_with_clients_for_routing)
+        mocker.patch('app.controller.commands.routing.install_geo_data')
+        save_mock = mocker.patch('app.controller.commands.routing.save_config')
+
+        with raises(Exit) as exc_info:
+            add_rule('client-rule', 'direct', client=['missing'], _debug=True)
+
+        assert exc_info.value.exit_code == EXIT_ROUTING_CLIENT_NOT_FOUND
+        save_mock.assert_not_called()
+
+    def test_change_rule_put_client_adds_email(
+            self, config_with_clients_for_routing: Xray, mocker: MockFixture):
+        mocker.patch('app.controller.commands.routing.check_root')
+        mocker.patch('app.controller.commands.routing.check_xray_config')
+        mocker.patch(
+            'app.controller.commands.routing.load_config',
+            return_value=config_with_clients_for_routing)
+        mocker.patch('app.controller.commands.routing.install_geo_data')
+        save_mock = mocker.patch('app.controller.commands.routing.save_config')
+        mocker.patch('app.controller.commands.routing.stdout_console.print')
+
+        add_rule('client-rule', 'direct', domain=['domain:example.com'], _debug=True)
+        save_mock.reset_mock()
+
+        change_rule('client-rule', 'put', client=['c1.client'], _debug=True)
+
+        save_mock.assert_called_once()
+        saved_config = save_mock.call_args[0][0]
+        saved_rule = saved_config.routing.rules[-1] # type: ignore[index]
+        assert saved_rule.user == ['c1.client.0001@0.0.0.0']
+
+    def test_change_rule_del_client_removes_email(
+            self, config_with_clients_for_routing: Xray, mocker: MockFixture):
+        mocker.patch('app.controller.commands.routing.check_root')
+        mocker.patch('app.controller.commands.routing.check_xray_config')
+        mocker.patch(
+            'app.controller.commands.routing.load_config',
+            return_value=config_with_clients_for_routing)
+        mocker.patch('app.controller.commands.routing.install_geo_data')
+        save_mock = mocker.patch('app.controller.commands.routing.save_config')
+        mocker.patch('app.controller.commands.routing.stdout_console.print')
+
+        add_rule('client-rule', 'direct', client=['c1.client'], _debug=True)
+        save_mock.reset_mock()
+
+        change_rule('client-rule', 'del', client=['c1.client'], _debug=True)
+
+        save_mock.assert_called_once()
+        saved_config = save_mock.call_args[0][0]
+        saved_rule = saved_config.routing.rules[-1] # type: ignore[index]
+        assert saved_rule.user is None

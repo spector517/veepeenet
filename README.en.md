@@ -15,7 +15,7 @@ Install and configure personal anti-censorship service [Xray](https://github.com
 - Creating and changing Xray server configuration (Vless with Reality)
 - Adding and removing Xray server clients
 - Managing outbound Vless connections
-- Flexible routing rules management
+- Flexible routing rules management by domains, IPs, ports, protocols, and clients
 - Geodata updates for geoip/geosite based routing
 
 ## Installation
@@ -340,6 +340,10 @@ xrayctl routing
 │ domains: geosite:category-gov-ru         │
 │ ips: geoip:ru                            │
 └──────────────────────────────────────────┘
+┌ Rule #30 alice-direct --> direct ────────┐
+│ name: alice-direct                       │
+│ clients: alice                           │
+└──────────────────────────────────────────┘
 ```
 
 #### Add routing rule
@@ -354,9 +358,16 @@ xrayctl routing add-rule NAME [OPTIONS]
 | --ip       | TEXT    | List of IPs or IP ranges to match (e.g. "123.123.123.123")         |
 | --ports    | TEXT    | Port or port range to match (e.g. "53,443,60-89")                  |
 | --protocol | TEXT    | List of protocols to match: http, tls, quic or bittorrent          |
+| --client   | TEXT    | Client name. The rule stores the full client email from the config  |
 | --priority | INTEGER | Priority of the rule (lower value means higher priority)           |
 
-At least one condition (`--domain`, `--ip`, `--ports`, `--protocol`) must be specified.
+At least one condition (`--domain`, `--ip`, `--ports`, `--protocol`, `--client`) must be specified.
+
+Examples:
+```commandline
+sudo xrayctl routing add-rule bypass-ads --outbound blackhole --domain geosite:category-ads-all
+sudo xrayctl routing add-rule alice-direct --outbound direct --client alice
+```
 
 #### Remove routing rule
 ```commandline
@@ -386,6 +397,13 @@ Where `ACTION` is either `put` (add values) or `del` (remove values).
 | --ip       | TEXT | List of IPs or IP ranges to add/remove                         |
 | --ports    | TEXT | Port or port range to add/remove                               |
 | --protocol | TEXT | List of protocols to add/remove: http, tls, quic or bittorrent |
+| --client   | TEXT | Client name to add/remove from the rule condition              |
+
+Examples:
+```commandline
+sudo xrayctl routing change-rule alice-direct put --client bob
+sudo xrayctl routing change-rule alice-direct del --client alice
+```
 
 #### Set domain strategy
 ```commandline

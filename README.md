@@ -15,7 +15,7 @@
 - Создание и изменение конфигурации Xray-сервера (Vless with Reality)
 - Добавление и удаление клиентов Xray-сервера
 - Управление исходящими подключениями Vless
-- Гибкое управление правилами маршрутизации
+- Гибкое управление правилами маршрутизации по доменам, IP, портам, протоколам и клиентам
 - Обновление geodata для маршрутизации на основе geoip/geosite
 
 ## Установка
@@ -340,6 +340,10 @@ xrayctl routing
 │ domains: geosite:category-gov-ru         │
 │ ips: geoip:ru                            │
 └──────────────────────────────────────────┘
+┌ Rule #30 alice-direct --> direct ────────┐
+│ name: alice-direct                       │
+│ clients: alice                           │
+└──────────────────────────────────────────┘
 ```
 
 #### Добавление правила маршрутизации
@@ -354,9 +358,16 @@ xrayctl routing add-rule NAME [OPTIONS]
 | --ip       | TEXT    | Список IP-адресов или диапазонов, например "123.123.123.123"         |
 | --ports    | TEXT    | Порт или диапазон портов, например "53,443,60-89"                    |
 | --protocol | TEXT    | Список протоколов: http, tls, quic или bittorrent                    |
+| --client   | TEXT    | Имя клиента. В правило будет сохранён его полный email из конфигурации |
 | --priority | INTEGER | Приоритет правила. Чем меньше значение, тем выше приоритет           |
 
-Нужно указать хотя бы одно условие: `--domain`, `--ip`, `--ports` или `--protocol`.
+Нужно указать хотя бы одно условие: `--domain`, `--ip`, `--ports`, `--protocol` или `--client`.
+
+Примеры:
+```commandline
+sudo xrayctl routing add-rule bypass-ads --outbound blackhole --domain geosite:category-ads-all
+sudo xrayctl routing add-rule alice-direct --outbound direct --client alice
+```
 
 #### Удаление правила маршрутизации
 ```commandline
@@ -386,6 +397,13 @@ sudo xrayctl routing change-rule NAME ACTION [OPTIONS]
 | --ip       | TEXT | Список IP-адресов или диапазонов для добавления или удаления  |
 | --ports    | TEXT | Порт или диапазон портов для добавления или удаления          |
 | --protocol | TEXT | Список протоколов для добавления или удаления: http, tls, quic или bittorrent |
+| --client   | TEXT | Имя клиента для добавления или удаления из условия правила    |
+
+Примеры:
+```commandline
+sudo xrayctl routing change-rule alice-direct put --client bob
+sudo xrayctl routing change-rule alice-direct del --client alice
+```
 
 #### Установка domain strategy
 ```commandline

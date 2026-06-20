@@ -99,6 +99,7 @@ class RuleView(BaseModel):
     ips: list[str] | None = Field(default=None)
     ports: str | None = Field(default=None)
     protocols: list[str] | None = Field(default=None)
+    users: list[str] | None = Field(default=None)
     outbound_name: str
     priority: int
 
@@ -126,6 +127,9 @@ class RuleView(BaseModel):
         if self.protocols:
             content_lines.append(
                 row(Text('protocols: ', STYLE_REGULAR), joined_bold(self.protocols)))
+        if self.users:
+            content_lines.append(
+                row(Text('clients: ', STYLE_REGULAR), joined_bold(self.users)))
 
         content = Text('\n').join(content_lines)
         title = Text.assemble(
