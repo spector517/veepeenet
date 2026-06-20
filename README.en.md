@@ -241,10 +241,26 @@ Clients with names that do not exist on the server will be ignored.
 sudo xrayctl clients remove CLIENT_NAMES...
 ```
 
+#### Disable clients
+This command blocks client traffic with a service routing rule and sends it to `blackhole`.
+```commandline
+sudo xrayctl clients disable CLIENT_NAMES...
+```
+
+#### Enable clients
+This command removes the block and restores client access to the proxy.
+```commandline
+sudo xrayctl clients enable CLIENT_NAMES...
+```
+
 #### List clients
 ```text
 sudo xrayctl clients [OPTIONS]
 ```
+
+In both the client list and `xrayctl status`, a state indicator is shown before each name:
+- green `●` — access enabled
+- red `●` — access disabled
 
 | Option | Type | Description         |
 | ------ | ---- | ------------------- |

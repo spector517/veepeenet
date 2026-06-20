@@ -241,10 +241,26 @@ sudo xrayctl clients add CLIENT_NAMES...
 sudo xrayctl clients remove CLIENT_NAMES...
 ```
 
+#### Отключение клиентов
+Команда блокирует трафик клиентов через служебное правило маршрутизации и отправляет его в `blackhole`.
+```commandline
+sudo xrayctl clients disable CLIENT_NAMES...
+```
+
+#### Включение клиентов
+Команда снимает блокировку и возвращает клиентам доступ к прокси.
+```commandline
+sudo xrayctl clients enable CLIENT_NAMES...
+```
+
 #### Список клиентов
 ```text
 sudo xrayctl clients [OPTIONS]
 ```
+
+В списке клиентов и в `xrayctl status` перед именем отображается индикатор состояния:
+- зеленая точка `●` — доступ открыт
+- красная точка `●` — доступ закрыт
 
 | Параметр | Тип  | Описание             |
 | -------- | ---- | -------------------- |

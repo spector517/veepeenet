@@ -8,11 +8,18 @@ from pytest_mock import MockFixture
 from typer import Exit
 
 from app.controller.common import load_config
+from app.controller.commands.clients import disable, enable, get_clients_view
 from app.controller.commands.configure import config, _select_version
 from app.controller.commands.outbound import remove
 from app.controller.commands.routing import add_rule, change_rule, get_routing_view, set_rule_priority
 from app.controller.commands.state import status, reset_stats, store_stats
-from app.defaults import EXIT_ROUTING_CLIENT_NOT_FOUND, EXIT_ROUTING_INVALID_PRIORITY
+from app.defaults import (
+    DISABLED_CLIENTS_RULE_NAME,
+    DISABLED_CLIENTS_RULE_PRIORITY,
+    EXIT_CLIENTS_ERROR,
+    EXIT_ROUTING_CLIENT_NOT_FOUND,
+    EXIT_ROUTING_INVALID_PRIORITY,
+)
 from app.model.api import Stats
 from app.model.routing import Rule
 from app.model.veepeenet import VeePeeNetStats, TrafficStats
@@ -631,3 +638,130 @@ class TestRoutingClientCondition:
         saved_config = save_mock.call_args[0][0]
         saved_rule = saved_config.routing.rules[-1] # type: ignore[index]
         assert saved_rule.user is None
+
+
+class TestDisableEnableClients:
+
+    @fixture(name='config_with_clients_for_clients_commands')
+    def fixture_config_with_clients_for_clients_commands(self) -> Xray:
+        config = load_config(Path('tests/resources/valid_xray_config_with_clients.json'))
+        inbound = config.get_vless_inbound()
+        if inbound and inbound.settings.clients:
+            inbound.settings.clients[0].id = '12345678-1234-5678-1234-567812345678'
+        return config
+
+    def test_disable_creates_system_rule(
+            self, config_with_clients_for_clients_commands: Xray, mocker: MockFixture):
+        mocker.patch('app.controller.commands.clients.check_root')
+        mocker.patch('app.controller.commands.clients.check_xray_config')
+        mocker.patch(
+            'app.controller.commands.clients.load_config',
+            return_value=config_with_clients_for_clients_commands)
+        save_mock = mocker.patch('app.controller.commands.clients.save_config')
+        mocker.patch('app.controller.commands.clients.stdout_console.print')
+
+        disable(['c1.client'], _debug=True)
+
+        save_mock.assert_called_once()
+        saved_config = save_mock.call_args[0][0]
+        disabled_rule = next(
+            rule for rule in saved_config.routing.rules or []
+            if rule.tag == f'{DISABLED_CLIENTS_RULE_NAME}.{DISABLED_CLIENTS_RULE_PRIORITY}')
+        assert disabled_rule.outbound_tag == 'blackhole'
+        assert disabled_rule.user == ['c1.client.0001@0.0.0.0']
+
+    def test_disable_unknown_client_fails_without_save(
+            self, config_with_clients_for_clients_commands: Xray, mocker: MockFixture):
+        mocker.patch('app.controller.commands.clients.check_root')
+        mocker.patch('app.controller.commands.clients.check_xray_config')
+        mocker.patch(
+            'app.controller.commands.clients.load_config',
+            return_value=config_with_clients_for_clients_commands)
+        mocker.patch('app.controller.commands.clients.print_error')
+        save_mock = mocker.patch('app.controller.commands.clients.save_config')
+
+        with raises(Exit) as exc_info:
+            disable(['missing'], _debug=True)
+
+        assert exc_info.value.exit_code == EXIT_CLIENTS_ERROR
+        save_mock.assert_not_called()
+
+    def test_enable_removes_rule_for_last_disabled_client(
+            self, config_with_clients_for_clients_commands: Xray, mocker: MockFixture):
+        config_with_clients_for_clients_commands.routing.rules.append( # type: ignore[union-attr]
+            Rule(
+                tag=f'{DISABLED_CLIENTS_RULE_NAME}.{DISABLED_CLIENTS_RULE_PRIORITY}',
+                outbound_tag='blackhole',
+                user=['c1.client.0001@0.0.0.0'],
+            ))
+        mocker.patch('app.controller.commands.clients.check_root')
+        mocker.patch('app.controller.commands.clients.check_xray_config')
+        mocker.patch(
+            'app.controller.commands.clients.load_config',
+            return_value=config_with_clients_for_clients_commands)
+        save_mock = mocker.patch('app.controller.commands.clients.save_config')
+        mocker.patch('app.controller.commands.clients.stdout_console.print')
+
+        enable(['c1.client'], _debug=True)
+
+        save_mock.assert_called_once()
+        saved_config = save_mock.call_args[0][0]
+        assert all(
+            rule.tag != f'{DISABLED_CLIENTS_RULE_NAME}.{DISABLED_CLIENTS_RULE_PRIORITY}'
+            for rule in saved_config.routing.rules or []
+        )
+
+    def test_enable_already_enabled_skips_without_save(
+            self, config_with_clients_for_clients_commands: Xray, mocker: MockFixture):
+        mocker.patch('app.controller.commands.clients.check_root')
+        mocker.patch('app.controller.commands.clients.check_xray_config')
+        mocker.patch(
+            'app.controller.commands.clients.load_config',
+            return_value=config_with_clients_for_clients_commands)
+        save_mock = mocker.patch('app.controller.commands.clients.save_config')
+        mocker.patch('app.controller.commands.clients.stdout_console.print')
+
+        enable(['c1.client'], _debug=True)
+
+        save_mock.assert_not_called()
+
+    def test_get_clients_view_marks_disabled_clients(
+            self, config_with_clients_for_clients_commands: Xray, mocker: MockFixture):
+        config_with_clients_for_clients_commands.routing.rules.append( # type: ignore[union-attr]
+            Rule(
+                tag=f'{DISABLED_CLIENTS_RULE_NAME}.{DISABLED_CLIENTS_RULE_PRIORITY}',
+                outbound_tag='blackhole',
+                user=['c1.client.0001@0.0.0.0'],
+            ))
+        mocker.patch('app.controller.commands.clients.get_vless_client_url', return_value='vless://test')
+
+        view = get_clients_view(config_with_clients_for_clients_commands)
+
+        assert view.clients[0].disabled is True
+
+    def test_remove_client_drops_disabled_email_from_rule(
+            self, config_with_clients_for_clients_commands: Xray, mocker: MockFixture):
+        from app.controller.commands.clients import remove as remove_clients
+
+        config_with_clients_for_clients_commands.routing.rules.append( # type: ignore[union-attr]
+            Rule(
+                tag=f'{DISABLED_CLIENTS_RULE_NAME}.{DISABLED_CLIENTS_RULE_PRIORITY}',
+                outbound_tag='blackhole',
+                user=['c1.client.0001@0.0.0.0'],
+            ))
+        mocker.patch('app.controller.commands.clients.check_root')
+        mocker.patch('app.controller.commands.clients.check_xray_config')
+        mocker.patch(
+            'app.controller.commands.clients.load_config',
+            return_value=config_with_clients_for_clients_commands)
+        save_mock = mocker.patch('app.controller.commands.clients.save_config')
+        mocker.patch('app.controller.commands.clients.stdout_console.print')
+
+        remove_clients(['c1.client'], _debug=True)
+
+        save_mock.assert_called_once()
+        saved_config = save_mock.call_args[0][0]
+        assert all(
+            rule.tag != f'{DISABLED_CLIENTS_RULE_NAME}.{DISABLED_CLIENTS_RULE_PRIORITY}'
+            for rule in saved_config.routing.rules or []
+        )
